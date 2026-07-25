@@ -481,11 +481,16 @@
   async function loadProjects(){
     var out = await Lumen.api('/api/projects');
     projects = out.projects || [];
-    if(!projects.length){
-      var made = await Lumen.api('/api/projects', { method:'POST', body: JSON.stringify({ name:'New project' }) });
-      projects = [made.project];
+    if(!activeId || !active()){
+      var blank = projects.filter(function(p){ return !p.hasBuild; })[0];
+      if(blank){
+        activeId = blank.id;
+      } else {
+        var made = await Lumen.api('/api/projects', { method:'POST', body: JSON.stringify({ name:'New project' }) });
+        projects.push(made.project);
+        activeId = made.project.id;
+      }
     }
-    if(!activeId || !active()) activeId = projects[0].id;
     renderAll();
     loadChat(activeId);
   }
