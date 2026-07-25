@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lumen — Effortless websites, intelligently built</title>
-<meta name="description" content="Describe what you want and a calm intelligence designs, builds, and runs your website — beautifully, on one simple subscription. No credits, no meters.">
+<meta name="description" content="Describe what you want and a calm intelligence designs, builds, and runs your website — beautifully, on one simple subscription. No credits, no per-action charges.">
 <meta property="og:title" content="Lumen — Effortless websites, intelligently built">
 <meta property="og:description" content="Describe it. Watch it assemble. A calm intelligence builds and runs your site — on one flat subscription. No credits, ever.">
 <meta property="og:type" content="website">
@@ -392,8 +392,8 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
   <!-- BIG STATEMENT: NO CREDITS -->
   <section class="statement">
     <div class="wrap reveal">
-      <div class="big">No credits.<br>No meters. <span class="accent">Just one flat fee.</span></div>
-      <p>Others charge you every time the AI thinks. Lumen doesn't. Build as much as you want, change it as often as you like — and always know exactly what you'll pay.</p>
+      <div class="big">No credits.<br>No per-action charges. <span class="accent">Just one flat fee.</span></div>
+      <p>Others charge you every time the AI thinks. Lumen doesn't — no credits ticking down, no bill for every build. Just a generous allowance on every plan, and always know exactly what you'll pay.</p>
     </div>
   </section>
 
@@ -503,7 +503,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
       <div class="center reveal">
         <span class="eyebrow">Pricing</span>
         <h2>Simple, honest, flat.</h2>
-        <p class="sub">Try any plan free for a month. Build on a generous daily allowance that refreshes daily — no credits counting down.</p>
+        <p class="sub">Try any plan free for a month. Build on a generous allowance that refreshes every few hours — no credits counting down.</p>
       </div>
       <div class="upsellbar" id="upsell">
         <div>
@@ -539,7 +539,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
         <div class="plan feat reveal">
           <span class="plan-tag">Most popular</span>
           <div class="pn">Pro</div>
-          <div class="pd">Higher daily limits for people building client work.</div>
+          <div class="pd">More builds per session, for people building client work.</div>
           <div class="price"><span class="amt" data-m="49" data-plan="pro">£49</span><span class="per">/ month</span></div>
           <ul>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Everything in Standard</li>
@@ -763,7 +763,7 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
     if (u.plan !== 'frontier' && bar) {
       document.getElementById('ubTitle').textContent = "You're on the " + (u.planLabel || LABEL[u.plan] || '') + " plan";
       if (u.plan === 'standard') {
-        document.getElementById('ubSub').textContent = 'Move up to Pro for a much higher daily build allowance.';
+        document.getElementById('ubSub').textContent = 'Move up to Pro for a bigger build allowance.';
         document.getElementById('ubBtn').textContent = 'Upgrade to Pro';
         document.getElementById('ubBtn').setAttribute('href','/start?plan=pro');
       } else {
