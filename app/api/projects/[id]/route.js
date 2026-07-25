@@ -47,6 +47,15 @@ export const PATCH = handler(async (request, { params }) => {
 export const DELETE = handler(async (request, { params }) => {
   const { profile, admin } = await requireUser(request);
   await owned(admin, profile.id, params.id);
-  await admin.from('projects').delete().eq('id', params.id);
+
+  await admin.from('projects')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', params.id);
+
+  // Take any published site offline — a deleted project shouldn't stay live.
+  await admin.from('sites')
+    .update({ status: 'draft' })
+    .eq('project_id', params.id);
+
   return Response.json({ ok: true });
 });

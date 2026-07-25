@@ -10,6 +10,7 @@ export const GET = handler(async (request) => {
     .from('projects')
     .select('id, name, preview_url, current_code, updated_at, sites(subdomain, custom_domain, status)')
     .eq('user_id', profile.id)
+    .is('deleted_at', null)
     .order('updated_at', { ascending: false });
 
   const projects = (data || []).map((p) => {
