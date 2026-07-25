@@ -46,7 +46,16 @@ export const PATCH = handler(async (request, { params }) => {
 
 export const DELETE = handler(async (request, { params }) => {
   const { profile, admin } = await requireUser(request);
-  await owned(admin, profile.id, params.id);
+  const project = await owned(admin, profile.id, params.id);
+  const permanent = new URL(request.url).searchParams.get('permanent') === 'true';
+
+  if (permanent) {
+    if (!project.deleted_at) {
+      throw new ApiError(400, 'Move the project to Trash before deleting it permanently.');
+    }
+    await admin.from('projects').delete().eq('id', params.id);
+    return Response.json({ ok: true, permanent: true });
+  }
 
   await admin.from('projects')
     .update({ deleted_at: new Date().toISOString() })

@@ -209,9 +209,21 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
       <h3>Your sites</h3>
       <div class="count" id="sitesCount">Loading…</div>
     </div>
+    <a class="btn btn-ghost" href="#" id="trashLink">Trash</a>
     <a class="btn btn-primary" href="/builder">New site</a>
   </div>
   <div id="sitesList"><div class="sempty">Loading your sites…</div></div>
+</div>
+
+<div class="sites reveal" id="trashPanel" style="display:none">
+  <div class="sites-head">
+    <div>
+      <h3>Trash</h3>
+      <div class="count" id="trashCount">Loading…</div>
+    </div>
+    <a class="btn btn-ghost" href="#" id="backToSites">Back to sites</a>
+  </div>
+  <div id="trashList"><div class="sempty">Loading…</div></div>
 </div>
 
 <div class="grid2">
@@ -243,10 +255,10 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 <div class="confirm" id="confirmWrap">
   <div class="confirm-box">
     <h3 id="confirmTitle">Delete this site?</h3>
-    <p id="confirmText">This removes the project, its history and any published version. It can't be undone.</p>
+    <p id="confirmText">This moves the project to Trash. It stays recoverable for 30 days, then it's permanently deleted.</p>
     <div class="confirm-row">
       <button class="sbtn" id="confirmNo" type="button">Cancel</button>
-      <button class="sbtn danger" id="confirmYes" type="button">Delete permanently</button>
+      <button class="sbtn danger" id="confirmYes" type="button">Move to Trash</button>
     </div>
   </div>
 </div>
@@ -363,9 +375,19 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
 (function(){
   var listEl = document.getElementById('sitesList');
   var countEl = document.getElementById('sitesCount');
+  var trashListEl = document.getElementById('trashList');
+  var trashCountEl = document.getElementById('trashCount');
   var wrap = document.getElementById('confirmWrap');
   var pending = null;
+  var pendingPurge = null;
+  var confirmMode = 'trash'; // 'trash' | 'purge'
   var sitesDomain = '';
+
+  function daysLeft(iso){
+    if(!iso) return 30;
+    var purgeAt = new Date(iso).getTime() + 30*86400000;
+    return Math.max(0, Math.ceil((purgeAt - Date.now())/86400000));
+  }
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -412,7 +434,7 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
         + '<a class="sbtn" href="/builder">Open</a>'
         + (p.hasBuild ? '<button class="sbtn" data-act="export" data-id="'+p.id+'">Export</button>' : '')
         + (p.published ? '<button class="sbtn" data-act="unpublish" data-id="'+p.id+'">Unpublish</button>' : '')
-        + '<button class="sbtn danger" data-act="delete" data-id="'+p.id+'" data-name="'+esc(p.name||'Untitled')+'">Delete</button>'
+        + '<button class="sbtn danger" data-act="delete" data-id="'+p.id+'" data-name="'+esc(p.name||'Untitled')+'">Move to Trash</button>'
         + '</div></div>';
     }).join('');
 
@@ -422,10 +444,65 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
         if(act==='unpublish') return unpublish(id, b);
         if(act==='export') return exportSite(id, b);
         pending = { id: id, name: b.getAttribute('data-name') };
+        confirmMode = 'trash';
         document.getElementById('confirmTitle').textContent = 'Delete "' + pending.name + '"?';
+        document.getElementById('confirmText').textContent = "This moves the project to Trash. It stays recoverable for 30 days, then it's permanently deleted.";
+        document.getElementById('confirmYes').textContent = 'Move to Trash';
         wrap.classList.add('show');
       });
     });
+  }
+
+  function renderTrash(projects){
+    if(!projects.length){
+      trashCountEl.textContent = 'Empty';
+      trashListEl.innerHTML = '<div class="sempty">Nothing in the trash.</div>';
+      return;
+    }
+    trashCountEl.textContent = projects.length + (projects.length===1?' item':' items');
+    trashListEl.innerHTML = projects.map(function(p){
+      var days = daysLeft(p.deletedAt);
+      return '<div class="srow" data-id="'+p.id+'">'
+        + '<div class="sthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></div>'
+        + '<div class="sinfo"><div class="sname">'+esc(p.name||'Untitled')+'</div>'
+        + '<div class="smeta"><span>'+(days<=0?'Deleting soon':days+' day'+(days===1?'':'s')+' left')+'</span></div></div>'
+        + '<div class="sactions">'
+        + '<button class="sbtn" data-tact="restore" data-id="'+p.id+'">Restore</button>'
+        + '<button class="sbtn danger" data-tact="purge" data-id="'+p.id+'" data-name="'+esc(p.name||'Untitled')+'">Delete forever</button>'
+        + '</div></div>';
+    }).join('');
+
+    trashListEl.querySelectorAll('[data-tact]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var id=b.getAttribute('data-id'), act=b.getAttribute('data-tact');
+        if(act==='restore') return restoreProject(id, b);
+        pendingPurge = { id: id, name: b.getAttribute('data-name') };
+        confirmMode = 'purge';
+        document.getElementById('confirmTitle').textContent = 'Delete "' + pendingPurge.name + '" forever?';
+        document.getElementById('confirmText').textContent = 'This permanently erases the project, its history and any published version. This cannot be undone.';
+        document.getElementById('confirmYes').textContent = 'Delete forever';
+        wrap.classList.add('show');
+      });
+    });
+  }
+
+  async function loadTrash(){
+    try{
+      var out = await Lumen.api('/api/projects?trashed=true');
+      renderTrash(out.projects || []);
+    }catch(e){
+      trashListEl.innerHTML = '<div class="sempty">Could not load trash.</div>';
+      trashCountEl.textContent = '';
+    }
+  }
+
+  async function restoreProject(id, btn){
+    btn.disabled=true; var label=btn.textContent; btn.textContent='Restoring…';
+    try{
+      await Lumen.api('/api/projects/'+id+'/undelete', { method:'POST' });
+      await loadTrash();
+      await load();
+    }catch(e){ btn.disabled=false; btn.textContent=label; alert(e.message); }
   }
 
   async function load(){
@@ -462,18 +539,42 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
     catch(e){ btn.disabled=false; btn.textContent='Unpublish'; alert(e.message); }
   }
 
-  document.getElementById('confirmNo').addEventListener('click', function(){ wrap.classList.remove('show'); pending=null; });
-  wrap.addEventListener('click', function(e){ if(e.target===wrap){ wrap.classList.remove('show'); pending=null; } });
+  document.getElementById('trashLink').addEventListener('click', function(e){
+    e.preventDefault();
+    document.getElementById('sitesPanel').style.display='none';
+    document.getElementById('trashPanel').style.display='block';
+    loadTrash();
+  });
+  document.getElementById('backToSites').addEventListener('click', function(e){
+    e.preventDefault();
+    document.getElementById('trashPanel').style.display='none';
+    document.getElementById('sitesPanel').style.display='block';
+  });
+
+  document.getElementById('confirmNo').addEventListener('click', function(){ wrap.classList.remove('show'); pending=null; pendingPurge=null; });
+  wrap.addEventListener('click', function(e){ if(e.target===wrap){ wrap.classList.remove('show'); pending=null; pendingPurge=null; } });
 
   document.getElementById('confirmYes').addEventListener('click', async function(){
+    var b=this;
+    if(confirmMode === 'purge'){
+      if(!pendingPurge) return;
+      b.disabled=true; var plabel=b.textContent; b.textContent='Deleting…';
+      try{
+        await Lumen.api('/api/projects/'+pendingPurge.id+'?permanent=true', { method:'DELETE' });
+        wrap.classList.remove('show'); pendingPurge=null;
+        await loadTrash();
+      }catch(e){ alert(e.message || 'Could not delete.'); }
+      finally{ b.disabled=false; b.textContent=plabel; }
+      return;
+    }
     if(!pending) return;
-    var b=this; b.disabled=true; b.textContent='Deleting…';
+    b.disabled=true; var label=b.textContent; b.textContent='Moving…';
     try{
       await Lumen.api('/api/projects/'+pending.id, { method:'DELETE' });
       wrap.classList.remove('show'); pending=null;
       await load();
     }catch(e){ alert(e.message || 'Could not delete.'); }
-    finally{ b.disabled=false; b.textContent='Delete permanently'; }
+    finally{ b.disabled=false; b.textContent=label; }
   });
 
   Lumen.session().then(function(s){ if(s) load(); });

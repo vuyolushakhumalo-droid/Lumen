@@ -6,12 +6,16 @@ export const dynamic = 'force-dynamic';
 
 export const GET = handler(async (request) => {
   const { profile, admin } = await requireUser(request);
-  const { data } = await admin
+  const trashed = new URL(request.url).searchParams.get('trashed') === 'true';
+
+  let query = admin
     .from('projects')
-    .select('id, name, preview_url, current_code, updated_at, sites(subdomain, custom_domain, status)')
-    .eq('user_id', profile.id)
-    .is('deleted_at', null)
-    .order('updated_at', { ascending: false });
+    .select('id, name, preview_url, current_code, updated_at, deleted_at, sites(subdomain, custom_domain, status)')
+    .eq('user_id', profile.id);
+
+  query = trashed ? query.not('deleted_at', 'is', null) : query.is('deleted_at', null);
+
+  const { data } = await query.order(trashed ? 'deleted_at' : 'updated_at', { ascending: false });
 
   const projects = (data || []).map((p) => {
     const site = Array.isArray(p.sites) ? p.sites[0] : p.sites;
@@ -21,6 +25,7 @@ export const GET = handler(async (request) => {
       preview_url: p.preview_url,
       current_code: p.current_code,
       updated_at: p.updated_at,
+      deletedAt: p.deleted_at,
       hasBuild: !!p.current_code,
       published: !!site && site.status === 'live',
       subdomain: site?.subdomain || null,
