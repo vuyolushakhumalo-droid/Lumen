@@ -512,16 +512,14 @@
       tabsEl.appendChild(t);
     });
     tabsEl.querySelectorAll('.close').forEach(function(c){
-      c.addEventListener('click', async function(e){
+      c.addEventListener('click', function(e){
         e.stopPropagation();
         var id=c.getAttribute('data-id');
-        try{
-          await Lumen.api('/api/projects/'+id, { method:'DELETE' });
-          projects=projects.filter(function(p){return p.id!==id;});
-          if(activeId===id && projects.length) activeId=projects[0].id;
-          if(!projects.length) return loadProjects();
-          renderAll();
-        }catch(err){ toast(err.message); }
+        // Closes the tab only — deleting a project happens from the dashboard.
+        projects=projects.filter(function(p){return p.id!==id;});
+        if(activeId===id && projects.length) activeId=projects[0].id;
+        if(!projects.length) return loadProjects();
+        renderAll();
       });
     });
   }
