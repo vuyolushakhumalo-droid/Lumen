@@ -520,7 +520,6 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
           <button id="bMonthly" class="on" type="button">Monthly</button>
           <button id="bAnnual" type="button">Annual</button>
         </div>
-        <span class="savepill" id="savePill" style="display:none">1 month free</span>
       </div>
       <div class="center reveal"><span class="tier-group-label">Build it yourself</span></div>
       <div class="prices">
@@ -675,16 +674,15 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 </script>
 <script>
 (function(){
-  // annual billing toggle: 12 months for the price of 10
-  var monthlyBtn=document.getElementById('bMonthly'), annualBtn=document.getElementById('bAnnual'), pill=document.getElementById('savePill');
+  // annual billing toggle: same monthly rate, billed yearly — no discount, just the 1-month-free trial
+  var monthlyBtn=document.getElementById('bMonthly'), annualBtn=document.getElementById('bAnnual');
   var amts=document.querySelectorAll('.amt[data-m]');
   function setMode(annual){
     monthlyBtn.classList.toggle('on', !annual); annualBtn.classList.toggle('on', annual);
-    pill.style.display = annual ? 'inline-block' : 'none';
     amts.forEach(function(a){
       var m=parseFloat(a.getAttribute('data-m'));
       var per=a.nextElementSibling;
-      if(annual){ a.textContent='£'+Math.round(m*11/12); per.textContent='/ mo, billed yearly'; }
+      if(annual){ a.textContent='£'+m; per.textContent='/ mo, billed yearly'; }
       else { a.textContent='£'+m; per.textContent='/ month'; }
     });
     document.querySelectorAll('.plan a.btn').forEach(function(b){
