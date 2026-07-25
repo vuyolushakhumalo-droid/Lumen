@@ -1017,11 +1017,8 @@
     if(histPanel.classList.contains('show') && !histPanel.contains(e.target) && e.target.id!=='history') histPanel.classList.remove('show');
   });
 
-  document.getElementById('attach').addEventListener('click', function(){ document.getElementById('fileinput').click(); });
-  document.getElementById('fileinput').addEventListener('change', function(e){
-    var files = Array.prototype.slice.call(e.target.files);
-    e.target.value='';
-    files.forEach(function(file){
+  function addImageFiles(files){
+    Array.prototype.slice.call(files).forEach(function(file){
       if(!/^image\//.test(file.type)) return;
       if(file.size > 5*1024*1024){ toast(file.name + ' is over 5MB — skipped'); return; }
       var reader = new FileReader();
@@ -1031,6 +1028,28 @@
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  document.getElementById('attach').addEventListener('click', function(){ document.getElementById('fileinput').click(); });
+  document.getElementById('fileinput').addEventListener('change', function(e){
+    addImageFiles(e.target.files);
+    e.target.value='';
+  });
+
+  promptEl.addEventListener('paste', function(e){
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    var files = [];
+    for(var i=0;i<items.length;i++){
+      if(items[i].kind==='file' && /^image\//.test(items[i].type)){
+        var f = items[i].getAsFile();
+        if(f) files.push(f);
+      }
+    }
+    if(files.length){
+      e.preventDefault();
+      addImageFiles(files);
+      toast(files.length===1 ? 'Image pasted' : files.length+' images pasted');
+    }
   });
 
   // ---------- voice ----------
