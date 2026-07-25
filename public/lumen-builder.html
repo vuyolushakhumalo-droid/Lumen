@@ -291,7 +291,6 @@
       <a class="tbtn" id="advisor" href="/advisor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"/></svg><span class="lbl">Advisor</span></a>
       <button class="tbtn" id="undoBtn" title="Undo last change" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6.7 3L3 13"/></svg><span class="lbl">Undo</span></button>
       <button class="tbtn" id="exportBtn" title="Export your site"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="lbl">Export</span></button>
-      <button class="tbtn" id="deleteProject" title="Delete this project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
       <button class="tbtn" id="fork"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="7" r="2.5"/><path d="M18 9.5c0 4-6 3-6 8M6 8.5v7"/></svg><span class="lbl">Fork</span></button>
       <button class="tbtn" id="github"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.6 2 12.2c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.3 9.3 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5 3.9-1.4 6.8-5.2 6.8-9.7C22 6.6 17.5 2 12 2z"/></svg><span class="lbl">Push</span></button>
       <button class="tbtn pub" id="publish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg><span class="lbl">Publish</span></button>
@@ -889,18 +888,6 @@
 
   document.getElementById('github').addEventListener('click', function(){ toast('GitHub push is coming soon'); });
 
-  // Delete the current project from the builder (tabs also have an x)
-  document.getElementById('deleteProject').addEventListener('click', async function(){
-    var p=active(); if(!p) return;
-    if(!confirm('Delete "'+p.name+'"? This removes the project, its history and any published version.')) return;
-    try{
-      await Lumen.api('/api/projects/'+p.id, { method:'DELETE' });
-      projects = projects.filter(function(x){ return x.id!==p.id; });
-      if(!projects.length){ await loadProjects(); }
-      else { activeId = projects[0].id; renderAll(); }
-      toast('Project deleted');
-    }catch(e){ toast(e.message); }
-  });
   // ---------- publishing ----------
   var pubWrap=document.getElementById('pubWrap');
   var pubErr=document.getElementById('pubErr');
