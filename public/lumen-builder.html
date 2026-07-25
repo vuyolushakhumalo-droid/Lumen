@@ -323,7 +323,7 @@
           <textarea id="prompt" rows="1" placeholder="Describe what you want to build, or a change to make…"></textarea>
           <div class="toolrow">
             <button class="iconbtn" id="attach" title="Upload files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.4 11.05 12.25 20.2a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.48-8.49"/></svg></button>
-            <input type="file" id="fileinput" multiple style="display:none">
+            <input type="file" id="fileinput" multiple accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
             <button class="iconbtn" id="mic" title="Voice input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
             <button class="speaktoggle" id="speakToggle" type="button" title="Spoken replies">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 5 6 9H3v6h3l5 4zM16 9a4 4 0 0 1 0 6"/></svg>
@@ -657,7 +657,7 @@
   }
   function renderChips(){
     chipsEl.innerHTML = pendingFiles.map(function(f,i){
-      return '<span class="chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2v6h6M14 2l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/></svg>'+esc(f)+'<span class="x" data-i="'+i+'">\u00d7</span></span>';
+      return '<span class="chip"><img src="'+f.dataUrl+'" alt="" style="width:20px;height:20px;object-fit:cover;border-radius:4px">'+esc(f.name)+'<span class="x" data-i="'+i+'">\u00d7</span></span>';
     }).join('');
     chipsEl.querySelectorAll('.x').forEach(function(x){
       x.addEventListener('click', function(){ pendingFiles.splice(+x.getAttribute('data-i'),1); renderChips(); });
@@ -681,8 +681,10 @@
     var p=active(); if(!p) return;
     if(activeController){ toast('Already building — stop it first'); return; }
 
-    var full=v;
-    if(pendingFiles.length){ full=(v?v+' ':'')+'[attached: '+pendingFiles.join(', ')+']'; }
+    var images = pendingFiles.map(function(f){
+      return { mediaType: f.mediaType, data: f.dataUrl.slice(f.dataUrl.indexOf(',')+1) };
+    });
+    var full = v || (images.length ? 'Build from the attached image' + (images.length>1?'s':'') + '.' : '');
 
     var msgs=messages();
     msgs.push({role:'user', text: full || '(uploaded files)'});
@@ -729,7 +731,7 @@
       var res = await fetch('/api/generate/stream', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+session.access_token },
-        body: JSON.stringify({ projectId:p.id, brief: full, model: modelKey }),
+        body: JSON.stringify({ projectId:p.id, brief: full, model: modelKey, images: images }),
         signal: activeController.signal
       });
 
@@ -1017,8 +1019,18 @@
 
   document.getElementById('attach').addEventListener('click', function(){ document.getElementById('fileinput').click(); });
   document.getElementById('fileinput').addEventListener('change', function(e){
-    for(var i=0;i<e.target.files.length;i++){ pendingFiles.push(e.target.files[i].name); }
-    renderChips(); e.target.value='';
+    var files = Array.prototype.slice.call(e.target.files);
+    e.target.value='';
+    files.forEach(function(file){
+      if(!/^image\//.test(file.type)) return;
+      if(file.size > 5*1024*1024){ toast(file.name + ' is over 5MB — skipped'); return; }
+      var reader = new FileReader();
+      reader.onload = function(){
+        pendingFiles.push({ name: file.name, mediaType: file.type, dataUrl: reader.result });
+        renderChips();
+      };
+      reader.readAsDataURL(file);
+    });
   });
 
   // ---------- voice ----------
