@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumen — Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+  :root{
+    --bg:#06080D; --bg-2:#080B11; --surface:#0D131C; --surface-2:#121B26; --surface-3:#17222F;
+    --ink:#F2F5F9; --grey:#A2AEBC; --grey-dim:#64717F; --line:rgba(255,255,255,0.055); --line-2:rgba(255,255,255,0.10);
+    --cyan:#5FE0FF; --cyan-2:#8DEBFF; --glow:rgba(95,224,255,0.45);
+    --font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font); -webkit-font-smoothing:antialiased; letter-spacing:-0.011em; overflow:hidden;
+    background-image:radial-gradient(900px 520px at 80% -12%, rgba(95,224,255,0.07), transparent 60%), radial-gradient(680px 480px at 2% 112%, rgba(95,224,255,0.05), transparent 55%);}
+  button{font-family:inherit; cursor:pointer; color:inherit}
+  ::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.09);border-radius:8px} ::-webkit-scrollbar-track{background:transparent}
+  .app{display:flex; flex-direction:column; height:100vh}
+
+  /* top bar */
+  .topbar{display:flex; align-items:center; gap:18px; height:60px; padding:0 22px; border-bottom:1px solid var(--line); flex:none; background:rgba(8,11,17,0.55); backdrop-filter:blur(18px)}
+  .brand{display:flex; align-items:center; gap:10px; flex:none; text-decoration:none; color:inherit; cursor:pointer; transition:opacity .2s}
+  .brand:hover{opacity:.7}
+  .tedit{background:var(--surface-3); border:1px solid rgba(95,224,255,0.45); border-radius:7px; color:var(--ink); font-family:var(--font); font-size:13px; padding:3px 8px; width:130px; outline:none}
+  .brand svg{width:21px; height:21px}
+  .brand b{font-weight:600; font-size:16px; letter-spacing:-0.01em}
+  .tabs{display:flex; align-items:center; gap:3px; flex:1; overflow-x:auto; padding:0 6px}
+  .tabs::-webkit-scrollbar{height:0}
+  .tab{display:flex; align-items:center; gap:9px; padding:8px 15px; border-radius:980px; font-size:13px; color:var(--grey-dim); background:transparent; white-space:nowrap; transition:color .3s, background .3s}
+  .tab:hover{color:var(--ink); background:rgba(255,255,255,0.04)}
+  .tab.active{color:var(--ink); background:rgba(95,224,255,0.08)}
+  .tab .dotc{width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 9px var(--cyan); opacity:0; transition:opacity .3s}
+  .tab.active .dotc{opacity:1}
+  .tab .close{opacity:.4; font-size:16px; line-height:1; padding:0 3px; border-radius:6px; transition:.2s}
+  .tab .close:hover{opacity:1; background:rgba(255,255,255,.08)}
+  .newtab{width:30px; height:30px; border-radius:50%; border:none; background:transparent; color:var(--grey-dim); font-size:19px; font-weight:300; display:flex; align-items:center; justify-content:center; flex:none; transition:.25s}
+  .newtab:hover{color:var(--cyan); background:rgba(95,224,255,0.08)}
+  .top-actions{display:flex; align-items:center; gap:4px; flex:none}
+  .tbtn{display:flex; align-items:center; gap:8px; padding:9px 15px; border-radius:980px; font-size:13px; font-weight:500; color:var(--grey); background:transparent; border:none; transition:color .25s, background .25s, transform .15s}
+  .tbtn:hover{color:var(--ink); background:rgba(255,255,255,0.05)}
+  .tbtn svg{width:15px; height:15px}
+  .tbtn.pub{color:#04141B; background:var(--cyan); padding:9px 19px; box-shadow:0 0 34px -12px var(--glow)}
+  .tbtn.pub:hover{background:var(--cyan-2); transform:translateY(-1px)}
+
+  /* main split */
+  .main{flex:1; display:flex; min-height:0}
+  .pane{display:flex; flex-direction:column; min-height:0; min-width:0}
+  .left{flex:1; max-width:540px; border-right:1px solid var(--line)}
+  .right{flex:1.3; background:var(--bg-2)}
+
+  /* left header */
+  .seg{display:flex; align-items:center; gap:5px; padding:18px 22px 12px; flex:none}
+  .seg .pill{padding:7px 16px; border-radius:980px; font-size:13px; font-weight:500; color:var(--grey-dim); background:transparent; border:none; transition:color .25s, background .25s}
+  .seg .pill:hover{color:var(--ink)}
+  .seg .pill.on{color:var(--ink); background:rgba(255,255,255,0.06)}
+  .seg .spacer{flex:1}
+  .seg .hint{font-size:12px; color:var(--grey-dim); letter-spacing:0.02em}
+
+  /* chat */
+  .scroll{flex:1; overflow-y:auto; padding:14px 22px 26px; min-height:0}
+  .msg{display:flex; gap:13px; margin-bottom:26px}
+  .msg .av{width:28px; height:28px; border-radius:9px; flex:none; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:500}
+  .msg.user .av{background:rgba(255,255,255,0.05); color:var(--grey-dim)}
+  .msg.ai .av{background:rgba(95,224,255,0.08); border:1px solid rgba(95,224,255,0.16); box-shadow:0 0 22px -8px var(--glow)}
+  .msg .av svg{width:15px; height:15px}
+  .msg .body{font-size:15px; line-height:1.66; color:var(--ink); padding-top:4px}
+  .msg.user .body{color:var(--grey)}
+  .msg .built{display:inline-flex; align-items:center; gap:8px; margin-top:12px; font-size:12.5px; color:var(--cyan); background:rgba(95,224,255,0.06); padding:7px 13px; border-radius:980px}
+  .msg .built svg{width:13px; height:13px}
+  .thinking{display:flex; align-items:center; gap:10px; color:var(--grey); font-size:14px}
+  .dots{display:flex; gap:5px}
+  .dots i{width:6px; height:6px; border-radius:50%; background:var(--cyan); animation:bounce 1.3s ease-in-out infinite}
+  .dots i:nth-child(2){animation-delay:.16s} .dots i:nth-child(3){animation-delay:.32s}
+  @keyframes bounce{0%,100%{opacity:.3; transform:translateY(0)}50%{opacity:1; transform:translateY(-3px)}}
+  .empty{height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; color:var(--grey-dim); gap:18px; padding:20px}
+  .empty svg{width:30px; height:30px; opacity:.45}
+  .empty h3{color:var(--grey); font-weight:400; font-size:17px; letter-spacing:-0.02em}
+  .starters{display:flex; flex-wrap:wrap; gap:9px; justify-content:center; margin-top:4px}
+  .starter{font-size:12.5px; color:var(--grey); border:1px solid var(--line); background:transparent; padding:9px 15px; border-radius:980px; transition:.25s}
+  .starter:hover{border-color:rgba(95,224,255,0.35); color:var(--ink); background:rgba(95,224,255,0.04)}
+
+  /* code */
+  .code{flex:1; overflow:auto; padding:22px; font-family:var(--mono); font-size:12.5px; line-height:1.85; color:#93A2B2; white-space:pre; min-height:0; display:none}
+  .code .tag{color:var(--cyan)} .code .att{color:#7FA6BE}
+
+  /* composer */
+  .composer{padding:12px 22px 22px; flex:none}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px}
+  .chip{display:inline-flex; align-items:center; gap:8px; font-size:12px; color:var(--grey); background:rgba(255,255,255,0.04); padding:6px 11px; border-radius:980px}
+  .chip .x{cursor:pointer; opacity:.5} .chip .x:hover{opacity:1}
+  .inputbox{border:1px solid var(--line-2); border-radius:20px; background:rgba(255,255,255,0.02); transition:border-color .3s, box-shadow .3s, background .3s}
+  .inputbox:focus-within{border-color:rgba(95,224,255,0.45); box-shadow:0 0 44px -16px var(--glow); background:rgba(95,224,255,0.02)}
+  .inputbox textarea{width:100%; background:transparent; border:none; outline:none; resize:none; color:var(--ink); font-family:var(--font); font-size:15px; line-height:1.55; padding:16px 18px 6px; max-height:150px}
+  .inputbox textarea::placeholder{color:var(--grey-dim)}
+  .toolrow{display:flex; align-items:center; gap:5px; padding:6px 10px 10px}
+  .iconbtn{width:35px; height:35px; border-radius:50%; border:none; background:transparent; color:var(--grey-dim); display:flex; align-items:center; justify-content:center; transition:.25s}
+  .iconbtn:hover{color:var(--ink); background:rgba(255,255,255,0.06)}
+  .iconbtn.rec{color:#FF8A8A; background:rgba(255,138,138,0.1)}
+  .iconbtn svg{width:18px; height:18px}
+  .modelsel{display:flex; align-items:center; gap:8px; padding:0 13px; height:35px; border-radius:980px; border:none; background:transparent; color:var(--grey-dim); font-size:12.5px; font-weight:500; transition:.25s}
+  .modelsel:hover{color:var(--ink); background:rgba(255,255,255,0.06)}
+  .modelsel svg{width:13px; height:13px; color:var(--cyan); opacity:.8}
+  .modelsel select{background:transparent; border:none; outline:none; color:inherit; font-family:var(--font); font-size:12.5px; font-weight:500; cursor:pointer}
+  .modelsel select option{background:var(--surface-2); color:var(--ink)}
+  .spacer{flex:1}
+  .send{width:38px; height:38px; border-radius:50%; border:none; background:var(--cyan); color:#04141B; display:flex; align-items:center; justify-content:center; box-shadow:0 0 28px -10px var(--glow); transition:transform .15s, background .2s}
+  .send:hover{transform:translateY(-1px); background:var(--cyan-2)} .send:disabled{opacity:.4; box-shadow:none; transform:none}
+  .send svg{width:17px; height:17px}
+
+  /* preview */
+  .previewhead{display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); flex:none; background:transparent}
+  .dots3{display:flex; gap:7px} .dots3 span{width:10px; height:10px; border-radius:50%; opacity:.9}
+  .url{flex:1; max-width:320px; margin:0 auto; font-family:var(--mono); font-size:11.5px; color:var(--grey-dim); background:rgba(255,255,255,0.03); border:1px solid var(--line); padding:7px 14px; border-radius:980px; text-align:center; letter-spacing:0.01em}
+  .phb{width:33px; height:33px; border-radius:50%; border:none; background:transparent; color:var(--grey-dim); display:flex; align-items:center; justify-content:center; transition:.25s}
+  .phb:hover{color:var(--ink); background:rgba(255,255,255,0.06)} .phb svg{width:15px; height:15px}
+  .previewwrap{flex:1; position:relative; min-height:0; background:#fff}
+  iframe{width:100%; height:100%; border:none; display:block; background:#fff}
+  .previewempty{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; background:var(--bg-2); color:var(--grey-dim); font-size:14px; letter-spacing:0.01em}
+  .reactor{position:relative; width:150px; height:150px; display:flex; align-items:center; justify-content:center}
+  .rc{position:absolute; width:46px; height:46px; border-radius:50%; background:radial-gradient(circle,#EAFBFF,var(--cyan-2) 30%,var(--cyan) 55%,transparent 78%); box-shadow:0 0 54px 8px var(--glow); animation:breathe 3s ease-in-out infinite}
+  @keyframes breathe{0%,100%{transform:scale(1); opacity:.82}50%{transform:scale(1.13); opacity:1}}
+  .rr{position:absolute; border-radius:50%; border:1px solid rgba(95,224,255,.28)}
+  .rr.a{width:92px; height:92px; animation:spin 10s linear infinite}
+  .rr.b{width:134px; height:134px; border-style:dashed; border-color:rgba(95,224,255,.14); animation:spin 18s linear infinite reverse}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .allowance{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--grey-dim);padding:7px 14px;border-radius:980px;background:rgba(255,255,255,0.03);transition:.25s;text-decoration:none}
+  .allowance:hover{color:var(--ink);background:rgba(255,255,255,0.06)}
+  .allowance b{color:var(--cyan);font-weight:600}
+  .allowance.low b{color:#F6B24C}
+  .hist{position:absolute;right:16px;top:52px;width:290px;max-height:340px;overflow-y:auto;border:1px solid var(--line-2);border-radius:16px;background:rgba(13,19,28,0.97);backdrop-filter:blur(16px);box-shadow:0 30px 70px -30px rgba(0,0,0,.9);padding:10px;z-index:80;display:none}
+  .hist.show{display:block}
+  .hist h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-dim);padding:8px 10px 10px;font-weight:500}
+  .hrow{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:11px;cursor:pointer;transition:.2s}
+  .hrow:hover{background:rgba(255,255,255,0.05)}
+  .hrow .hn{width:26px;height:26px;border-radius:8px;flex:none;background:rgba(95,224,255,.09);color:var(--cyan);font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center}
+  .hrow .ht{font-size:13.5px;color:var(--ink);line-height:1.35}
+  .hrow .hm{font-size:11.5px;color:var(--grey-dim);margin-top:2px}
+  .hist .none{font-size:13px;color:var(--grey-dim);padding:12px 11px}
+  .tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;width:100%;max-width:380px}
+  .tpl{border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;background:transparent;transition:.25s}
+  .tpl:hover{border-color:rgba(95,224,255,.35);background:rgba(95,224,255,.04)}
+  .tpl .ti{width:28px;height:28px;border-radius:9px;background:rgba(95,224,255,.08);display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+  .tpl .ti svg{width:15px;height:15px;color:var(--cyan)}
+  .tpl .tt{font-size:13.5px;font-weight:500;color:var(--ink)}
+  .tpl .td{font-size:11.5px;color:var(--grey-dim);margin-top:2px}
+
+  .pubwrap{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:24px;
+    background:rgba(3,5,9,.72);backdrop-filter:blur(8px)}
+  .pubwrap.show{display:flex}
+  .pubmodal{width:100%;max-width:520px;border:1px solid var(--line-2);border-radius:22px;
+    background:linear-gradient(180deg,var(--surface-2),var(--surface));padding:32px;position:relative;
+    box-shadow:0 50px 120px -40px rgba(0,0,0,.9);max-height:90vh;overflow-y:auto}
+  .pubmodal h3{font-size:22px;font-weight:600;letter-spacing:-.03em;margin-bottom:8px}
+  .pubmodal .sub{font-size:14.5px;color:var(--grey);line-height:1.55;margin-bottom:24px}
+  .pubclose{position:absolute;top:16px;right:18px;width:32px;height:32px;border-radius:50%;border:none;
+    background:transparent;color:var(--grey-dim);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .pubclose:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+  .pubclose svg{width:17px;height:17px}
+  .pubfield{margin-bottom:18px}
+  .pubfield label{display:block;font-size:13.5px;font-weight:500;color:var(--ink-2);margin-bottom:8px}
+  .slugrow{display:flex;align-items:center;border:1px solid var(--line-2);border-radius:12px;
+    background:rgba(255,255,255,.03);overflow:hidden;transition:.25s}
+  .slugrow:focus-within{border-color:var(--cyan);box-shadow:0 0 30px -14px var(--glow)}
+  .slugrow input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--ink);
+    font-family:var(--font);font-size:15px;padding:13px 14px}
+  .slugrow .suffix{font-size:14px;color:var(--grey-dim);padding:0 14px 0 0;white-space:nowrap}
+  .puberr{display:none;font-size:13.5px;color:#FF9B9B;background:rgba(255,107,107,.08);
+    border:1px solid rgba(255,107,107,.28);border-radius:11px;padding:11px 14px;margin-bottom:16px;line-height:1.5}
+  .puberr.show{display:block}
+  .livebox{border:1px solid rgba(95,224,255,.3);background:rgba(95,224,255,.06);border-radius:14px;padding:18px;margin-bottom:20px}
+  .liveurl{display:flex;align-items:center;gap:10px;margin-top:10px}
+  .liveurl a{flex:1;font-size:14.5px;color:var(--cyan);text-decoration:none;word-break:break-all}
+  .liveurl button{flex:none;background:rgba(255,255,255,.06);border:1px solid var(--line-2);color:var(--ink);
+    border-radius:9px;padding:8px 13px;font-size:12.5px;cursor:pointer;font-family:var(--font)}
+  .liveurl button:hover{background:rgba(255,255,255,.1)}
+  .livelabel{font-size:12.5px;color:var(--grey-dim);display:flex;align-items:center;gap:8px}
+  .livedot{width:7px;height:7px;border-radius:50%;background:#4ADE80;box-shadow:0 0 8px #4ADE80}
+  .pubactions{display:flex;gap:10px;flex-wrap:wrap}
+  .pubactions .btnp{flex:1;min-width:150px;justify-content:center;border:none;border-radius:980px;
+    padding:13px 20px;font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;transition:.2s}
+  .btnp.primary{background:var(--cyan);color:#04141B;box-shadow:0 0 34px -12px var(--glow)}
+  .btnp.primary:hover{transform:translateY(-1px)}
+  .btnp.primary:disabled{opacity:.5;transform:none;cursor:default}
+  .btnp.ghost{background:rgba(255,255,255,.05);color:var(--ink);border:1px solid var(--line-2)}
+  .btnp.ghost:hover{background:rgba(255,255,255,.09)}
+  .domainlink{font-size:13.5px;color:var(--grey);margin-top:18px;text-align:center}
+  .domainlink a{color:var(--cyan);text-decoration:none;cursor:pointer}
+  .dnsbox{margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:none}
+  .dnsbox.show{display:block}
+  .dnsbox table{width:100%;border-collapse:collapse;font-size:13px}
+  .dnsbox th{text-align:left;padding:9px 12px;color:var(--grey-dim);font-weight:500;border-bottom:1px solid var(--line);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+  .dnsbox td{padding:10px 12px;color:var(--ink-2);border-bottom:1px solid rgba(255,255,255,.04);font-family:var(--mono);font-size:12.5px}
+  .dnsbox tr:last-child td{border-bottom:none}
+  .iconbtn.listening{color:var(--cyan);background:rgba(95,224,255,.12);box-shadow:0 0 0 3px rgba(95,224,255,.12)}
+  .iconbtn.listening svg{animation:micPulse 1.4s ease-in-out infinite}
+  @keyframes micPulse{0%,100%{opacity:.6}50%{opacity:1}}
+  .voicebar{display:none;align-items:center;gap:11px;padding:10px 14px;margin-bottom:10px;
+    border:1px solid rgba(95,224,255,.3);background:rgba(95,224,255,.06);border-radius:14px}
+  .voicebar.show{display:flex}
+  .voicebar .vdot{width:8px;height:8px;border-radius:50%;background:var(--cyan);flex:none;
+    box-shadow:0 0 10px var(--cyan);animation:micPulse 1.2s ease-in-out infinite}
+  .voicebar .vtext{flex:1;font-size:13.5px;color:var(--ink-2);line-height:1.4}
+  .voicebar .vstop{flex:none;background:rgba(255,255,255,.08);border:none;color:var(--ink);
+    border-radius:980px;padding:6px 13px;font-size:12.5px;cursor:pointer;font-family:var(--font)}
+  .voicebar .vstop:hover{background:rgba(255,255,255,.14)}
+  .speaktoggle{display:flex;align-items:center;gap:7px;padding:0 11px;height:35px;border-radius:980px;
+    border:none;background:transparent;color:var(--grey-dim);font-size:12.5px;font-weight:500;transition:.25s}
+  .speaktoggle:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+  .speaktoggle.on{color:var(--cyan);background:rgba(95,224,255,.08)}
+  .speaktoggle svg{width:15px;height:15px}
+  .devices{display:flex;gap:3px;padding:3px;border-radius:980px;background:rgba(255,255,255,.04)}
+  .devbtn{width:32px;height:28px;border:none;background:transparent;color:var(--grey-dim);border-radius:980px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s}
+  .devbtn:hover{color:var(--ink)}
+  .devbtn.on{color:#04141B;background:var(--cyan)}
+  .devbtn svg{width:15px;height:15px}
+  .previewwrap{display:flex;align-items:center;justify-content:center;overflow:auto;padding:0}
+  .previewwrap.framed{padding:22px;background:var(--bg-2)}
+  iframe.device{border:1px solid var(--line-2);border-radius:14px;box-shadow:0 30px 70px -30px rgba(0,0,0,.8);
+    transition:width .35s cubic-bezier(.2,.7,.2,1), height .35s cubic-bezier(.2,.7,.2,1)}
+  .planbox{margin-top:12px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02)}
+  .planhead{display:flex;align-items:center;gap:9px;padding:11px 14px;cursor:pointer;font-size:12.5px;color:var(--grey);
+    transition:.2s;user-select:none}
+  .planhead:hover{color:var(--ink);background:rgba(255,255,255,.03)}
+  .planhead .chev{margin-left:auto;width:13px;height:13px;transition:transform .25s}
+  .planbox.open .planhead .chev{transform:rotate(90deg)}
+  .planbody{display:none;padding:2px 14px 14px}
+  .planbox.open .planbody{display:block}
+  .planrow{display:flex;gap:10px;padding:7px 0;font-size:13px;line-height:1.5;border-top:1px solid rgba(255,255,255,.04)}
+  .planrow:first-child{border-top:none}
+  .planrow .k{flex:none;width:66px;color:var(--grey-dim)}
+  .planrow .v{color:var(--ink-2)}
+  .pagechips{display:flex;flex-wrap:wrap;gap:6px}
+  .pagechip{font-size:11.5px;color:var(--cyan);background:rgba(95,224,255,.08);padding:3px 9px;border-radius:980px}
+  .modeltag{font-size:11px;color:var(--grey-dim);margin-left:auto}
+  .buildbar{display:flex;align-items:center;gap:11px;font-size:13.5px;color:var(--grey)}
+  .buildbar .bmodel{font-size:11.5px;color:var(--cyan);background:rgba(95,224,255,.08);padding:3px 9px;border-radius:980px}
+  .buildbar .bcount{font-size:11.5px;color:var(--grey-dim);font-family:var(--mono)}
+  .stopbtn{margin-left:6px;background:rgba(255,255,255,.06);border:1px solid var(--line-2);color:var(--ink);
+    border-radius:980px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:var(--font)}
+  .stopbtn:hover{background:rgba(255,255,255,.12)}
+  .send.busy{background:rgba(255,255,255,.08);color:var(--grey)}
+  .livecode{position:absolute;right:14px;bottom:14px;z-index:5;font-family:var(--mono);font-size:10.5px;
+    color:var(--cyan);background:rgba(5,8,13,.8);border:1px solid rgba(95,224,255,.2);padding:5px 10px;
+    border-radius:980px;pointer-events:none;opacity:0;transition:opacity .3s}
+  .livecode.show{opacity:1}
+  .suggests{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .suggest{font-size:12.5px;color:var(--grey);border:1px solid var(--line);background:transparent;
+    padding:8px 14px;border-radius:980px;cursor:pointer;transition:.22s;font-family:var(--font);text-align:left}
+  .suggest:hover{border-color:rgba(95,224,255,.4);color:var(--ink);background:rgba(95,224,255,.05)}
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(23,34,47,0.9); backdrop-filter:blur(12px); border:1px solid var(--line-2); color:var(--ink); font-size:13.5px; padding:12px 20px; border-radius:980px; display:flex; align-items:center; gap:10px; opacity:0; pointer-events:none; transition:.35s cubic-bezier(.2,.7,.2,1); z-index:100}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  .toast svg{width:15px; height:15px; color:var(--cyan)}
+
+  @media(max-width:860px){
+    .main{flex-direction:column}
+    .left{max-width:none; border-right:none; border-bottom:1px solid var(--line); flex:1}
+    .right{flex:1; min-height:300px}
+    .top-actions .lbl{display:none}
+  }
+  @media(prefers-reduced-motion:reduce){ *{animation:none !important} }
+
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/lumen-app.js"></script>
+<script src="/voice.js"></script>
+</head>
+<body>
+<div class="app">
+  <!-- top bar -->
+  <div class="topbar">
+    <a class="brand" href="/" title="Back to home">
+      <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="#5FE0FF" stroke-width="1.4" opacity="0.35"/><circle cx="20" cy="20" r="9" stroke="#5FE0FF" stroke-width="1.4"/><circle cx="20" cy="20" r="3.4" fill="#5FE0FF"/></svg>
+      <b>Lumen</b>
+    </a>
+    <div class="tabs" id="tabs"></div>
+    <button class="newtab" id="newtab" title="New project">+</button>
+    <div class="top-actions">
+      <a class="allowance" id="allowance" href="/dashboard" title="Your daily allowance"><span>Builds left</span> <b id="bleft">—</b></a>
+      <button class="tbtn" id="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a9 9 0 1 0 9 9M12 3v9l6 3M3 3v6h6"/></svg><span class="lbl">History</span></button>
+      <a class="tbtn" id="dashlink" href="/dashboard" title="Your dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="lbl">Dashboard</span></a>
+      <button class="tbtn" id="signout" title="Sign out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Sign out</span></button>
+      <a class="tbtn" id="advisor" href="/advisor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"/></svg><span class="lbl">Advisor</span></a>
+      <button class="tbtn" id="undoBtn" title="Undo last change" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6.7 3L3 13"/></svg><span class="lbl">Undo</span></button>
+      <button class="tbtn" id="exportBtn" title="Export your site"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="lbl">Export</span></button>
+      <button class="tbtn" id="deleteProject" title="Delete this project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      <button class="tbtn" id="fork"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="7" r="2.5"/><path d="M18 9.5c0 4-6 3-6 8M6 8.5v7"/></svg><span class="lbl">Fork</span></button>
+      <button class="tbtn" id="github"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.6 2 12.2c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.4-3.4-1.4-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.7 1a9.3 9.3 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5 3.9-1.4 6.8-5.2 6.8-9.7C22 6.6 17.5 2 12 2z"/></svg><span class="lbl">Push</span></button>
+      <button class="tbtn pub" id="publish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg><span class="lbl">Publish</span></button>
+    </div>
+  </div>
+
+  <div class="hist" id="histPanel"><h4>Version history</h4><div id="histList"></div></div>
+
+  <div class="main">
+    <!-- LEFT: chat + code -->
+    <div class="pane left">
+      <div class="seg">
+        <button class="pill on" id="segChat">Chat</button>
+        <button class="pill" id="segCode">Code</button>
+        <span class="spacer"></span>
+        <span class="hint" id="projName">New project</span>
+      </div>
+
+      <div class="scroll" id="scroll"></div>
+      <div class="code" id="codeView"></div>
+
+      <div class="composer">
+        <div class="voicebar" id="voiceBar">
+          <span class="vdot"></span>
+          <span class="vtext" id="voiceText">Listening…</span>
+          <button class="vstop" id="voiceStop" type="button">Done</button>
+        </div>
+        <div class="chips" id="chips"></div>
+        <div class="inputbox">
+          <textarea id="prompt" rows="1" placeholder="Describe what you want to build, or a change to make…"></textarea>
+          <div class="toolrow">
+            <button class="iconbtn" id="attach" title="Upload files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.4 11.05 12.25 20.2a5 5 0 0 1-7.07-7.07l9.19-9.19a3 3 0 0 1 4.24 4.24l-9.2 9.19a1 1 0 0 1-1.41-1.41l8.48-8.49"/></svg></button>
+            <input type="file" id="fileinput" multiple style="display:none">
+            <button class="iconbtn" id="mic" title="Voice input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+            <button class="speaktoggle" id="speakToggle" type="button" title="Spoken replies">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 5 6 9H3v6h3l5 4zM16 9a4 4 0 0 1 0 6"/></svg>
+              <span>Voice</span>
+            </button>
+            <div class="modelsel" title="Model">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2 4 4 .5-3 3 .8 4.3L12 17l-3.8 1.8L9 14l-3-3 4-.5z"/></svg>
+              <select id="model">
+                <option value="auto">Auto (recommended)</option>
+                <option>Claude Opus 4.8</option>
+                <option selected>Claude Sonnet 5</option>
+                <option>Claude Haiku 4.5</option>
+              </select>
+            </div>
+            <span class="spacer"></span>
+            <button class="send" id="send" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: preview -->
+    <div class="pane right">
+      <div class="previewhead">
+        <div class="dots3"><span style="background:#FF5F57"></span><span style="background:#FEBC2E"></span><span style="background:#28C840"></span></div>
+        <div class="devices" role="group" aria-label="Preview size">
+          <button class="devbtn on" id="devDesktop" title="Desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+          <button class="devbtn" id="devTablet" title="Tablet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M11 18h2"/></svg></button>
+          <button class="devbtn" id="devMobile" title="Mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></button>
+        </div>
+        <div class="url" id="url">preview.lumen.build</div>
+        <button class="phb" id="refresh" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+        <button class="phb" id="openext" title="Open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></button>
+      </div>
+      <div class="previewwrap">
+        <iframe id="preview" title="Preview" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe>
+        <div class="livecode" id="liveCode">writing…</div>
+        <div class="previewempty" id="previewempty">
+          <div class="reactor"><span class="rr b"></span><span class="rr a"></span><span class="rc"></span></div>
+          <div>Your preview appears here</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pubwrap" id="pubWrap">
+  <div class="pubmodal">
+    <button class="pubclose" id="pubClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+
+    <h3 id="pubTitle">Publish your site</h3>
+    <p class="sub" id="pubSub">Choose a web address and your site goes live straight away.</p>
+
+    <div class="puberr" id="pubErr"></div>
+
+    <div class="livebox" id="liveBox" style="display:none">
+      <div class="livelabel"><span class="livedot"></span><span>Live now</span></div>
+      <div class="liveurl">
+        <a id="liveUrl" href="#" target="_blank" rel="noopener">…</a>
+        <button id="copyUrl" type="button">Copy</button>
+      </div>
+    </div>
+
+    <div class="pubfield" id="slugField">
+      <label for="pubSlug">Your web address</label>
+      <div class="slugrow">
+        <input id="pubSlug" type="text" placeholder="morning-cup" autocomplete="off" spellcheck="false">
+        <span class="suffix" id="slugSuffix">.lumen.build</span>
+      </div>
+    </div>
+
+    <div class="pubactions">
+      <button class="btnp primary" id="pubGo" type="button">Publish site</button>
+      <button class="btnp ghost" id="pubOff" type="button" style="display:none">Unpublish</button>
+    </div>
+
+    <div class="domainlink">
+      <a id="showDomain">Use my own domain instead</a>
+    </div>
+
+    <div id="domainBlock" style="display:none;margin-top:20px">
+      <div class="pubfield">
+        <label for="pubDomain">Your domain</label>
+        <div class="slugrow"><input id="pubDomain" type="text" placeholder="mystudio.com" autocomplete="off" spellcheck="false"></div>
+      </div>
+      <button class="btnp primary" id="domainGo" type="button" style="width:100%">Connect domain</button>
+      <div class="dnsbox" id="dnsBox">
+        <table><thead><tr><th>Type</th><th>Name</th><th>Value</th></tr></thead><tbody id="dnsRows"></tbody></table>
+      </div>
+      <p class="sub" id="dnsNote" style="margin-top:14px;margin-bottom:0;font-size:13px"></p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span id="toasttext"></span></div>
+
+<script>
+(function(){
+  // ============================================================
+  // Builder — now talks to your real API.
+  // Projects, versions and usage all live in the database.
+  // ============================================================
+
+  var MODEL_KEYS = {
+    'Auto (recommended)': 'auto',
+    'Claude Opus 4.8': 'opus',
+    'Claude Sonnet 5': 'sonnet',
+    'Claude Haiku 4.5': 'haiku',
+    'Claude Fable 5': 'fable'
+  };
+
+  var projects = [], activeId = null, mode = 'chat', usage = null;
+  var chats = {};   // in-memory conversation per project
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function active(){ return projects.filter(function(p){return p.id===activeId;})[0]; }
+
+  // ---------- elements ----------
+  var tabsEl=document.getElementById('tabs'), scroll=document.getElementById('scroll'), codeView=document.getElementById('codeView');
+  var preview=document.getElementById('preview'), previewEmpty=document.getElementById('previewempty'), urlEl=document.getElementById('url');
+  var promptEl=document.getElementById('prompt'), chipsEl=document.getElementById('chips'), projName=document.getElementById('projName');
+  var toastEl=document.getElementById('toast'), toastText=document.getElementById('toasttext');
+  var histPanel=document.getElementById('histPanel'), histList=document.getElementById('histList');
+  var pendingFiles=[];
+
+  function toast(msg){ toastText.textContent=msg; toastEl.classList.add('show'); setTimeout(function(){toastEl.classList.remove('show');},2400); }
+
+  // ---------- allowance ----------
+  async function refreshUsage(){
+    try{
+      usage = await Lumen.api('/api/usage');
+      var el=document.getElementById('bleft');
+      if(el){ el.textContent = usage.buildsLeft + (usage.topupCredits ? '+' + usage.topupCredits : ''); }
+      var wrap=document.getElementById('allowance');
+      if(wrap) wrap.classList.toggle('low', usage.buildsLeft <= 3);
+
+      // Only offer models the plan allows
+      var sel=document.getElementById('model');
+      if(sel && usage.allowedModels && usage.allowedModels.length){
+        var labels={opus:'Claude Opus 4.8', sonnet:'Claude Sonnet 5', haiku:'Claude Haiku 4.5', fable:'Claude Fable 5'};
+        var current=sel.value;
+        sel.innerHTML='';
+        var autoOpt=document.createElement('option'); autoOpt.text='Auto (recommended)'; sel.appendChild(autoOpt);
+        usage.allowedModels.forEach(function(k){
+          if(!labels[k]) return;
+          var o=document.createElement('option'); o.text=labels[k]; sel.appendChild(o);
+        });
+        if(Array.prototype.some.call(sel.options,function(o){return o.text===current;})) sel.value=current;
+        else if(sel.options.length) sel.value = sel.options[sel.options.length>1?1:0].text;
+      }
+    }catch(e){ /* not fatal */ }
+  }
+
+  // ---------- projects ----------
+  async function loadProjects(){
+    var out = await Lumen.api('/api/projects');
+    projects = out.projects || [];
+    if(!projects.length){
+      var made = await Lumen.api('/api/projects', { method:'POST', body: JSON.stringify({ name:'New project' }) });
+      projects = [made.project];
+    }
+    if(!activeId || !active()) activeId = projects[0].id;
+    renderAll();
+    loadChat(activeId);
+  }
+
+  function renderTabs(){
+    tabsEl.innerHTML='';
+    projects.forEach(function(p){
+      var t=document.createElement('div');
+      t.className='tab'+(p.id===activeId?' active':'');
+      t.title='Double-click to rename';
+      t.innerHTML='<span class="dotc"></span><span class="tname">'+esc(p.name)+'</span>'+
+                  (projects.length>1?'<span class="close" data-id="'+p.id+'">\u00d7</span>':'');
+      t.addEventListener('click', function(e){
+        if(e.target.classList.contains('close')||e.target.classList.contains('tedit')) return;
+        activeId=p.id; renderAll(); loadChat(p.id);
+      });
+      var nm=t.querySelector('.tname');
+      nm.addEventListener('dblclick', function(e){ e.stopPropagation(); renameTab(p, nm); });
+      tabsEl.appendChild(t);
+    });
+    tabsEl.querySelectorAll('.close').forEach(function(c){
+      c.addEventListener('click', async function(e){
+        e.stopPropagation();
+        var id=c.getAttribute('data-id');
+        try{
+          await Lumen.api('/api/projects/'+id, { method:'DELETE' });
+          projects=projects.filter(function(p){return p.id!==id;});
+          if(activeId===id && projects.length) activeId=projects[0].id;
+          if(!projects.length) return loadProjects();
+          renderAll();
+        }catch(err){ toast(err.message); }
+      });
+    });
+  }
+
+  function renameTab(p, span){
+    var inp=document.createElement('input'); inp.className='tedit'; inp.value=p.name;
+    span.replaceWith(inp); inp.focus(); inp.select();
+    var done=false;
+    async function commit(save){
+      if(done) return; done=true;
+      var v=inp.value.trim();
+      if(save && v && v!==p.name){
+        try{ await Lumen.api('/api/projects/'+p.id, { method:'PATCH', body: JSON.stringify({ name:v }) }); p.name=v; }
+        catch(e){ toast(e.message); }
+      }
+      renderAll();
+    }
+    inp.addEventListener('click', function(e){ e.stopPropagation(); });
+    inp.addEventListener('blur', function(){ commit(true); });
+    inp.addEventListener('keydown', function(e){
+      if(e.key==='Enter'){ e.preventDefault(); commit(true); }
+      else if(e.key==='Escape'){ commit(false); }
+    });
+  }
+
+  // ---------- chat ----------
+  function messages(){ if(!chats[activeId]) chats[activeId]=[]; return chats[activeId]; }
+
+  // Pull the saved conversation for a project (once per session).
+  var loadedChats = {};
+  async function loadChat(projectId){
+    if(loadedChats[projectId]) return;
+    loadedChats[projectId] = true;
+    try{
+      var out = await Lumen.api('/api/projects/'+projectId+'/messages');
+      var msgs = (out.messages || []).map(function(m){
+        return m.role === 'user'
+          ? { role:'user', text:m.content }
+          : { role:'ai', text:m.content, built:true, plan:m.plan, model:m.model_used };
+      });
+      if(msgs.length){ chats[projectId] = msgs; if(projectId === activeId) renderChat(); }
+    }catch(e){ /* not fatal */ }
+  }
+
+  function renderChat(){
+    var msgs=messages();
+    if(!msgs.length){
+      var T=[['Portfolio','photographer, artist','A clean portfolio site for a photographer, quiet and full-bleed'],
+             ['Local business','cafe, salon, studio','A warm site for my local coffee shop with hours and menu'],
+             ['Landing page','app or product','A crisp landing page for my mobile app that drives downloads'],
+             ['Services','consulting, agency','A polished consulting site that earns trust quickly']];
+      scroll.innerHTML='<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><h3>What do you want to build?</h3>'
+        +'<div class="tpl-grid">'+T.map(function(t){return '<button class="tpl" data-p="'+t[2].replace(/"/g,'&quot;')+'"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></div><div class="tt">'+t[0]+'</div><div class="td">'+t[1]+'</div></button>';}).join('')+'</div>'
+        +'<div style="font-size:12.5px;color:var(--grey-dim);margin-top:4px">or just describe it below</div></div>';
+      scroll.querySelectorAll('.tpl').forEach(function(s){
+        s.addEventListener('click', function(){ promptEl.value=s.getAttribute('data-p'); send(); });
+      });
+      return;
+    }
+    var aiAvatar='<div class="av"><svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="9" stroke="#5FE0FF" stroke-width="2"/><circle cx="20" cy="20" r="3" fill="#5FE0FF"/></svg></div>';
+    scroll.innerHTML=msgs.map(function(m){
+      if(m.role==='user') return '<div class="msg user"><div class="av">You</div><div class="body">'+esc(m.text)+'</div></div>';
+      if(m.role==='thinking') return '<div class="msg ai">'+aiAvatar+'<div class="body"><div class="buildbar">'
+        + '<span class="dots"><i></i><i></i><i></i></span>'
+        + '<span id="buildStage">'+(m.stage||'Starting')+'</span>'
+        + (m.model ? '<span class="bmodel" id="buildModel">'+esc(m.model)+'</span>' : '<span class="bmodel" id="buildModel" style="display:none"></span>')
+        + '<span class="bcount" id="buildCount"></span>'
+        + '<button class="stopbtn" id="stopBuild" type="button">Stop</button>'
+        + '</div></div></div>';
+      var planHtml = '';
+      if(m.plan){
+        var p = m.plan, rows = '';
+        if(p.pages && p.pages.length){
+          rows += '<div class="planrow"><span class="k">Pages</span><span class="v"><span class="pagechips">'
+               + p.pages.map(function(x){ return '<span class="pagechip">'+esc(x)+'</span>'; }).join('')
+               + '</span></span></div>';
+        }
+        if(p.layout)  rows += '<div class="planrow"><span class="k">Layout</span><span class="v">'+esc(p.layout)+'</span></div>';
+        if(p.palette) rows += '<div class="planrow"><span class="k">Palette</span><span class="v">'+esc(p.palette)+'</span></div>';
+        if(p.fonts)   rows += '<div class="planrow"><span class="k">Type</span><span class="v">'+esc(p.fonts)+'</span></div>';
+        if(p.voice)   rows += '<div class="planrow"><span class="k">Voice</span><span class="v">'+esc(p.voice)+'</span></div>';
+        if(p.changed) rows += '<div class="planrow"><span class="k">Changed</span><span class="v">'+esc(p.changed)+'</span></div>';
+        if(rows){
+          planHtml = '<div class="planbox"><div class="planhead">'
+            + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2 4 4 .5-3 3 .8 4.3L12 17l-3.8 1.8L9 14l-3-3 4-.5z"/></svg>'
+            + '<span>How I built this</span>'
+            + (m.model ? '<span class="modeltag">'+esc(m.model)+'</span>' : '')
+            + '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>'
+            + '</div><div class="planbody">'+rows+'</div></div>';
+        }
+      }
+      var suggestHtml = '';
+      if(m.plan && m.plan.suggestions && m.plan.suggestions.length){
+        suggestHtml = '<div class="suggests">'
+          + m.plan.suggestions.map(function(s){ return '<button class="suggest" type="button">'+esc(s)+'</button>'; }).join('')
+          + '</div>';
+      }
+      return '<div class="msg ai">'+aiAvatar+'<div class="body">'+esc(m.text)
+        + (m.built?'<div class="built"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Preview updated</div>':'')
+        + planHtml + suggestHtml + '</div></div>';
+    }).join('');
+    scroll.querySelectorAll('.planhead').forEach(function(head){
+      head.addEventListener('click', function(){ head.parentElement.classList.toggle('open'); });
+    });
+    scroll.querySelectorAll('.suggest').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        promptEl.value = chip.textContent;
+        promptEl.dispatchEvent(new Event('input'));
+        send();
+      });
+    });
+    scroll.scrollTop=scroll.scrollHeight;
+  }
+
+  function highlight(code){
+    return esc(code).replace(/(&lt;\/?)([a-zA-Z0-9]+)/g,'$1<span class="tag">$2</span>').replace(/([a-zA-Z-]+)=/g,'<span class="att">$1</span>=');
+  }
+  function renderCode(){
+    var p=active();
+    codeView.innerHTML = (p && p.current_code) ? highlight(p.current_code)
+      : '<span style="color:#5D6875">// Your generated code appears here once you build something.</span>';
+  }
+  function renderPreview(){
+    var p=active();
+    if(p && p.current_code){ preview.srcdoc=p.current_code; previewEmpty.style.display='none'; }
+    else { preview.srcdoc=''; previewEmpty.style.display='flex'; }
+    urlEl.textContent = (p && p.preview_url) || 'preview.lumen.build';
+  }
+  function setMode(m){
+    mode=m;
+    document.getElementById('segChat').classList.toggle('on', m==='chat');
+    document.getElementById('segCode').classList.toggle('on', m==='code');
+    scroll.style.display = m==='chat' ? 'block':'none';
+    codeView.style.display = m==='code' ? 'block':'none';
+    if(m==='code') renderCode();
+  }
+  function renderChips(){
+    chipsEl.innerHTML = pendingFiles.map(function(f,i){
+      return '<span class="chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2v6h6M14 2l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/></svg>'+esc(f)+'<span class="x" data-i="'+i+'">\u00d7</span></span>';
+    }).join('');
+    chipsEl.querySelectorAll('.x').forEach(function(x){
+      x.addEventListener('click', function(){ pendingFiles.splice(+x.getAttribute('data-i'),1); renderChips(); });
+    });
+  }
+  function renderAll(){
+    renderTabs();
+    if(typeof paintUndo === 'function') paintUndo();
+    var p=active();
+    projName.textContent = p ? p.name : '';
+    renderChat(); renderPreview();
+    if(mode==='code') renderCode();
+  }
+
+  // ---------- generating (streamed, so you can watch it build) ----------
+  var activeController = null;
+
+  async function send(){
+    var v=promptEl.value.trim();
+    if(!v && !pendingFiles.length) return;
+    var p=active(); if(!p) return;
+    if(activeController){ toast('Already building — stop it first'); return; }
+
+    var full=v;
+    if(pendingFiles.length){ full=(v?v+' ':'')+'[attached: '+pendingFiles.join(', ')+']'; }
+
+    var msgs=messages();
+    msgs.push({role:'user', text: full || '(uploaded files)'});
+    msgs.push({role:'thinking', stage:'Starting'});
+    promptEl.value=''; promptEl.style.height='auto'; pendingFiles=[]; renderChips();
+    if(mode!=='chat') setMode('chat');
+    renderChat();
+
+    var modelSel = document.getElementById('model');
+    var modelLabel = modelSel ? (modelSel.options[modelSel.selectedIndex]||{}).text : 'Auto (recommended)';
+    var modelKey = MODEL_KEYS[modelLabel] || 'auto';
+
+    var editing = !!p.current_code;
+    pushUndo(p);
+
+    var sendBtn = document.getElementById('send');
+    sendBtn.classList.add('busy');
+
+    var liveBadge = document.getElementById('liveCode');
+    liveBadge.classList.add('show');
+
+    activeController = new AbortController();
+    var stopBtn = document.getElementById('stopBuild');
+    if(stopBtn) stopBtn.addEventListener('click', function(){
+      if(activeController) activeController.abort();
+    });
+
+    var buffer = '';
+    var meta = null;
+    var lastPaint = 0;
+
+    function stage(text){
+      var el=document.getElementById('buildStage'); if(el) el.textContent = text;
+    }
+    function counter(n){
+      var el=document.getElementById('buildCount');
+      if(el) el.textContent = n > 400 ? (Math.round(n/100)/10) + 'k chars' : '';
+    }
+
+    try{
+      var session = await Lumen.session();
+      if(!session){ window.location.href='/start'; return; }
+
+      var res = await fetch('/api/generate/stream', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+session.access_token },
+        body: JSON.stringify({ projectId:p.id, brief: full, model: modelKey }),
+        signal: activeController.signal
+      });
+
+      if(!res.ok || !res.body){
+        var err = await res.json().catch(function(){ return {}; });
+        throw Object.assign(new Error(err.error || 'The build failed'), { status: res.status, data: err });
+      }
+
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder();
+
+      while(true){
+        var out = await reader.read();
+        if(out.done) break;
+        buffer += decoder.decode(out.value, { stream:true });
+
+        // opening metadata: which model, and whether we're editing
+        if(!meta){
+          var startMatch = buffer.match(/<!--LUMEN-START ([\s\S]*?) -->/);
+          if(startMatch){
+            try{
+              var info = JSON.parse(startMatch[1]);
+              var bm=document.getElementById('buildModel');
+              if(bm){ bm.textContent = info.model; bm.style.display=''; }
+              stage(info.editing ? 'Making the change' : 'Designing your site');
+            }catch(e){}
+            buffer = buffer.replace(startMatch[0], '');
+          }
+        }
+
+        counter(buffer.length);
+
+        // give a sense of what it's doing, from the HTML itself
+        if(buffer.indexOf('</head>') > -1 && buffer.indexOf('</body>') === -1) stage('Building the pages');
+        else if(buffer.indexOf('</body>') > -1) stage('Finishing up');
+        else if(buffer.indexOf('<style') > -1) stage('Styling everything');
+
+        // paint the preview as it grows, but not on every chunk
+        var now = Date.now();
+        if(now - lastPaint > 700 && buffer.indexOf('</head>') > -1){
+          lastPaint = now;
+          preview.srcdoc = buffer + '\n</body></html>';
+          previewEmpty.style.display='none';
+          if(mode==='code'){ codeView.innerHTML = highlight(buffer.slice(-6000)); codeView.scrollTop = codeView.scrollHeight; }
+        }
+      }
+
+      // final metadata
+      var metaMatch = buffer.match(/<!--LUMEN-META ([\s\S]*?) -->\s*$/);
+      if(metaMatch){
+        try{ meta = JSON.parse(metaMatch[1]); }catch(e){ meta = null; }
+        buffer = buffer.replace(metaMatch[0], '').trim();
+      }
+
+      if(meta && meta.error) throw new Error(meta.error);
+
+      p.current_code = buffer;
+      if(meta){
+        p.preview_url = meta.previewUrl || p.preview_url;
+        if(meta.name) p.name = meta.name;
+      }
+
+      chats[activeId] = msgs.filter(function(m){ return m.role!=='thinking'; });
+      var msg = meta && meta.reply ? meta.reply : (editing ? 'Updated your site.' : 'Built your site.');
+      if(meta && meta.truncated) msg += ' (It ran long, so the ending may be clipped — ask me to finish it.)';
+      chats[activeId].push({ role:'ai', text: msg, built:true, plan: meta && meta.plan, model: meta && meta.model });
+
+      renderAll(); paintUndo(); refreshUsage();
+      speak(editing ? 'Updated. Take a look.' : 'Done — ' + ((meta && meta.title) || 'your site') + ' is ready.');
+
+    }catch(e){
+      chats[activeId] = msgs.filter(function(m){ return m.role!=='thinking'; });
+
+      if(e.name === 'AbortError'){
+        chats[activeId].push({ role:'ai', text:'Stopped. Nothing was saved, and you have not been charged a build.' });
+      } else if(e.status === 429){
+        var reason = e.data && e.data.reason;
+        if(reason === 'month_limit'){
+          chats[activeId].push({ role:'ai', text:"You've used this month's builds. Your allowance resets at the start of next month — or add a top-up from your dashboard to carry on now." });
+          speak("That's this month's builds used.");
+        } else {
+          var when = e.data && e.data.resetsAt ? new Date(e.data.resetsAt) : null;
+          var mins = when ? Math.max(1, Math.round((when - new Date())/60000)) : null;
+          var pretty = mins ? (mins >= 60 ? ('about ' + Math.round(mins/60) + ' hour' + (mins>=120?'s':'')) : (mins + ' minutes')) : 'a few hours';
+          chats[activeId].push({ role:'ai', text:"You've used this session's builds. More unlock in " + pretty + " — or add a top-up from your dashboard to carry on now." });
+          speak("That's this session's builds used.");
+        }
+      } else if(e.status === 402){
+        chats[activeId].push({ role:'ai', text:'You need an active subscription to build. Choose a plan to get started.' });
+        setTimeout(function(){ window.location.href='/#pricing'; }, 2200);
+      } else if(e.status === 403){
+        chats[activeId].push({ role:'ai', text:"That model isn't included in your plan. Pick another, or upgrade to Frontier for Claude Fable 5." });
+      } else {
+        chats[activeId].push({ role:'ai', text: (e.message || 'The build failed.') + " You haven't been charged a build — try again." });
+      }
+      renderChat();
+      renderPreview();
+    }finally{
+      activeController = null;
+      sendBtn.classList.remove('busy');
+      liveBadge.classList.remove('show');
+    }
+  }
+
+  // ---------- version history ----------
+  async function openHistory(){
+    var p=active(); if(!p) return;
+    histList.innerHTML='<div class="none">Loading…</div>';
+    histPanel.classList.add('show');
+    try{
+      var out = await Lumen.api('/api/projects/'+p.id+'/versions');
+      var v = out.versions || [];
+      if(!v.length){ histList.innerHTML='<div class="none">No versions yet — build something and each version is saved here.</div>'; return; }
+      histList.innerHTML = v.map(function(x,i){
+        return '<div class="hrow" data-id="'+x.id+'"><div class="hn">v'+(v.length-i)+'</div><div><div class="ht">'+esc(x.label||'Build')+'</div><div class="hm">'+new Date(x.created_at).toLocaleString()+'</div></div></div>';
+      }).join('');
+      histList.querySelectorAll('.hrow').forEach(function(r){
+        r.addEventListener('click', async function(){
+          try{
+            var res = await Lumen.api('/api/projects/'+p.id+'/restore', {
+              method:'POST', body: JSON.stringify({ versionId: r.getAttribute('data-id') })
+            });
+            p.current_code = res.code;
+            histPanel.classList.remove('show');
+            renderAll(); toast('Version restored');
+          }catch(e){ toast(e.message); }
+        });
+      });
+    }catch(e){ histList.innerHTML='<div class="none">'+esc(e.message)+'</div>'; }
+  }
+
+  // ---------- wire up ----------
+  document.getElementById('send').addEventListener('click', send);
+  promptEl.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } });
+  promptEl.addEventListener('input', function(){ promptEl.style.height='auto'; promptEl.style.height=Math.min(promptEl.scrollHeight,140)+'px'; });
+
+  document.getElementById('segChat').addEventListener('click', function(){ setMode('chat'); });
+  document.getElementById('segCode').addEventListener('click', function(){ setMode('code'); });
+
+  document.getElementById('newtab').addEventListener('click', async function(){
+    try{
+      var made = await Lumen.api('/api/projects', { method:'POST', body: JSON.stringify({ name:'New project' }) });
+      projects.push(made.project); activeId=made.project.id;
+      setMode('chat'); renderAll(); promptEl.focus();
+    }catch(e){ toast(e.message); }
+  });
+
+  document.getElementById('fork').addEventListener('click', async function(){
+    var p=active(); if(!p) return;
+    try{
+      var out = await Lumen.api('/api/projects/'+p.id+'?fork=true', { method:'PATCH' });
+      projects.push(out.project); activeId=out.project.id;
+      renderAll(); toast('Forked into a new project');
+    }catch(e){ toast(e.message); }
+  });
+
+  document.getElementById('github').addEventListener('click', function(){ toast('GitHub push is coming soon'); });
+
+  // Delete the current project from the builder (tabs also have an x)
+  document.getElementById('deleteProject').addEventListener('click', async function(){
+    var p=active(); if(!p) return;
+    if(!confirm('Delete "'+p.name+'"? This removes the project, its history and any published version.')) return;
+    try{
+      await Lumen.api('/api/projects/'+p.id, { method:'DELETE' });
+      projects = projects.filter(function(x){ return x.id!==p.id; });
+      if(!projects.length){ await loadProjects(); }
+      else { activeId = projects[0].id; renderAll(); }
+      toast('Project deleted');
+    }catch(e){ toast(e.message); }
+  });
+  // ---------- publishing ----------
+  var pubWrap=document.getElementById('pubWrap');
+  var pubErr=document.getElementById('pubErr');
+  var liveBox=document.getElementById('liveBox');
+  var liveUrl=document.getElementById('liveUrl');
+  var pubSlug=document.getElementById('pubSlug');
+  var pubGo=document.getElementById('pubGo');
+  var pubOff=document.getElementById('pubOff');
+
+  function pubError(msg){ pubErr.textContent=msg; pubErr.classList.add('show'); }
+  function pubClear(){ pubErr.classList.remove('show'); }
+
+  function showLive(data){
+    if(data && data.published && data.url){
+      liveBox.style.display='block';
+      liveUrl.textContent=data.url;
+      liveUrl.href=data.url;
+      pubOff.style.display='inline-flex';
+      pubGo.textContent='Update live site';
+      document.getElementById('pubTitle').textContent='Your site is live';
+      document.getElementById('pubSub').textContent='Any changes you make are published when you press update.';
+      if(data.subdomain) pubSlug.value=data.subdomain;
+      if(data.customDomain) document.getElementById('pubDomain').value=data.customDomain;
+    } else {
+      liveBox.style.display='none';
+      pubOff.style.display='none';
+      pubGo.textContent='Publish site';
+      document.getElementById('pubTitle').textContent='Publish your site';
+      document.getElementById('pubSub').textContent='Choose a web address and your site goes live straight away.';
+    }
+  }
+
+  function suggestSlug(){
+    var p=active(); if(!p) return '';
+    return (p.name||'site').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
+  }
+
+  // Show the right suffix for the address (depends on SITES_DOMAIN)
+  (async function(){
+    try{
+      var cfg = await (await fetch('/api/config')).json();
+      var el = document.getElementById('slugSuffix');
+      if (el) el.textContent = cfg.sitesDomain ? ('.' + cfg.sitesDomain) : ' (lumen address)';
+    }catch(e){}
+  })();
+
+  document.getElementById('publish').addEventListener('click', async function(){
+    var p=active();
+    if(!p){ toast('Open a project first'); return; }
+    if(!p.current_code){ toast('Build something first'); return; }
+
+    pubClear();
+    pubWrap.classList.add('show');
+    pubSlug.value = suggestSlug();
+
+    try{
+      var status = await Lumen.api('/api/publish?projectId='+p.id);
+      showLive(status);
+    }catch(e){ showLive(null); }
+  });
+
+  document.getElementById('pubClose').addEventListener('click', function(){ pubWrap.classList.remove('show'); });
+  pubWrap.addEventListener('click', function(e){ if(e.target===pubWrap) pubWrap.classList.remove('show'); });
+
+  pubGo.addEventListener('click', async function(){
+    var p=active(); if(!p) return;
+    pubClear();
+    pubGo.disabled=true; var label=pubGo.textContent; pubGo.textContent='Publishing…';
+    try{
+      var out = await Lumen.api('/api/publish', {
+        method:'POST',
+        body: JSON.stringify({ projectId:p.id, slug: pubSlug.value.trim() || undefined })
+      });
+      showLive(out);
+      toast('Your site is live');
+    }catch(e){
+      pubError(e.message || 'Could not publish.');
+      if(e.status===402) setTimeout(function(){ window.location.href='/#pricing'; }, 2200);
+    }finally{
+      pubGo.disabled=false; if(pubGo.textContent==='Publishing…') pubGo.textContent=label;
+    }
+  });
+
+  pubOff.addEventListener('click', async function(){
+    var p=active(); if(!p) return;
+    pubOff.disabled=true;
+    try{
+      await Lumen.api('/api/publish?projectId='+p.id, { method:'DELETE' });
+      showLive(null);
+      toast('Site unpublished');
+    }catch(e){ pubError(e.message); }
+    finally{ pubOff.disabled=false; }
+  });
+
+  document.getElementById('copyUrl').addEventListener('click', function(){
+    navigator.clipboard.writeText(liveUrl.textContent).then(function(){ toast('Address copied'); });
+  });
+
+  document.getElementById('showDomain').addEventListener('click', function(){
+    var b=document.getElementById('domainBlock');
+    b.style.display = b.style.display==='none' ? 'block' : 'none';
+  });
+
+  document.getElementById('domainGo').addEventListener('click', async function(){
+    var p=active(); if(!p) return;
+    var d=document.getElementById('pubDomain').value.trim();
+    if(!d) return;
+    pubClear();
+    var b=this; b.disabled=true; b.textContent='Connecting…';
+    try{
+      var out = await Lumen.api('/api/domains', { method:'POST', body: JSON.stringify({ projectId:p.id, domain:d }) });
+      var rows = (out.dns||[]).map(function(r){
+        return '<tr><td>'+esc(r.type)+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.value)+'</td></tr>';
+      }).join('');
+      document.getElementById('dnsRows').innerHTML = rows;
+      document.getElementById('dnsBox').classList.add('show');
+      document.getElementById('dnsNote').textContent = out.note || '';
+      toast('Domain saved');
+    }catch(e){ pubError(e.message || 'Could not connect that domain.'); }
+    finally{ b.disabled=false; b.textContent='Connect domain'; }
+  });
+  document.getElementById('history').addEventListener('click', function(e){ e.stopPropagation(); openHistory(); });
+  document.addEventListener('click', function(e){
+    if(histPanel.classList.contains('show') && !histPanel.contains(e.target) && e.target.id!=='history') histPanel.classList.remove('show');
+  });
+
+  document.getElementById('attach').addEventListener('click', function(){ document.getElementById('fileinput').click(); });
+  document.getElementById('fileinput').addEventListener('change', function(e){
+    for(var i=0;i<e.target.files.length;i++){ pendingFiles.push(e.target.files[i].name); }
+    renderChips(); e.target.value='';
+  });
+
+  // ---------- voice ----------
+  var V = window.LumenVoice;
+  var micBtn = document.getElementById('mic');
+  var voiceBar = document.getElementById('voiceBar');
+  var voiceText = document.getElementById('voiceText');
+  var speakToggle = document.getElementById('speakToggle');
+  var speakOn = V ? V.voiceReplies() : false;
+
+  function paintSpeak(){
+    if(!speakToggle) return;
+    speakToggle.classList.toggle('on', speakOn);
+    speakToggle.title = speakOn ? 'Spoken replies on' : 'Spoken replies off';
+  }
+  paintSpeak();
+
+  if(speakToggle){
+    speakToggle.addEventListener('click', function(){
+      speakOn = !speakOn;
+      V && V.voiceReplies(speakOn);
+      paintSpeak();
+      if(speakOn && V) V.say('Voice replies on.');
+      else if(V) V.hush();
+      toast(speakOn ? 'Spoken replies on' : 'Spoken replies off');
+    });
+  }
+
+  function speak(text){
+    if(speakOn && V) V.say(text);
+  }
+
+  if(V && V.supported){
+    V.on('start', function(){
+      micBtn.classList.add('listening');
+      voiceBar.classList.add('show');
+      voiceText.textContent = 'Listening — describe what you want.';
+    });
+
+    V.on('transcript', function(t){
+      var text = t.text || (t.final + ' ' + t.interim).trim();
+      voiceText.textContent = text || 'Listening…';
+      promptEl.value = text;
+      promptEl.dispatchEvent(new Event('input'));
+    });
+
+    V.on('denied', function(){
+      micBtn.classList.remove('listening');
+      voiceBar.classList.remove('show');
+      toast('Microphone blocked — allow it in your browser settings');
+    });
+
+    V.on('end', function(res){
+      micBtn.classList.remove('listening');
+      voiceBar.classList.remove('show');
+      var text = (res.text || '').trim();
+      if(text){
+        promptEl.value = text;
+        send();
+      }
+    });
+
+    micBtn.addEventListener('click', function(){
+      if(V.listening){ V.stop(); return; }
+      if(V) V.hush();
+      V.listen({ continuous: false });
+    });
+
+    document.getElementById('voiceStop').addEventListener('click', function(){ V.stop(); });
+
+    // A seed prompt spoken on the homepage arrives here
+    try{
+      var spoken = localStorage.getItem('lumen_seed_prompt');
+      if(spoken) speak("Right — building that now.");
+    }catch(e){}
+
+  } else {
+    micBtn.addEventListener('click', function(){
+      toast('Voice input works in Chrome and Edge');
+    });
+  }
+
+  // ---------- device preview ----------
+  var previewWrap = document.querySelector('.previewwrap');
+  var SIZES = { desktop:null, tablet:{w:834,h:1112}, mobile:{w:390,h:844} };
+  function setDevice(kind){
+    ['desktop','tablet','mobile'].forEach(function(k){
+      var b=document.getElementById('dev'+k.charAt(0).toUpperCase()+k.slice(1));
+      if(b) b.classList.toggle('on', k===kind);
+    });
+    var s = SIZES[kind];
+    if(!s){
+      preview.classList.remove('device');
+      previewWrap.classList.remove('framed');
+      preview.style.width=''; preview.style.height='';
+    } else {
+      preview.classList.add('device');
+      previewWrap.classList.add('framed');
+      var avail = previewWrap.clientHeight - 44;
+      var scale = Math.min(1, avail / s.h);
+      preview.style.width = s.w + 'px';
+      preview.style.height = Math.min(s.h, avail) + 'px';
+    }
+  }
+  document.getElementById('devDesktop').addEventListener('click', function(){ setDevice('desktop'); });
+  document.getElementById('devTablet').addEventListener('click', function(){ setDevice('tablet'); });
+  document.getElementById('devMobile').addEventListener('click', function(){ setDevice('mobile'); });
+
+  // ---------- undo ----------
+  var undoStack = {};   // projectId -> previous code
+  function pushUndo(p){
+    if(!p || !p.current_code) return;
+    undoStack[p.id] = p.current_code;
+    paintUndo();
+  }
+  function paintUndo(){
+    var p=active();
+    var btn=document.getElementById('undoBtn');
+    if(btn) btn.disabled = !(p && undoStack[p.id]);
+  }
+  document.getElementById('undoBtn').addEventListener('click', async function(){
+    var p=active(); if(!p || !undoStack[p.id]) return;
+    var previous = undoStack[p.id];
+    delete undoStack[p.id];
+    p.current_code = previous;
+    renderAll(); paintUndo();
+    toast('Reverted the last change');
+    // History already holds every version, so this is a local step back.
+  });
+
+  // ---------- export ----------
+  document.getElementById('exportBtn').addEventListener('click', async function(){
+    var p=active();
+    if(!p || !p.current_code){ toast('Build something first'); return; }
+    var session = await Lumen.session();
+    if(!session) return;
+    var choice = confirm('Download your site as a single HTML file?\n\nOK = the live site (index.html)\nCancel = everything, including version history');
+    var url = '/api/export?projectId=' + p.id + (choice ? '' : '&all=1');
+    var res = await fetch(url, { headers: { Authorization: 'Bearer ' + session.access_token } });
+    if(!res.ok){ var e = await res.json().catch(function(){return {};}); toast(e.error || 'Export failed'); return; }
+    var blob = await res.blob();
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (res.headers.get('content-disposition')||'').match(/filename="([^"]+)"/)?.[1] || 'lumen-site.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Export downloaded');
+  });
+
+  document.getElementById('refresh').addEventListener('click', renderPreview);
+  document.getElementById('openext').addEventListener('click', function(){
+    var p=active();
+    if(!p || !p.current_code){ toast('Build something first'); return; }
+    var w=window.open(); w.document.write(p.current_code); w.document.close();
+  });
+  document.getElementById('model').addEventListener('change', function(){ toast('Now building with '+this.value); });
+
+  // ---------- boot ----------
+  (async function(){
+    var session = await Lumen.requireAuth('/start');
+    if(!session) return;
+    setMode('chat');
+    await refreshUsage();
+    await loadProjects();
+
+    // A template chosen on the Templates page seeds the first build
+    try{
+      var seed=localStorage.getItem('lumen_seed_prompt');
+      if(seed){ localStorage.removeItem('lumen_seed_prompt'); promptEl.value=seed; promptEl.dispatchEvent(new Event('input')); send(); }
+    }catch(e){}
+  })();
+})();
+</script>
+<script>
+(function(){
+  var b=document.getElementById('signout');
+  if(b) b.addEventListener('click', function(){ Lumen.signOut(); });
+})();
+</script>
+<script src="/ray.js"></script>
+</body>
+</html>

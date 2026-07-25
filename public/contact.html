@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — Lumen</title><meta name="description" content="Get in touch with Lumen.">
+<meta property="og:title" content="Contact — Lumen">
+<meta property="og:description" content="Email us or book a 30-minute call.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Contact — Lumen">
+<meta name="twitter:description" content="Email us or book a 30-minute call.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='16' fill='none' stroke='%235FE0FF' stroke-width='1.4' opacity='0.35'/%3E%3Ccircle cx='20' cy='20' r='9' fill='none' stroke='%235FE0FF' stroke-width='1.4'/%3E%3Ccircle cx='20' cy='20' r='3.4' fill='%235FE0FF'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#05070C;--bg-2:#090C13;--surface:#0C1119;--ink:#F5F6F9;--ink-2:#EAEDF2;--grey:#96A0AD;--grey-dim:#5D6875;
+--line:rgba(255,255,255,0.07);--line-2:rgba(255,255,255,0.12);--cyan:#5FE0FF;--cyan-2:#8DEBFF;--glow:rgba(95,224,255,0.5);
+--font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.6;letter-spacing:-.011em;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+background-image:radial-gradient(1000px 700px at 50% -14%,rgba(95,224,255,0.09),transparent 60%),radial-gradient(800px 600px at 90% 40%,rgba(95,224,255,0.04),transparent 55%);}
+.wrap{max-width:1180px;margin:0 auto;padding:0 32px;position:relative;z-index:2}
+.narrow{max-width:820px;margin:0 auto}
+h1,h2,h3{color:var(--ink);font-weight:600;line-height:1.08;letter-spacing:-.035em}
+.eyebrow{font-size:14px;font-weight:500;color:var(--cyan);display:inline-block;margin-bottom:20px}
+.grey{color:var(--grey)}.amb{position:fixed;inset:0;z-index:0;pointer-events:none}
+header{position:sticky;top:0;z-index:60;transition:background .4s,border-color .4s;border-bottom:1px solid transparent}
+header.scrolled{background:rgba(5,7,12,.72);backdrop-filter:blur(20px) saturate(160%);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:58px}
+.brand{display:flex;align-items:center;gap:11px;text-decoration:none}.brand svg{width:24px;height:24px}
+.brand b{font-weight:600;font-size:19px;color:var(--ink)}
+.nav-links{display:flex;gap:34px}.nav-links a{color:var(--grey);text-decoration:none;font-size:15px;transition:color .25s}.nav-links a:hover{color:var(--ink)}
+.nav-right{display:flex;align-items:center;gap:20px}.signin{color:var(--grey);text-decoration:none;font-size:15px}.signin:hover{color:var(--ink)}
+.btn{font-weight:500;font-size:15px;cursor:pointer;border-radius:980px;padding:10px 22px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;border:none;transition:transform .2s,box-shadow .3s,background .25s;white-space:nowrap}
+.btn-primary{background:var(--cyan);color:#04141B;box-shadow:0 0 40px -12px var(--glow)}.btn-primary:hover{transform:translateY(-2px)}
+.btn-ghost{background:rgba(255,255,255,.05);color:var(--ink);border:1px solid var(--line-2)}.btn-ghost:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
+.btn-lg{padding:15px 30px;font-size:16px}
+.page-hero{text-align:center;padding:96px 0 20px}
+.page-hero h1{font-size:clamp(40px,5.4vw,66px);font-weight:600;letter-spacing:-.04em;margin-bottom:20px}
+.page-hero p{font-size:20px;color:var(--grey);max-width:600px;margin:0 auto;line-height:1.5}
+.sec{padding:80px 0}.center{text-align:center}
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+/* about */
+.values{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:16px}
+.vcard{border:1px solid var(--line);border-radius:20px;padding:34px 30px;background:linear-gradient(180deg,var(--surface),var(--bg-2));transition:.4s}
+.vcard:hover{transform:translateY(-5px);border-color:var(--line-2)}
+.vcard .vi{width:44px;height:44px;border-radius:12px;background:rgba(95,224,255,.07);border:1px solid rgba(95,224,255,.15);display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.vcard .vi svg{width:22px;height:22px;color:var(--cyan)}.vcard h3{font-size:20px;margin-bottom:10px}.vcard p{font-size:15px;color:var(--grey);line-height:1.55}
+.story{max-width:720px;margin:0 auto}.story p{font-size:18px;color:var(--ink-2);line-height:1.7;margin-bottom:22px}.story p.grey{color:var(--grey)}
+/* work */
+.work-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:20px}
+.wcard{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--surface);transition:.4s;text-decoration:none;display:block}
+.wcard:hover{transform:translateY(-6px);border-color:var(--line-2)}
+.wthumb{height:190px;position:relative;overflow:hidden}
+.wthumb .mini{position:absolute;inset:0;display:flex;flex-direction:column;padding:22px;gap:8px}
+.wthumb .bar{height:9px;border-radius:4px;background:rgba(255,255,255,.85);width:44%}
+.wthumb .line{height:6px;border-radius:3px;background:rgba(255,255,255,.5);width:70%}.wthumb .line.s{width:55%}
+.wthumb .btnm{margin-top:auto;height:20px;width:70px;border-radius:6px;background:#04141B;opacity:.85}
+.wmeta{padding:20px 22px}.wmeta .wt{font-size:14px;color:var(--cyan);margin-bottom:6px}.wmeta h3{font-size:18px;color:var(--ink);margin-bottom:6px}.wmeta p{font-size:14px;color:var(--grey-dim)}
+/* contact */
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:start;margin-top:10px}
+.cmeth{display:flex;gap:15px;align-items:flex-start;margin-bottom:26px}
+.cmeth .ci{width:44px;height:44px;flex:none;border-radius:12px;background:rgba(95,224,255,.07);border:1px solid rgba(95,224,255,.15);display:flex;align-items:center;justify-content:center}
+.cmeth .ci svg{width:21px;height:21px;color:var(--cyan)}.cmeth h4{font-size:16px;margin-bottom:3px}.cmeth p,.cmeth a{font-size:15px;color:var(--grey);text-decoration:none}.cmeth a:hover{color:var(--cyan)}
+.card{border:1px solid var(--line);border-radius:22px;padding:34px;background:linear-gradient(180deg,var(--surface),var(--bg-2))}
+.field{margin-bottom:20px}.field label{display:block;font-size:14px;font-weight:500;color:var(--ink-2);margin-bottom:8px}
+.field input,.field textarea{width:100%;font-family:var(--font);font-size:15px;color:var(--ink);background:rgba(255,255,255,.03);border:1px solid var(--line-2);border-radius:12px;padding:13px 15px;outline:none;transition:.25s}
+.field input:focus,.field textarea:focus{border-color:var(--cyan);background:rgba(95,224,255,.04)}.field textarea{min-height:120px;resize:vertical}
+.book-label{font-size:13px;font-weight:500;color:var(--grey);margin:0 0 10px}
+.days{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.day{border:1px solid var(--line-2);background:transparent;border-radius:12px;padding:9px 13px;text-align:center;cursor:pointer;transition:.2s;min-width:60px}
+.day:hover{border-color:var(--grey)}.day.sel{border-color:var(--cyan);background:rgba(95,224,255,.06)}
+.day .dow{font-size:10.5px;color:var(--grey-dim);text-transform:uppercase;letter-spacing:.05em}
+.day .dnum{font-size:17px;font-weight:600;color:var(--ink);margin-top:2px}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.slot{border:1px solid var(--line-2);background:transparent;border-radius:10px;padding:11px 0;text-align:center;font-size:14px;color:var(--ink);cursor:pointer;transition:.2s}
+.slot:hover{border-color:var(--grey)}.slot.sel{border-color:var(--cyan);background:rgba(95,224,255,.06);color:var(--cyan)}
+.slots .none{grid-column:1/-1;color:var(--grey-dim);font-size:14px;padding:4px 0}
+.ok-ring{width:60px;height:60px;margin:0 auto 18px;border-radius:50%;border:1px solid rgba(95,224,255,.3);background:rgba(95,224,255,.06);display:flex;align-items:center;justify-content:center}
+.ok-ring svg{width:28px;height:28px;color:var(--cyan)}
+
+/* community */
+.wall{max-width:720px;margin:0 auto}
+.composer{border:1px solid var(--line-2);border-radius:20px;background:rgba(255,255,255,.02);padding:20px;margin-bottom:34px;transition:.3s}
+.composer:focus-within{border-color:rgba(95,224,255,.4);box-shadow:0 0 40px -16px var(--glow)}
+.composer input,.composer textarea{width:100%;background:transparent;border:none;outline:none;color:var(--ink);font-family:var(--font);font-size:15px}
+.composer input{font-weight:600;font-size:15px;margin-bottom:8px}.composer textarea{resize:none;min-height:52px;line-height:1.5}
+.composer .row{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.composer .hint{font-size:12.5px;color:var(--grey-dim)}
+.post{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:16px;background:linear-gradient(180deg,var(--surface),var(--bg-2));animation:pop .4s ease}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.post-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.avatar{width:38px;height:38px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:#04141B;background:linear-gradient(135deg,var(--cyan-2),var(--cyan))}
+.post-head .nm{font-size:15px;font-weight:600;color:var(--ink)}.post-head .mt{font-size:12.5px;color:var(--grey-dim)}
+.post-body{font-size:15.5px;color:var(--ink-2);line-height:1.6}
+.tagrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:34px}
+.tagf{font-size:13px;color:var(--grey);border:1px solid var(--line);background:transparent;padding:8px 16px;border-radius:980px;cursor:pointer;transition:.25s}
+.tagf:hover,.tagf.on{border-color:rgba(95,224,255,.4);color:var(--ink);background:rgba(95,224,255,.05)}
+/* legal */
+.legal{max-width:760px;margin:0 auto}
+.notice{border:1px solid rgba(246,178,76,.35);background:rgba(246,178,76,.06);border-radius:14px;padding:16px 20px;margin-bottom:40px;font-size:14px;color:#F6D8A8;line-height:1.55}
+.legal h2{font-size:22px;margin:38px 0 12px}.legal h3{font-size:17px;margin:24px 0 8px;color:var(--ink-2)}
+.legal p{font-size:16px;color:var(--grey);line-height:1.7;margin-bottom:14px}.legal ul{margin:0 0 16px 22px}.legal li{font-size:16px;color:var(--grey);line-height:1.7;margin-bottom:7px}
+.legal .eff{font-size:14px;color:var(--grey-dim);margin-bottom:8px}
+footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
+.foot-grid{display:flex;justify-content:space-between;flex-wrap:wrap;gap:44px;margin-bottom:48px}
+.foot-brand{max-width:290px}.foot-brand p{font-size:14px;color:var(--grey-dim);margin-top:14px;line-height:1.6}
+.foot-col h5{font-size:13px;font-weight:600;color:var(--grey);margin-bottom:16px}.foot-col a{display:block;color:var(--grey-dim);text-decoration:none;font-size:14.5px;margin-bottom:12px;transition:.25s}.foot-col a:hover{color:var(--cyan)}
+.foot-bottom{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:26px;flex-wrap:wrap;gap:12px}.foot-bottom span{font-size:13px;color:var(--grey-dim)}
+@media(max-width:920px){.values,.work-grid{grid-template-columns:1fr}.contact-grid{grid-template-columns:1fr;gap:32px}.nav-links{display:none}}
+@media(max-width:560px){.wrap{padding:0 20px}.sec{padding:60px 0}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}.reveal{opacity:1;transform:none;transition:none}}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:5px}
+
+.burger{display:none;width:38px;height:38px;border-radius:50%;border:none;background:transparent;color:var(--ink);align-items:center;justify-content:center;cursor:pointer;transition:.25s}
+.burger:hover{background:rgba(255,255,255,.06)}
+.burger svg{width:20px;height:20px}
+.mobmenu{position:fixed;inset:58px 0 auto 0;z-index:70;background:rgba(5,7,12,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:16px 22px 26px;display:none;flex-direction:column;gap:2px}
+.mobmenu.show{display:flex;animation:mm .25s ease}
+@keyframes mm{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.mobmenu a{color:var(--ink-2);text-decoration:none;font-size:16.5px;padding:14px 4px;border-bottom:1px solid rgba(255,255,255,.05)}
+.mobmenu a:last-of-type{border-bottom:none}
+.mobmenu .mact{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.mobmenu .mact .btn{width:100%;justify-content:center}
+@media(max-width:920px){.burger{display:flex}}
+</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/lumen-app.js"></script>
+</head><body><div class="amb"></div>
+<header id="hdr"><div class="wrap"><nav class="nav">
+<a class="brand" href="/"><svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="#5FE0FF" stroke-width="1.4" opacity="0.35"/><circle cx="20" cy="20" r="9" stroke="#5FE0FF" stroke-width="1.4"/><circle cx="20" cy="20" r="3.4" fill="#5FE0FF"/></svg><b>Lumen</b></a>
+<div class="nav-links"><a href="/#build">Build</a><a href="/#pricing">Pricing</a><a href="/templates">Templates</a><a href="/community">Community</a></div>
+<button class="burger" id="burger" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+<div class="nav-right"><a class="signin" href="#">Sign in</a><a class="btn btn-primary" href="/#pricing" data-gate="build">Start building</a></div>
+</nav></div></header>
+<div class="mobmenu" id="mobmenu">
+<a href="/#build">Build</a><a href="/#pricing">Pricing</a><a href="/templates">Templates</a>
+<a href="/community">Community</a><a href="/about">About</a><a href="/work">Work</a>
+<a href="/help">Help</a><a href="/contact">Contact</a>
+<div class="mact"><a class="btn btn-ghost signin" href="/start">Sign in</a><a class="btn btn-primary" href="/#pricing" data-gate="build">Start building</a></div>
+</div>
+<main><section class="page-hero"><div class="wrap reveal">
+<span class="eyebrow">Contact</span><h1>Let's talk.</h1>
+<p>Send us a line, or book a quick call — whichever suits you.</p>
+</div></section>
+<section class="sec"><div class="wrap"><div class="contact-grid">
+<div class="reveal">
+<div class="cmeth"><div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div><div><h4>Email us</h4><a href="mailto:vuyolushakhumalo@gmail.com">vuyolushakhumalo@gmail.com</a><p style="font-size:13.5px;color:var(--grey-dim);margin-top:4px">We reply within one business day.</p></div></div>
+<div class="cmeth"><div class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="13" height="12" rx="2"/><path d="M22 8l-5 4 5 4z"/></svg></div><div><h4>Book a call</h4><p>Grab a 30-minute Google Meet at a time that works — pick a slot on the right.</p></div></div>
+<p class="grey" style="font-size:14px;margin-top:18px">Prefer async? Email is usually quickest for a simple question.</p>
+</div>
+<div class="card reveal">
+<div id="bookui">
+<h3 style="font-size:20px;margin-bottom:4px">Book a 30-min call</h3>
+<p style="font-size:13.5px;color:var(--grey-dim);margin-bottom:22px">Google Meet · choose a slot below</p>
+<div class="book-label">Pick a day</div>
+<div class="days" id="days"></div>
+<div class="book-label">Pick a time</div>
+<div class="slots" id="slots"><span class="none">Select a day first.</span></div>
+<div class="field" style="margin-top:20px"><label for="bn">Your name</label><input id="bn" type="text" placeholder="Jordan Vale"></div>
+<div class="field"><label for="be">Email</label><input id="be" type="email" placeholder="you@example.com"></div>
+<button class="btn btn-primary" id="bconfirm" style="width:100%;justify-content:center" disabled>Select a day and time</button>
+</div>
+<div id="bookdone" style="display:none;text-align:center;padding:8px 0">
+<div class="ok-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></div>
+<h3 style="font-size:21px;margin-bottom:10px">Call requested</h3>
+<p class="grey" id="bookmsg" style="font-size:15px;line-height:1.55"></p>
+</div>
+</div>
+</div></div></section>
+<script>(function(){
+  var OWNER_EMAIL='vuyolushakhumalo@gmail.com';
+  var DUR=30; // minutes
+  // ==== EDIT THIS: the days & times you're free for calls each week (your local time, 24h) ====
+  var AVAILABILITY={ Mon:['10:00','11:00','15:00'], Tue:[], Wed:['13:00','14:00','16:00'], Thu:['11:00'], Fri:['10:00','15:00'], Sat:[], Sun:[] };
+  // ==========================================================================================
+  var DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var days=[], base=new Date(); base.setHours(0,0,0,0);
+  for(var i=1;i<28 && days.length<6;i++){ var dt=new Date(base); dt.setDate(base.getDate()+i); if((AVAILABILITY[DOW[dt.getDay()]]||[]).length) days.push(dt); }
+  var selDay=null, selTime=null;
+  var daysEl=document.getElementById('days'), slotsEl=document.getElementById('slots'), btn=document.getElementById('bconfirm');
+
+  if(!days.length){ daysEl.innerHTML='<span class="none">No slots open right now — please email us.</span>'; }
+  days.forEach(function(dt,idx){
+    var el=document.createElement('div'); el.className='day';
+    el.innerHTML='<div class="dow">'+DOW[dt.getDay()]+'</div><div class="dnum">'+dt.getDate()+'</div>';
+    el.addEventListener('click', function(){ selDay=dt; selTime=null; document.querySelectorAll('.day').forEach(function(x){x.classList.remove('sel');}); el.classList.add('sel'); renderSlots(); update(); });
+    daysEl.appendChild(el);
+  });
+  function renderSlots(){
+    var times=AVAILABILITY[DOW[selDay.getDay()]]||[];
+    slotsEl.innerHTML=times.map(function(t){return '<div class="slot" data-t="'+t+'">'+t+'</div>';}).join('') || '<span class="none">No times that day.</span>';
+    slotsEl.querySelectorAll('.slot').forEach(function(s){ s.addEventListener('click', function(){ selTime=s.getAttribute('data-t'); slotsEl.querySelectorAll('.slot').forEach(function(x){x.classList.remove('sel');}); s.classList.add('sel'); update(); }); });
+  }
+  function update(){ if(selDay&&selTime){ btn.disabled=false; btn.textContent='Confirm '+DOW[selDay.getDay()]+' '+selDay.getDate()+' '+MON[selDay.getMonth()]+' at '+selTime; } else { btn.disabled=true; btn.textContent='Select a day and time'; } }
+  function pad(n){return (n<10?'0':'')+n;}
+  function gcal(dt){return dt.getUTCFullYear()+pad(dt.getUTCMonth()+1)+pad(dt.getUTCDate())+'T'+pad(dt.getUTCHours())+pad(dt.getUTCMinutes())+'00Z';}
+  btn.addEventListener('click', function(){
+    var email=document.getElementById('be').value.trim(); var name=document.getElementById('bn').value.trim();
+    if(!email||email.indexOf('@')<1){ document.getElementById('be').focus(); return; }
+    var parts=selTime.split(':'); var start=new Date(selDay); start.setHours(+parts[0],+parts[1],0,0);
+    var end=new Date(start.getTime()+DUR*60000);
+    var url='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent('Call with Lumen')
+      +'&dates='+gcal(start)+'/'+gcal(end)+'&add='+encodeURIComponent(OWNER_EMAIL)
+      +'&details='+encodeURIComponent('30-minute Google Meet with Lumen. Booked by '+(name||'a guest')+' ('+email+').');
+    window.open(url,'_blank');
+    document.getElementById('bookui').style.display='none';
+    var done=document.getElementById('bookdone'); done.style.display='block';
+    document.getElementById('bookmsg').textContent='You picked '+DOW[selDay.getDay()]+' '+selDay.getDate()+' '+MON[selDay.getMonth()]+' at '+selTime+'. We\u2019ve opened a Google Calendar invite — accept it and a Meet link is attached. We\u2019ll see you then.';
+  });
+})();</script>
+</main>
+<footer><div class="wrap"><div class="foot-grid">
+<div class="foot-brand"><a class="brand" href="/"><svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="#5FE0FF" stroke-width="1.4" opacity="0.35"/><circle cx="20" cy="20" r="9" stroke="#5FE0FF" stroke-width="1.4"/><circle cx="20" cy="20" r="3.4" fill="#5FE0FF"/></svg><b>Lumen</b></a>
+<p>The website workshop. An intelligence that builds your site beautifully — and keeps it running long after launch.</p></div>
+<div class="foot-col"><h5>Build</h5><a href="/#build">Done for you</a><a href="/#build">Built by AI</a><a href="/#process">How it works</a><a href="/#pricing">Pricing</a><a href="/templates">Templates</a></div>
+<div class="foot-col"><h5>Company</h5><a href="/about">About</a><a href="/work">Work</a><a href="/contact">Contact</a><a href="/community">Community</a></div>
+<div class="foot-col"><h5>Support</h5><a href="/help">Help centre</a><a href="/contact">Contact</a><a href="/advisor">Your advisor</a></div>
+<div class="foot-col"><h5>Legal</h5><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/ownership">Ownership</a><a href="/acceptable-use">Acceptable use</a><a href="/cookies">Cookies</a></div>
+</div><div class="foot-bottom"><span>© 2026 Lumen. All rights reserved.</span><span>Made in London</span></div></div></footer>
+<script>(function(){var h=document.getElementById('hdr');function s(){if(window.scrollY>12)h.classList.add('scrolled');else h.classList.remove('scrolled');}window.addEventListener('scroll',s,{passive:true});s();
+var io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target);}});},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+})();</script>
+<div id="ckb" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:900;width:calc(100% - 36px);max-width:660px;border:1px solid rgba(255,255,255,0.13);border-radius:18px;background:rgba(12,17,25,0.94);backdrop-filter:blur(16px);box-shadow:0 30px 70px -30px rgba(0,0,0,.85);padding:20px 22px;font-family:'Inter',sans-serif">
+<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+<p style="flex:1;min-width:240px;font-size:14px;line-height:1.55;color:#96A0AD;margin:0">We use essential cookies to run Lumen, and optional ones to understand how the site is used. <a href="/cookies" style="color:#5FE0FF;text-decoration:none">Privacy Policy</a></p>
+<div style="display:flex;gap:9px;flex:none">
+<button id="ckDecline" style="font-family:'Inter',sans-serif;font-size:14px;font-weight:500;cursor:pointer;border-radius:980px;padding:10px 18px;background:transparent;color:#EAEDF2;border:1px solid rgba(255,255,255,0.13)">Essential only</button>
+<button id="ckAccept" style="font-family:'Inter',sans-serif;font-size:14px;font-weight:500;cursor:pointer;border-radius:980px;padding:10px 20px;background:#5FE0FF;color:#04141B;border:none">Accept all</button>
+</div></div></div>
+<script>(function(){var b=document.getElementById('ckb');if(!b)return;var k='lumen_cookies';
+try{if(localStorage.getItem(k)){return;}}catch(e){}
+setTimeout(function(){b.style.display='block';},700);
+function set(v){try{localStorage.setItem(k,v);}catch(e){}b.style.display='none';}
+document.getElementById('ckAccept').addEventListener('click',function(){set('all');});
+document.getElementById('ckDecline').addEventListener('click',function(){set('essential');});})();</script>
+<script>(function(){var b=document.getElementById('burger'),m=document.getElementById('mobmenu');if(!b||!m)return;
+b.addEventListener('click',function(e){e.stopPropagation();m.classList.toggle('show');});
+document.addEventListener('click',function(e){if(m.classList.contains('show')&&!m.contains(e.target)&&e.target!==b)m.classList.remove('show');});
+m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){m.classList.remove('show');});});})();</script>
+<script src="/ray.js"></script>
+</body></html>
