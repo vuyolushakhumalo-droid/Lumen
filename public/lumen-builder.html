@@ -657,7 +657,9 @@
   }
   function renderChips(){
     chipsEl.innerHTML = pendingFiles.map(function(f,i){
-      return '<span class="chip"><img src="'+f.dataUrl+'" alt="" style="width:20px;height:20px;object-fit:cover;border-radius:4px">'+esc(f.name)+'<span class="x" data-i="'+i+'">\u00d7</span></span>';
+      return '<span class="chip"><img src="'+f.dataUrl+'" alt="" style="width:20px;height:20px;object-fit:cover;border-radius:4px;flex-shrink:0">'
+        + '<span style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(f.name)+'">'+esc(f.name)+'</span>'
+        + '<span class="x" data-i="'+i+'">\u00d7</span></span>';
     }).join('');
     chipsEl.querySelectorAll('.x').forEach(function(x){
       x.addEventListener('click', function(){ pendingFiles.splice(+x.getAttribute('data-i'),1); renderChips(); });
@@ -1017,10 +1019,16 @@
     if(histPanel.classList.contains('show') && !histPanel.contains(e.target) && e.target.id!=='history') histPanel.classList.remove('show');
   });
 
+  var MAX_IMAGES = 5;
+  var MAX_IMAGE_BYTES = 5 * 1024 * 1024 * 3 / 4; // keeps the base64 payload under Claude's 5MB limit, matching the backend
+
   function addImageFiles(files){
+    var count = pendingFiles.length;
     Array.prototype.slice.call(files).forEach(function(file){
-      if(!/^image\//.test(file.type)) return;
-      if(file.size > 5*1024*1024){ toast(file.name + ' is over 5MB — skipped'); return; }
+      if(!/^image\//.test(file.type)){ toast(file.name + ' is not an image — skipped'); return; }
+      if(count >= MAX_IMAGES){ toast('You can attach up to ' + MAX_IMAGES + ' images'); return; }
+      if(file.size > MAX_IMAGE_BYTES){ toast(file.name + ' is too large — try under 3.75MB'); return; }
+      count++;
       var reader = new FileReader();
       reader.onload = function(){
         pendingFiles.push({ name: file.name, mediaType: file.type, dataUrl: reader.result });

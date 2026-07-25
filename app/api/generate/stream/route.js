@@ -18,7 +18,8 @@ export const maxDuration = 300;
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 const MAX_IMAGES = 5;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Claude's own base64 image limit
+const CLAUDE_MAX_BASE64_BYTES = 5 * 1024 * 1024; // Claude's hard limit on the base64-encoded image payload
+const MAX_IMAGE_BYTES = CLAUDE_MAX_BASE64_BYTES * 3 / 4; // ~3.75MB of original file bytes, before base64 inflates it ~33%
 
 function fail(status, message, extra = {}) {
   return Response.json({ error: message, ...extra }, { status });
@@ -40,7 +41,7 @@ function validateImages(images) {
     }
     const approxBytes = Math.ceil((img.data.length * 3) / 4);
     if (approxBytes > MAX_IMAGE_BYTES) {
-      throw { status: 400, message: 'Each image must be 5MB or smaller.' };
+      throw { status: 400, message: 'Each image must be 3.75MB or smaller.' };
     }
     return { mediaType: img.mediaType, data: img.data };
   });
