@@ -16,8 +16,34 @@ import { chooseModel } from '@/lib/routing';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
+const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+const MAX_IMAGES = 5;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Claude's own base64 image limit
+
 function fail(status, message, extra = {}) {
   return Response.json({ error: message, ...extra }, { status });
+}
+
+// Validates the optional `images` field. Returns a clean array of
+// { mediaType, data } ready to hand to Claude, or throws { status, message }.
+function validateImages(images) {
+  if (images === undefined || images === null) return [];
+  if (!Array.isArray(images)) throw { status: 400, message: 'images must be a list.' };
+  if (images.length > MAX_IMAGES) throw { status: 400, message: `You can attach up to ${MAX_IMAGES} images.` };
+
+  return images.map((img) => {
+    if (!img || typeof img.mediaType !== 'string' || typeof img.data !== 'string') {
+      throw { status: 400, message: 'Each image needs a mediaType and base64 data.' };
+    }
+    if (!ALLOWED_IMAGE_TYPES.has(img.mediaType)) {
+      throw { status: 400, message: `Unsupported image type: ${img.mediaType}` };
+    }
+    const approxBytes = Math.ceil((img.data.length * 3) / 4);
+    if (approxBytes > MAX_IMAGE_BYTES) {
+      throw { status: 400, message: 'Each image must be 5MB or smaller.' };
+    }
+    return { mediaType: img.mediaType, data: img.data };
+  });
 }
 
 export async function POST(request) {
@@ -36,12 +62,19 @@ export async function POST(request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { projectId, brief, model = 'auto' } = body;
+  const { projectId, brief, model = 'auto', images } = body;
 
   if (!brief || typeof brief !== 'string' || brief.trim().length < 3) {
     return fail(400, 'Tell us what you want to build.');
   }
   if (brief.length > 4000) return fail(400, 'That brief is a bit long — try trimming it.');
+
+  let cleanImages;
+  try {
+    cleanImages = validateImages(images);
+  } catch (e) {
+    return fail(e.status || 400, e.message || 'Invalid images.');
+  }
 
   // Limits and permissions
   let snapshot;
@@ -88,6 +121,7 @@ export async function POST(request) {
           brief,
           modelKey: routed.model,
           previousHtml: project.current_code || null,
+          images: cleanImages,
           onChunk: (chunk) => send(chunk),
           signal: request.signal,
         });
