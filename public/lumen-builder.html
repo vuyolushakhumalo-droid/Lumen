@@ -767,12 +767,13 @@
         else if(buffer.indexOf('</body>') > -1) stage('Finishing up');
         else if(buffer.indexOf('<style') > -1) stage('Styling everything');
 
-        // paint the preview as it grows, but not on every chunk
+        // Hold the Preview steady during the build — it swaps to the
+        // finished site in one clean update once the stream completes
+        // (see renderAll()/renderPreview() below). The Code tab still
+        // updates live here, if that's the active view.
         var now = Date.now();
         if(now - lastPaint > 700 && buffer.indexOf('</head>') > -1){
           lastPaint = now;
-          preview.srcdoc = buffer + '\n</body></html>';
-          previewEmpty.style.display='none';
           if(mode==='code'){ codeView.innerHTML = highlight(buffer.slice(-6000)); codeView.scrollTop = codeView.scrollHeight; }
         }
       }
