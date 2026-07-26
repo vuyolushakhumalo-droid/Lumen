@@ -552,7 +552,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
           <span class="plan-tag">Most popular</span>
           <div class="pn">Pro</div>
           <div class="pd">More builds per session, for people building client work.</div>
-          <div class="price"><span class="amt" data-m="49" data-plan="pro">£49</span><span class="per">/ month</span></div>
+          <div class="price"><span class="amt" data-m="59" data-plan="pro">£59</span><span class="per">/ month</span></div>
           <ul>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Everything in Standard</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>12 builds per session, and a bigger monthly allowance</li>
@@ -564,7 +564,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
         <div class="plan reveal">
           <div class="pn">Frontier</div>
           <div class="pd">The most powerful engine we offer.</div>
-          <div class="price"><span class="amt" data-m="90" data-plan="frontier">£90</span><span class="per">/ month</span></div>
+          <div class="price"><span class="amt" data-m="99" data-plan="frontier">£99</span><span class="per">/ month</span></div>
           <ul>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Everything in Pro</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Claude Fable 5 — our top-tier model</li>
@@ -687,7 +687,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 </script>
 <script>
 (function(){
-  // annual billing toggle: same monthly rate, billed yearly — no discount, just the 1-month-free trial
+  // annual billing toggle: total = monthly rate × 12, no discount, just the 1-month-free trial
   var monthlyBtn=document.getElementById('bMonthly'), annualBtn=document.getElementById('bAnnual');
   var amts=document.querySelectorAll('.amt[data-m]');
   function setMode(annual){
@@ -695,7 +695,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
     amts.forEach(function(a){
       var m=parseFloat(a.getAttribute('data-m'));
       var per=a.nextElementSibling;
-      if(annual){ a.textContent='£'+m; per.textContent='/ mo, billed yearly'; }
+      if(annual){ a.textContent='£'+(m*12); per.textContent='/ year'; }
       else { a.textContent='£'+m; per.textContent='/ month'; }
     });
     document.querySelectorAll('.plan a.btn').forEach(function(b){
