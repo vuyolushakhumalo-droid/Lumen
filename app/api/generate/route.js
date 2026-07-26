@@ -8,7 +8,7 @@
 import { handler, requireUser, ApiError } from '@/lib/auth';
 import { assertCanBuild, recordBuild, getUsageSnapshot } from '@/lib/usage';
 import { generateSite } from '@/lib/anthropic';
-import { slugify } from '@/lib/render';
+import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 
@@ -78,7 +78,7 @@ export const POST = handler(async (request) => {
   const code = result.html;
   const title = result.title || 'New site';
   const plan = result.plan || null;
-  const previewUrl = `${slugify(title)}.lumen.build`;
+  const previewUrl = `${makeSlug(title)}.lumen.build`;
 
   // 4a. Save the conversation so it survives a refresh.
   const reply = plan?.message

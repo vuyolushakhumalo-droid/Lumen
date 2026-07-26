@@ -9,7 +9,7 @@
 import { requireUser, ApiError } from '@/lib/auth';
 import { assertCanBuild, recordBuild, getUsageSnapshot } from '@/lib/usage';
 import { streamSite } from '@/lib/anthropic';
-import { slugify } from '@/lib/render';
+import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 
@@ -139,7 +139,7 @@ export async function POST(request) {
       try {
         const title = result.title || 'New site';
         const plan = result.plan || null;
-        const previewUrl = `${slugify(title)}.lumen.build`;
+        const previewUrl = `${makeSlug(title)}.lumen.build`;
         const reply = plan?.message
           ? plan.message
           : (isEdit
