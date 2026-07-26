@@ -5,6 +5,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export async function GET(request, { params }) {
   const slug = String(params.slug || '').toLowerCase();
