@@ -189,11 +189,6 @@ document.querySelectorAll('.tf').forEach(function(b){b.addEventListener('click',
   var f=b.getAttribute('data-f');
   document.querySelectorAll('.tcard').forEach(function(c){c.style.display=(f==='all'||c.getAttribute('data-cat')===f)?'':'none';});
 });});
-document.querySelectorAll('.tstart').forEach(function(a){a.addEventListener('click',function(e){
-  e.preventDefault();
-  try{localStorage.setItem('lumen_seed_prompt',a.getAttribute('data-p'));}catch(err){}
-  window.location.href=s?'/builder':'/start';
-});});
 })();</script>
 <div id="ckb" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:900;width:calc(100% - 36px);max-width:660px;border:1px solid rgba(255,255,255,0.13);border-radius:18px;background:rgba(12,17,25,0.94);backdrop-filter:blur(16px);box-shadow:0 30px 70px -30px rgba(0,0,0,.85);padding:20px 22px;font-family:'Inter',sans-serif">
 <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
