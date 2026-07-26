@@ -30,10 +30,9 @@
   --cyan-2:#8DEBFF;
   --cyan-deep:#2F9FC4;
   --glow:rgba(95,224,255,0.5);
-  --hero-accent:#4A6FA5;
-  --hero-accent-2:#7A9CC6;
-  --hero-deep:#1F3650;
-  --hero-glow:rgba(74,111,165,0.30);
+  --hero-accent:#5FE0FF;
+  --hero-accent-2:#8DEBFF;
+  --hero-glow:rgba(95,224,255,0.5);
   --radius:16px;
   --maxw:1180px;
   --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -97,9 +96,9 @@ header .btn-primary:hover{box-shadow:0 0 55px -8px var(--hero-glow)}
 .hero .textlink{color:var(--ink-2)}
 .hero .btn-primary{background:var(--hero-accent); box-shadow:0 0 40px -12px var(--hero-glow)}
 .hero .btn-primary:hover{box-shadow:0 0 55px -8px var(--hero-glow)}
-.hero .r-bloom{background:radial-gradient(circle, rgba(74,111,165,0.16), rgba(74,111,165,0.03) 42%, transparent 66%)}
-.hero .r-core{background:radial-gradient(circle, var(--hero-accent-2) 0%, var(--hero-accent) 42%, var(--hero-deep) 70%, transparent 82%);
-  box-shadow:0 0 80px 8px var(--hero-glow)}
+.hero .r-bloom{background:radial-gradient(circle, rgba(95,224,255,0.20), rgba(95,224,255,0.05) 42%, transparent 66%)}
+.hero .r-core{background:radial-gradient(circle, var(--hero-accent-2) 0%, var(--hero-accent) 40%, rgba(95,224,255,0.12) 68%, transparent 88%);
+  box-shadow:0 0 100px 24px var(--hero-glow); filter:blur(4px)}
 .hero .listen .dot{background:var(--grey-dim); box-shadow:none}
 
 /* ---------- reactor (signature) ---------- */
@@ -388,14 +387,14 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
         <div class="r-bloom"></div>
         <div class="r-core"></div>
         <svg class="r-svg" viewBox="0 0 440 440" fill="none">
-          <circle class="spin-ccw" cx="220" cy="220" r="205" stroke="rgba(74,111,165,0.14)" stroke-width="1" stroke-dasharray="2 10"/>
-          <circle class="spin-cw" cx="220" cy="220" r="176" stroke="rgba(74,111,165,0.22)" stroke-width="1.2"/>
-          <g class="spin-cw"><circle cx="220" cy="220" r="150" stroke="rgba(74,111,165,0.16)" stroke-width="1" stroke-dasharray="40 22"/></g>
-          <g class="spin-ccw"><circle cx="220" cy="220" r="124" stroke="rgba(74,111,165,0.30)" stroke-width="1.3" stroke-dasharray="1 15"/></g>
-          <circle class="spin-cw-fast" cx="220" cy="220" r="98" stroke="rgba(74,111,165,0.45)" stroke-width="1.4"/>
-          <g class="orbit"><circle cx="220" cy="42" r="3.5" fill="#7A9CC6"/></g>
-          <g class="orbit-2"><circle cx="220" cy="96" r="2.5" fill="#4A6FA5"/></g>
-          <g class="spin-cw"><circle cx="396" cy="220" r="2" fill="#4A6FA5" opacity="0.8"/></g>
+          <circle class="spin-ccw" cx="220" cy="220" r="205" stroke="rgba(95,224,255,0.14)" stroke-width="1" stroke-dasharray="2 10"/>
+          <circle class="spin-cw" cx="220" cy="220" r="176" stroke="rgba(95,224,255,0.22)" stroke-width="1.2"/>
+          <g class="spin-cw"><circle cx="220" cy="220" r="150" stroke="rgba(95,224,255,0.16)" stroke-width="1" stroke-dasharray="40 22"/></g>
+          <g class="spin-ccw"><circle cx="220" cy="220" r="124" stroke="rgba(95,224,255,0.30)" stroke-width="1.3" stroke-dasharray="1 15"/></g>
+          <circle class="spin-cw-fast" cx="220" cy="220" r="98" stroke="rgba(95,224,255,0.45)" stroke-width="1.4"/>
+          <g class="orbit"><circle cx="220" cy="42" r="3.5" fill="#8DEBFF"/></g>
+          <g class="orbit-2"><circle cx="220" cy="96" r="2.5" fill="#5FE0FF"/></g>
+          <g class="spin-cw"><circle cx="396" cy="220" r="2" fill="#5FE0FF" opacity="0.8"/></g>
         </svg>
         <div class="listen" id="listenLabel"><span class="dot"></span><span id="listenText">Tap to speak</span></div>
         <div class="voicehint" id="voiceHint"></div>
