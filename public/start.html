@@ -542,7 +542,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
           method: 'POST',
           body: JSON.stringify({ plan: plan, interval: interval })
         });
-        window.location.href = res2.url;
+        window.location.href = res2.updated ? '/builder?subscribed=1' : res2.url;
       } catch (e2) {
         busy(false);
         fail(e2.message || 'Could not start checkout.');

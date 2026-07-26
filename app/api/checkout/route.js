@@ -1,6 +1,8 @@
 // POST /api/checkout  { plan, interval }
 // Creates a Stripe Checkout Session with the 30-day trial attached.
 import { handler, requireUser, ApiError } from '@/lib/auth';
+import { getSubscription } from '@/lib/usage';
+import { ACTIVE_STATUSES } from '@/lib/plans';
 import Stripe from 'stripe';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +44,29 @@ export const POST = handler(async (request) => {
   if (!price) {
     const missing = ENV_NAMES[plan][interval === 'year' ? 'year' : 'month'];
     throw new ApiError(500, `Checkout is not configured for this plan yet — the environment variable ${missing} is missing in Vercel.`);
+  }
+
+  // Already on a plan? Update that subscription in place instead of
+  // starting a second one — Stripe prorates the difference automatically.
+  const existing = await getSubscription(admin, user.id);
+  if (existing && ACTIVE_STATUSES.includes(existing.status)) {
+    if (existing.plan === plan && existing.billing_interval === interval) {
+      throw new ApiError(400, "You're already on this plan.");
+    }
+
+    const stripeSub = await stripeClient().subscriptions.retrieve(existing.stripe_subscription_id);
+    const itemId = stripeSub.items.data[0]?.id;
+    if (!itemId) {
+      throw new ApiError(500, 'Could not find your subscription item to update.');
+    }
+
+    await stripeClient().subscriptions.update(existing.stripe_subscription_id, {
+      items: [{ id: itemId, price }],
+      proration_behavior: 'create_prorations',
+      metadata: { supabase_user_id: user.id, plan },
+    });
+
+    return Response.json({ ok: true, updated: true });
   }
 
   // Reuse the Stripe customer if we already made one.
