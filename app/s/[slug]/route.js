@@ -30,8 +30,8 @@ export async function GET(request, { params }) {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      // Short cache: edits should appear quickly, but repeat visits stay fast.
-      'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300',
+      // No caching: every request must reflect current projects.current_code.
+      'Cache-Control': 'public, max-age=0, s-maxage=0, must-revalidate',
       'X-Content-Type-Options': 'nosniff',
     },
   });
