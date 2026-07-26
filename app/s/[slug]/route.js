@@ -10,13 +10,17 @@ export async function GET(request, { params }) {
   const slug = String(params.slug || '').toLowerCase();
   const admin = supabaseAdmin();
 
+  // TEMPORARY DEBUG: remove once the stale-content investigation is done.
+  let supabaseHost = '';
+  try { supabaseHost = new URL(process.env.SUPABASE_URL).hostname; } catch (e) {}
+
   const { data: site } = await admin
     .from('sites')
     .select('project_id, status')
     .eq('subdomain', slug)
     .maybeSingle();
 
-  if (!site || site.status !== 'live') return notFound();
+  if (!site || site.status !== 'live') return notFound({ supabaseHost });
 
   const { data: project } = await admin
     .from('projects')
@@ -24,20 +28,28 @@ export async function GET(request, { params }) {
     .eq('id', site.project_id)
     .maybeSingle();
 
-  if (!project?.current_code) return notFound();
+  if (!project?.current_code) return notFound({ supabaseHost, projectId: site.project_id });
 
-  return new Response(project.current_code, {
+  const code = project.current_code;
+
+  return new Response(code, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       // No caching: every request must reflect current projects.current_code.
       'Cache-Control': 'public, max-age=0, s-maxage=0, must-revalidate',
       'X-Content-Type-Options': 'nosniff',
+      // TEMPORARY DEBUG headers: remove once the stale-content investigation is done.
+      'X-Dbg-Project-Id': site.project_id,
+      'X-Dbg-Code-Length': String(code.length),
+      'X-Dbg-Has-2024': String(code.includes('© 2024')),
+      'X-Dbg-Has-2026': String(code.includes('© 2026')),
+      'X-Dbg-Supabase-Host': supabaseHost,
     },
   });
 }
 
-function notFound() {
+function notFound({ supabaseHost = '', projectId = '' } = {}) {
   return new Response(
     `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -49,6 +61,14 @@ a{color:#5FE0FF;text-decoration:none}</style></head>
 <body><div><h1>This site isn't here</h1>
 <p>It may have been unpublished or moved.</p>
 <p><a href="/">Build your own with Lumen</a></p></div></body></html>`,
-    { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    {
+      status: 404,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        // TEMPORARY DEBUG headers: remove once the stale-content investigation is done.
+        'X-Dbg-Supabase-Host': supabaseHost,
+        'X-Dbg-Project-Id': projectId,
+      },
+    }
   );
 }
