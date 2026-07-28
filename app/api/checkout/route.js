@@ -19,6 +19,13 @@ function stripeClient() {
   return _stripe;
 }
 
+// Stripe returns this when an ID doesn't exist in the current mode — e.g. a
+// stripe_customer_id created under test keys, looked up after switching to
+// live keys.
+function isMissingResource(err) {
+  return err?.code === 'resource_missing';
+}
+
 const PRICE_IDS = {
   standard: { month: process.env.STRIPE_PRICE_STANDARD_MONTHLY, year: process.env.STRIPE_PRICE_STANDARD_ANNUAL },
   pro:      { month: process.env.STRIPE_PRICE_PRO_MONTHLY,      year: process.env.STRIPE_PRICE_PRO_ANNUAL },
@@ -71,35 +78,61 @@ export const POST = handler(async (request) => {
     return Response.json({ ok: true, updated: true });
   }
 
-  // Reuse the Stripe customer if we already made one.
-  let customerId = profile.stripe_customer_id;
-  if (!customerId) {
+  // Reuse the Stripe customer if we already made one; if it doesn't exist
+  // in the current mode (e.g. a test-mode ID after switching to live keys),
+  // make a fresh one and save it.
+  async function freshCustomer() {
     const customer = await stripeClient().customers.create({
       email: user.email,
       metadata: { supabase_user_id: user.id },
     });
-    customerId = customer.id;
-    await admin.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id);
+    await admin.from('profiles').update({ stripe_customer_id: customer.id }).eq('id', user.id);
+    return customer.id;
+  }
+
+  let customerId = profile.stripe_customer_id;
+  if (!customerId) {
+    customerId = await freshCustomer();
   }
 
   // Trial-once: no second free trial for a customer who has ever had a
-  // subscription before, active or not.
-  const priorSubs = await stripeClient().subscriptions.list({ customer: customerId, status: 'all', limit: 1 });
-  const eligibleForTrial = priorSubs.data.length === 0;
+  // subscription before, active or not. A missing customer counts as no
+  // prior subscriptions.
+  async function checkTrialEligibility(custId) {
+    try {
+      const priorSubs = await stripeClient().subscriptions.list({ customer: custId, status: 'all', limit: 1 });
+      return priorSubs.data.length === 0;
+    } catch (err) {
+      if (isMissingResource(err)) return true;
+      throw err;
+    }
+  }
 
-  const session = await stripeClient().checkout.sessions.create({
-    mode: 'subscription',
-    customer: customerId,
-    line_items: [{ price, quantity: 1 }],
-    subscription_data: {
-      ...(eligibleForTrial ? { trial_period_days: 7 } : {}),
+  async function createSession(custId, eligibleForTrial) {
+    return stripeClient().checkout.sessions.create({
+      mode: 'subscription',
+      customer: custId,
+      line_items: [{ price, quantity: 1 }],
+      subscription_data: {
+        ...(eligibleForTrial ? { trial_period_days: 7 } : {}),
+        metadata: { supabase_user_id: user.id, plan },
+      },
       metadata: { supabase_user_id: user.id, plan },
-    },
-    metadata: { supabase_user_id: user.id, plan },
-    allow_promotion_codes: true,
-    success_url: `${process.env.APP_URL}/builder?subscribed=1`,
-    cancel_url: `${process.env.APP_URL}/#pricing`,
-  });
+      allow_promotion_codes: true,
+      success_url: `${process.env.APP_URL}/builder?subscribed=1`,
+      cancel_url: `${process.env.APP_URL}/#pricing`,
+    });
+  }
+
+  let session;
+  try {
+    session = await createSession(customerId, await checkTrialEligibility(customerId));
+  } catch (err) {
+    if (!isMissingResource(err)) throw err;
+    // Stale customer ID — recreate and retry once.
+    customerId = await freshCustomer();
+    session = await createSession(customerId, await checkTrialEligibility(customerId));
+  }
 
   return Response.json({ url: session.url });
 });
