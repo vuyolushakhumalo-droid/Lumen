@@ -1,5 +1,7 @@
 // POST /api/checkout  { plan, interval }
-// Creates a Stripe Checkout Session with the 30-day trial attached.
+// Creates a Stripe Checkout Session with a 7-day trial attached — new
+// customers only. Anyone with a prior Stripe subscription (of any status)
+// skips the trial.
 import { handler, requireUser, ApiError } from '@/lib/auth';
 import { getSubscription } from '@/lib/usage';
 import { ACTIVE_STATUSES } from '@/lib/plans';
@@ -80,12 +82,17 @@ export const POST = handler(async (request) => {
     await admin.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id);
   }
 
+  // Trial-once: no second free trial for a customer who has ever had a
+  // subscription before, active or not.
+  const priorSubs = await stripeClient().subscriptions.list({ customer: customerId, status: 'all', limit: 1 });
+  const eligibleForTrial = priorSubs.data.length === 0;
+
   const session = await stripeClient().checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price, quantity: 1 }],
     subscription_data: {
-      trial_period_days: 30,
+      ...(eligibleForTrial ? { trial_period_days: 7 } : {}),
       metadata: { supabase_user_id: user.id, plan },
     },
     metadata: { supabase_user_id: user.id, plan },
