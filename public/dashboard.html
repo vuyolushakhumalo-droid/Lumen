@@ -122,6 +122,10 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .tu:hover{border-color:var(--cyan);background:rgba(95,224,255,.05)}
 .tu .n{font-size:20px;font-weight:600;color:var(--ink)}.tu .l{font-size:12px;color:var(--grey-dim);margin-top:2px}.tu .p{font-size:13.5px;color:var(--cyan);margin-top:8px}
 @media(max-width:760px){.grid2{grid-template-columns:1fr}.topups{grid-template-columns:1fr}}
+.errbox{display:none;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.3);color:#FF9B9B;font-size:14px;padding:12px 15px;border-radius:12px;margin-bottom:18px;line-height:1.5}
+.errbox.show{display:block}
+.okbox{display:none;background:rgba(95,224,255,.07);border:1px solid rgba(95,224,255,.25);color:var(--cyan);font-size:14px;padding:12px 15px;border-radius:12px;margin-bottom:18px;line-height:1.5}
+.okbox.show{display:block}
 
 .burger{display:none;width:38px;height:38px;border-radius:50%;border:none;background:transparent;color:var(--ink);align-items:center;justify-content:center;cursor:pointer;transition:.25s}
 .burger:hover{background:rgba(255,255,255,.06)}
@@ -251,6 +255,26 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
   <p class="grey" style="font-size:13px;margin-top:16px;margin-bottom:0">Top-ups are charged at cost plus card fees. No markup.</p>
 </div>
 
+<div class="mini reveal" id="pwCard" style="margin-top:22px">
+  <h3>Password</h3>
+  <p>Change the password you use to sign in.</p>
+  <div class="errbox" id="pwErr"></div>
+  <div class="okbox" id="pwOk"></div>
+  <div class="field">
+    <label for="pwCurrent">Current password</label>
+    <input type="password" id="pwCurrent" placeholder="Your current password" autocomplete="current-password">
+  </div>
+  <div class="field">
+    <label for="pwNew">New password</label>
+    <input type="password" id="pwNew" placeholder="At least 6 characters" autocomplete="new-password">
+  </div>
+  <div class="field" style="margin-bottom:8px">
+    <label for="pwConfirm">Confirm new password</label>
+    <input type="password" id="pwConfirm" placeholder="Type it again" autocomplete="new-password">
+  </div>
+  <button class="btn btn-primary" id="pwSave" type="button">Change password</button>
+</div>
+
 </div></div></section></main>
 <div class="confirm" id="confirmWrap">
   <div class="confirm-box">
@@ -368,6 +392,45 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
 (function(){
   var b=document.getElementById('signout');
   if(b) b.addEventListener('click', function(){ Lumen.signOut(); });
+})();
+</script>
+<script>
+(function(){
+  var btn=document.getElementById('pwSave');
+  if(!btn) return;
+  var errEl=document.getElementById('pwErr'), okEl=document.getElementById('pwOk');
+  function fail(m){ errEl.textContent=m; errEl.classList.add('show'); okEl.classList.remove('show'); }
+  function note(m){ okEl.textContent=m; okEl.classList.add('show'); errEl.classList.remove('show'); }
+
+  btn.addEventListener('click', async function(){
+    var current=document.getElementById('pwCurrent').value;
+    var a=document.getElementById('pwNew').value, b=document.getElementById('pwConfirm').value;
+    if(!current){ fail('Enter your current password.'); return; }
+    if(a.length<6){ fail('New password needs to be at least 6 characters.'); return; }
+    if(a!==b){ fail('Those two passwords do not match.'); return; }
+
+    btn.disabled=true; btn.textContent='Saving…';
+    try{
+      await Lumen.init();
+      var user = await Lumen.user();
+      if(!user || !user.email) throw new Error('Could not confirm who you are — try signing in again.');
+
+      var verify = await Lumen.supabase.auth.signInWithPassword({ email: user.email, password: current });
+      if(verify.error) throw new Error('Current password is incorrect.');
+
+      var out = await Lumen.supabase.auth.updateUser({ password: a });
+      if(out.error) throw out.error;
+
+      note('Password updated.');
+      document.getElementById('pwCurrent').value='';
+      document.getElementById('pwNew').value='';
+      document.getElementById('pwConfirm').value='';
+    }catch(e){
+      fail(e.message || 'Could not change your password.');
+    }finally{
+      btn.disabled=false; btn.textContent='Change password';
+    }
+  });
 })();
 </script>
 <script src="/ray.js"></script>
