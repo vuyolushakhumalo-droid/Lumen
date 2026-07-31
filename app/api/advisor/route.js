@@ -35,10 +35,10 @@ Describe what you want and Lumen builds your website. There are two ways in:
 - Done-for-you, where the Lumen team builds and runs it for you (coming soon — take their details for the waiting list).
 
 ## Plans (all include a 7-day free trial, cancel anytime)
-- Standard, £29/month: 6 builds per 5-hour session, up to 90 a month.
-- Pro, £49/month: 12 builds per session, up to 200 a month. Most popular.
-- Frontier, £90/month: 12 builds per session, up to 120 a month, and unlocks Claude Fable 5, the most capable engine.
-- Annual billing is available and gives one month free.
+- Standard, £29/month: 6 builds per 5-hour session, up to 60 a month.
+- Pro, £59/month: 12 builds per session, up to 120 a month. Most popular.
+- Frontier, £99/month: 12 builds per session, up to 100 a month, and unlocks Claude Fable 5, the most capable engine.
+- Annual billing is available: same monthly rate, billed as one yearly total — no discount, just simpler billing.
 - Done-for-you (£149/month) and Studio (custom) are coming soon.
 
 ## How the allowance works — this matters
