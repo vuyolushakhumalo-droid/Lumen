@@ -248,9 +248,9 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
   <h3>Need more today?</h3>
   <p>Don't want to wait for the refresh? Add builds at cost — they never expire, and roll over.</p>
   <div class="topups">
-    <div class="tu"><div class="n">25</div><div class="l">extra builds</div><div class="p">£5</div></div>
-    <div class="tu"><div class="n">60</div><div class="l">extra builds</div><div class="p">£10</div></div>
-    <div class="tu"><div class="n">150</div><div class="l">extra builds</div><div class="p">£20</div></div>
+    <div class="tu" data-pack="25"><div class="n">25</div><div class="l">extra builds</div><div class="p">£5</div></div>
+    <div class="tu" data-pack="60"><div class="n">60</div><div class="l">extra builds</div><div class="p">£10</div></div>
+    <div class="tu" data-pack="150"><div class="n">150</div><div class="l">extra builds</div><div class="p">£20</div></div>
   </div>
   <p class="grey" style="font-size:13px;margin-top:16px;margin-bottom:0">Top-ups are charged at cost plus card fees. No markup.</p>
 </div>
@@ -364,8 +364,21 @@ document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
 
     // Top-up packs
     document.querySelectorAll('.tu').forEach(function(t){
-      t.addEventListener('click', function(){
-        alert('Top-ups are coming soon — they need the Stripe products set up first.');
+      t.addEventListener('click', async function(){
+        if(t.dataset.busy) return;
+        t.dataset.busy='1';
+        t.style.opacity='0.6';
+        try{
+          var out = await Lumen.api('/api/checkout/topup', {
+            method:'POST',
+            body: JSON.stringify({ pack: t.dataset.pack })
+          });
+          window.location.href = out.url;
+        }catch(e){
+          t.style.opacity='';
+          delete t.dataset.busy;
+          alert(e.message || 'Could not start checkout.');
+        }
       });
     });
   })();
