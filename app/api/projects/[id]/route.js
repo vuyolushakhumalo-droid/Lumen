@@ -3,6 +3,7 @@
 import { handler, requireUser, ApiError } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 async function owned(admin, userId, id) {
   const { data } = await admin

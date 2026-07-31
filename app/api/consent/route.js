@@ -8,6 +8,7 @@
 import { handler, requireUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export const POST = handler(async (request) => {
   const { profile, admin } = await requireUser(request);

@@ -8,6 +8,7 @@ import { getUsageSnapshot } from '@/lib/usage';
 import { findFreeSlug, validateSlug, makeSlug, publicUrl } from '@/lib/publish';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 async function ownedProject(admin, userId, projectId) {
   const { data } = await admin

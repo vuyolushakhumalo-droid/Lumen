@@ -3,6 +3,7 @@
 import { handler, requireAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 const MONTHLY_PRICE = { standard: 29, pro: 49, frontier: 90, done_for_you: 149, studio: 0 };
 

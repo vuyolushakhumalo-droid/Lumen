@@ -8,6 +8,7 @@ import { handler, requireUser, ApiError } from '@/lib/auth';
 import { slugify } from '@/lib/render';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export const GET = handler(async (request) => {
   const { profile, admin } = await requireUser(request);

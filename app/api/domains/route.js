@@ -10,6 +10,7 @@ import { handler, requireUser, ApiError } from '@/lib/auth';
 import { getUsageSnapshot } from '@/lib/usage';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 function cleanDomain(input) {
   let d = String(input || '').trim().toLowerCase();

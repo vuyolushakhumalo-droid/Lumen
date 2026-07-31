@@ -14,6 +14,7 @@ import { rateLimit } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 export const maxDuration = 300;
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
@@ -22,7 +23,10 @@ const CLAUDE_MAX_BASE64_BYTES = 5 * 1024 * 1024; // Claude's hard limit on the b
 const MAX_IMAGE_BYTES = CLAUDE_MAX_BASE64_BYTES * 3 / 4; // ~3.75MB of original file bytes, before base64 inflates it ~33%
 
 function fail(status, message, extra = {}) {
-  return Response.json({ error: message, ...extra }, { status });
+  return Response.json({ error: message, ...extra }, {
+    status,
+    headers: { 'Cache-Control': 'private, no-store', 'Vary': 'Authorization' },
+  });
 }
 
 // Validates the optional `images` field. Returns a clean array of
@@ -195,7 +199,8 @@ export async function POST(request) {
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
+      'Cache-Control': 'private, no-store, no-transform',
+      'Vary': 'Authorization',
       'X-Accel-Buffering': 'no',
     },
   });

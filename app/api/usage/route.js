@@ -3,6 +3,7 @@ import { handler, requireUser } from '@/lib/auth';
 import { getUsageSnapshot } from '@/lib/usage';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export const GET = handler(async (request) => {
   const { profile, admin } = await requireUser(request);

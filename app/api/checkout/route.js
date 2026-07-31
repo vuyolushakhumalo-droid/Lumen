@@ -8,6 +8,7 @@ import { ACTIVE_STATUSES } from '@/lib/plans';
 import Stripe from 'stripe';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 // Created per-request, not at build time (env vars don't exist during build).
 let _stripe = null;

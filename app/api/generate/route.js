@@ -13,6 +13,7 @@ import { rateLimit } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 export const maxDuration = 300;   // full sites take longer than a few seconds
 
 export const POST = handler(async (request) => {
