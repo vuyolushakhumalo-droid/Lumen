@@ -161,7 +161,7 @@ export async function POST(request) {
 
           await logUsageEvent(admin, {
             userId: profile.id, projectId: project.id, model: routed.model,
-            usage: result.usage, kind: 'edit',
+            usage: result.usage, kind: 'edit', editMode: result.editMode,
           });
 
           await recordBuild(admin, profile, snapshot);
@@ -218,7 +218,7 @@ export async function POST(request) {
 
         await logUsageEvent(admin, {
           userId: profile.id, projectId: project.id, model: routed.model,
-          usage: result.usage, kind: isEdit ? 'edit' : 'build',
+          usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
         });
 
         const shouldRename =

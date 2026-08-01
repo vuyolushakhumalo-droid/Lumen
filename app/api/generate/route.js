@@ -97,7 +97,7 @@ export const POST = handler(async (request) => {
 
     await logUsageEvent(admin, {
       userId: profile.id, projectId: project.id, model: routed.model,
-      usage: result.usage, kind: 'edit',
+      usage: result.usage, kind: 'edit', editMode: result.editMode,
     });
 
     const charged = await recordBuild(admin, profile, snapshot);
@@ -159,7 +159,7 @@ export const POST = handler(async (request) => {
 
   await logUsageEvent(admin, {
     userId: profile.id, projectId: project.id, model: routed.model,
-    usage: result.usage, kind: isEdit ? 'edit' : 'build',
+    usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
   });
 
   const shouldRename =
