@@ -465,7 +465,7 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
     return Math.max(0, Math.ceil((purgeAt - Date.now())/86400000));
   }
 
-  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   function liveUrl(p){
     if(p.customDomain) return 'https://' + p.customDomain;

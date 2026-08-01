@@ -442,7 +442,7 @@
   var projects = [], activeId = null, mode = 'chat', usage = null;
   var chats = {};   // in-memory conversation per project
 
-  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function active(){ return projects.filter(function(p){return p.id===activeId;})[0]; }
 
   // ---------- elements ----------
