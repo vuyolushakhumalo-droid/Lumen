@@ -7,7 +7,7 @@
 // final metadata line beginning with <!--LUMEN-META.
 // ============================================================
 import { requireUser, ApiError } from '@/lib/auth';
-import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent } from '@/lib/usage';
+import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml } from '@/lib/usage';
 import { streamSite } from '@/lib/anthropic';
 import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
@@ -67,7 +67,7 @@ export async function POST(request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { projectId, brief, model = 'auto', images } = body;
+  const { projectId, brief, model = 'auto', images, clientExpectsEdit } = body;
 
   if (!brief || typeof brief !== 'string' || brief.trim().length < 3) {
     return fail(400, 'Tell us what you want to build.');
@@ -103,7 +103,30 @@ export async function POST(request) {
     project = data;
   }
 
-  const isEdit = !!project.current_code;
+  // project.current_code is the normal source for previousHtml; if it's
+  // empty but versions exist, that's a stale read, not a genuinely new
+  // project -- resolvePreviousHtml recovers the last known content so
+  // this can't silently become an unrelated new build that overwrites
+  // real prior work.
+  const previousHtml = await resolvePreviousHtml(admin, project);
+
+  // The client believes it has a site loaded for this project, but the
+  // server has nothing -- no current_code, no version history either.
+  // Guessing here (either silently building fresh, or silently editing
+  // nothing) is exactly what caused the original bug. Refuse instead
+  // and let the customer decide. No model call, no write, no charge.
+  if (!previousHtml && clientExpectsEdit) {
+    return fail(409, 'no_saved_site', {
+      message: "This project has no saved site on the server, so it can't be edited. The site you were viewing was never saved. Your next message will start a new build from scratch.",
+    });
+  }
+
+  // current_code was empty but a prior version existed -- resolvePreviousHtml
+  // recovered it. That's a data-integrity gap worth surfacing to the
+  // customer, not just a console.warn only we can see.
+  const recoveredFromVersion = !project.current_code && !!previousHtml;
+
+  const isEdit = !!previousHtml;
   const routed = chooseModel({ brief, isEdit, requested: model, allowedModels: snapshot.allowedModels });
 
   const encoder = new TextEncoder();
@@ -125,7 +148,7 @@ export async function POST(request) {
         result = await streamSite({
           brief,
           modelKey: routed.model,
-          previousHtml: project.current_code || null,
+          previousHtml,
           images: cleanImages,
           onChunk: (chunk) => send(chunk),
           signal: request.signal,
@@ -152,7 +175,8 @@ export async function POST(request) {
         // back rather than auto-applied -- current_code stays untouched,
         // and the client must explicitly confirm via /apply-replacement.
         if (result.needsConfirmation) {
-          const pendingReply = "This edit came back looking like a full replacement rather than a small change, so I've held it back — review it and confirm if you want to apply it, or keep your current site.";
+          const pendingReply = "This edit came back looking like a full replacement rather than a small change, so I've held it back — review it and confirm if you want to apply it, or keep your current site."
+            + (recoveredFromVersion ? " One more thing: your saved site was out of sync, so I recovered your last saved version and worked from that instead." : '');
 
           await admin.from('messages').insert([
             { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
@@ -191,6 +215,9 @@ export async function POST(request) {
               : `Built ${title} — have a look on the right.`);
         if (result.imagesQuotaExhausted) {
           reply += " You've used this month's photo allowance, so any new images use a placeholder style instead — more unlocks next month.";
+        }
+        if (recoveredFromVersion) {
+          reply += " One thing to flag: your saved site was out of sync, so I recovered your last saved version and worked from that instead.";
         }
 
         // A committed fallback replacement still gets an explicit undo

@@ -6,7 +6,7 @@
 // A failed generation never costs the customer a build.
 // ============================================================
 import { handler, requireUser, ApiError } from '@/lib/auth';
-import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent } from '@/lib/usage';
+import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml } from '@/lib/usage';
 import { generateSite } from '@/lib/anthropic';
 import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
@@ -23,7 +23,7 @@ export const POST = handler(async (request) => {
   rateLimit(`gen:${profile.id}`, { max: 6, windowMs: 60_000 });
 
   const body = await request.json().catch(() => ({}));
-  const { projectId, brief, model = 'auto' } = body;
+  const { projectId, brief, model = 'auto', clientExpectsEdit } = body;
 
   if (!brief || typeof brief !== 'string' || brief.trim().length < 3) {
     throw new ApiError(400, 'Tell us what you want to build.');
@@ -53,8 +53,30 @@ export const POST = handler(async (request) => {
     project = data;
   }
 
-  // 2b. Pick the cheapest model that will do this job well.
-  const isEdit = !!project.current_code;
+  // 2b. What is this request working from? project.current_code is the
+  //     normal source; if it's empty but versions exist, that's a
+  //     stale read, not a genuinely new project -- resolvePreviousHtml
+  //     recovers the last known content so this can't silently become
+  //     an unrelated new build that overwrites real prior work.
+  const previousHtml = await resolvePreviousHtml(admin, project);
+
+  // The client believes it has a site loaded for this project, but the
+  // server has nothing -- no current_code, no version history either.
+  // Guessing here (either silently building fresh, or silently editing
+  // nothing) is exactly what caused the original bug. Refuse instead
+  // and let the customer decide. No model call, no write, no charge.
+  if (!previousHtml && clientExpectsEdit) {
+    throw new ApiError(409, 'no_saved_site', {
+      message: "This project has no saved site on the server, so it can't be edited. The site you were viewing was never saved. Your next message will start a new build from scratch.",
+    });
+  }
+
+  // current_code was empty but a prior version existed -- resolvePreviousHtml
+  // recovered it. That's a data-integrity gap worth surfacing to the
+  // customer, not just a console.warn only we can see.
+  const recoveredFromVersion = !project.current_code && !!previousHtml;
+
+  const isEdit = !!previousHtml;
   const routed = chooseModel({
     brief,
     isEdit,
@@ -63,13 +85,12 @@ export const POST = handler(async (request) => {
   });
 
   // 3. Generate. If this throws, nothing is charged.
-  //    An existing site means this is an edit, so send the current HTML along.
   let result;
   try {
     result = await generateSite({
       brief,
       modelKey: routed.model,
-      previousHtml: project.current_code || null,
+      previousHtml,
       projectId: project.id,
       userId: profile.id,
       plan: snapshot.plan,
@@ -88,7 +109,8 @@ export const POST = handler(async (request) => {
   // rather than auto-applied -- current_code is left untouched, and
   // the caller must explicitly confirm via /apply-replacement.
   if (result.needsConfirmation) {
-    const pendingReply = "This edit came back looking like a full replacement rather than a small change, so I've held it back — review it and confirm if you want to apply it, or keep your current site.";
+    const pendingReply = "This edit came back looking like a full replacement rather than a small change, so I've held it back — review it and confirm if you want to apply it, or keep your current site."
+      + (recoveredFromVersion ? " One more thing: your saved site was out of sync, so I recovered your last saved version and worked from that instead." : '');
 
     await admin.from('messages').insert([
       { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
@@ -127,6 +149,9 @@ export const POST = handler(async (request) => {
         : `Built ${title} — have a look on the right.`);
   const imageNote = result.imagesQuotaExhausted
     ? " You've used this month's photo allowance, so any new images use a placeholder style instead — more unlocks next month."
+    : '';
+  const recoveryNote = recoveredFromVersion
+    ? " One thing to flag: your saved site was out of sync, so I recovered your last saved version and worked from that instead."
     : '';
 
   // A committed fallback replacement (one that passed the similarity
@@ -186,7 +211,7 @@ export const POST = handler(async (request) => {
     model: routed.model,
     modelReason: routed.reason,
     plan,
-    reply: reply + imageNote + undoNote,
+    reply: reply + imageNote + undoNote + recoveryNote,
     undoToVersionId,
     truncated: result.stopReason === 'max_tokens',
     chargedFrom: charged.source,

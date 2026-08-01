@@ -846,7 +846,7 @@
       var res = await fetch('/api/generate/stream', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+session.access_token },
-        body: JSON.stringify({ projectId:p.id, brief: full, model: modelKey, images: images }),
+        body: JSON.stringify({ projectId:p.id, brief: full, model: modelKey, images: images, clientExpectsEdit: editing }),
         signal: activeController.signal
       });
 
@@ -974,6 +974,13 @@
         setTimeout(function(){ window.location.href='/#pricing'; }, 2200);
       } else if(e.status === 403){
         chats[activeId].push({ role:'ai', text:"That model isn't included in your plan. Pick another, or upgrade to Frontier for Claude Fable 5." });
+      } else if(e.status === 409 && e.data && e.data.error === 'no_saved_site'){
+        // The server just told us, authoritatively, that nothing is
+        // actually saved for this project -- correct our local belief
+        // to match, so the next message is classified as a genuine new
+        // build instead of hitting this same refusal again.
+        p.current_code = null;
+        chats[activeId].push({ role:'ai', text: e.data.message || "This project has no saved site on the server, so it can't be edited. The site you were viewing was never saved. Your next message will start a new build from scratch." });
       } else {
         chats[activeId].push({ role:'ai', text: (e.message || 'The build failed.') + " You haven't been charged a build — try again." });
       }
