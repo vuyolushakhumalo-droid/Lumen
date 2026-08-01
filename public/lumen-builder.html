@@ -340,10 +340,9 @@
             <div class="modelsel" title="Model">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2 4 4 .5-3 3 .8 4.3L12 17l-3.8 1.8L9 14l-3-3 4-.5z"/></svg>
               <select id="model">
-                <option value="auto">Auto (recommended)</option>
-                <option>Claude Opus 4.8</option>
-                <option selected>Claude Sonnet 5</option>
-                <option>Claude Haiku 4.5</option>
+                <option value="auto" selected>Auto (recommended)</option>
+                <option>Claude Opus 5</option>
+                <option>Claude Fable 5</option>
               </select>
             </div>
             <span class="spacer"></span>
@@ -436,9 +435,7 @@
 
   var MODEL_KEYS = {
     'Auto (recommended)': 'auto',
-    'Claude Opus 4.8': 'opus',
-    'Claude Sonnet 5': 'sonnet',
-    'Claude Haiku 4.5': 'haiku',
+    'Claude Opus 5': 'opus',
     'Claude Fable 5': 'fable'
   };
 
@@ -470,7 +467,7 @@
       // Only offer models the plan allows
       var sel=document.getElementById('model');
       if(sel && usage.allowedModels && usage.allowedModels.length){
-        var labels={opus:'Claude Opus 4.8', sonnet:'Claude Sonnet 5', haiku:'Claude Haiku 4.5', fable:'Claude Fable 5'};
+        var labels={opus:'Claude Opus 5', fable:'Claude Fable 5'};
         var current=sel.value;
         sel.innerHTML='';
         var autoOpt=document.createElement('option'); autoOpt.text='Auto (recommended)'; sel.appendChild(autoOpt);
