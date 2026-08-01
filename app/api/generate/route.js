@@ -70,6 +70,9 @@ export const POST = handler(async (request) => {
       brief,
       modelKey: routed.model,
       previousHtml: project.current_code || null,
+      projectId: project.id,
+      userId: profile.id,
+      plan: snapshot.plan,
     });
   } catch (err) {
     console.error('[generate] model call failed', err);
@@ -87,6 +90,9 @@ export const POST = handler(async (request) => {
     : (isEdit
         ? `Updated ${title}.${plan?.changed ? ' ' + plan.changed : ''}`
         : `Built ${title} — have a look on the right.`);
+  const imageNote = result.imagesQuotaExhausted
+    ? " You've used this month's photo allowance, so any new images use a placeholder style instead — more unlocks next month."
+    : '';
 
   await admin.from('messages').insert([
     { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
@@ -126,7 +132,7 @@ export const POST = handler(async (request) => {
     model: routed.model,
     modelReason: routed.reason,
     plan,
-    reply,
+    reply: reply + imageNote,
     truncated: result.stopReason === 'max_tokens',
     chargedFrom: charged.source,
     buildsLeft: after.buildsLeft,

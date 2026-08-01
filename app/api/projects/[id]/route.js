@@ -1,6 +1,7 @@
 // PATCH  /api/projects/:id        — rename, or ?fork=true to duplicate
 // DELETE /api/projects/:id        — remove a project
 import { handler, requireUser, ApiError } from '@/lib/auth';
+import { deleteProjectImages } from '@/lib/images';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -54,6 +55,7 @@ export const DELETE = handler(async (request, { params }) => {
     if (!project.deleted_at) {
       throw new ApiError(400, 'Move the project to Trash before deleting it permanently.');
     }
+    await deleteProjectImages(params.id);
     await admin.from('projects').delete().eq('id', params.id);
     return Response.json({ ok: true, permanent: true });
   }

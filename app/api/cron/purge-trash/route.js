@@ -4,6 +4,7 @@
 // token that must match CRON_SECRET. Mirrors the webhook route's
 // pattern of skipping requireUser() for service-to-service calls.
 import { supabaseAdmin } from '@/lib/supabase';
+import { deleteProjectImages } from '@/lib/images';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,8 @@ export async function GET(request) {
 
   const ids = (expired || []).map((p) => p.id);
   if (!ids.length) return Response.json({ purged: 0 });
+
+  await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {

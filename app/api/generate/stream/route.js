@@ -129,6 +129,9 @@ export async function POST(request) {
           images: cleanImages,
           onChunk: (chunk) => send(chunk),
           signal: request.signal,
+          projectId: project.id,
+          userId: profile.id,
+          plan: snapshot.plan,
         });
       } catch (err) {
         console.error('[generate/stream] failed', err);
@@ -144,11 +147,14 @@ export async function POST(request) {
         const title = result.title || 'New site';
         const plan = result.plan || null;
         const previewUrl = `${makeSlug(title)}.lumen.build`;
-        const reply = plan?.message
+        let reply = plan?.message
           ? plan.message
           : (isEdit
               ? `Updated ${title}.${plan?.changed ? ' ' + plan.changed : ''}`
               : `Built ${title} — have a look on the right.`);
+        if (result.imagesQuotaExhausted) {
+          reply += " You've used this month's photo allowance, so any new images use a placeholder style instead — more unlocks next month.";
+        }
 
         await admin.from('messages').insert([
           { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
@@ -177,6 +183,7 @@ export async function POST(request) {
           projectId: project.id,
           name: shouldRename ? title : project.name,
           title,
+          code: result.html,
           plan,
           reply,
           previewUrl,

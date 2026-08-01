@@ -791,7 +791,7 @@
 
       if(meta && meta.error) throw new Error(meta.error);
 
-      p.current_code = buffer;
+      p.current_code = (meta && meta.code) ? meta.code : buffer;
       if(meta){
         p.preview_url = meta.previewUrl || p.preview_url;
         if(meta.name) p.name = meta.name;
