@@ -244,6 +244,7 @@
   .buildbar{display:flex;align-items:center;gap:11px;font-size:13.5px;color:var(--grey)}
   .buildbar .bmodel{font-size:11.5px;color:var(--cyan);background:rgba(95,224,255,.08);padding:3px 9px;border-radius:980px}
   .buildbar .bcount{font-size:11.5px;color:var(--grey-dim);font-family:var(--mono)}
+  .planpreview{margin-top:6px;font-size:13px;color:var(--grey);line-height:1.5;display:none}
   .stopbtn{margin-left:6px;background:rgba(255,255,255,.06);border:1px solid var(--line-2);color:var(--ink);
     border-radius:980px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:var(--font)}
   .stopbtn:hover{background:rgba(255,255,255,.12)}
@@ -594,7 +595,7 @@
         + (m.model ? '<span class="bmodel" id="buildModel">'+esc(m.model)+'</span>' : '<span class="bmodel" id="buildModel" style="display:none"></span>')
         + '<span class="bcount" id="buildCount"></span>'
         + '<button class="stopbtn" id="stopBuild" type="button">Stop</button>'
-        + '</div></div></div>';
+        + '</div><div class="planpreview" id="planPreview"></div></div></div>';
       var planHtml = '';
       if(m.plan){
         var p = m.plan, rows = '';
@@ -798,6 +799,33 @@
     var buffer = '';
     var meta = null;
     var lastPaint = 0;
+    var planPreviewShown = false;
+    var previewController = null;
+    var previewTimer = null;
+
+    // Edits: if the main request is still going after ~2s, fire a fast,
+    // cheap teaser instead of leaving the chat empty. Builds don't need
+    // this -- their own LUMEN-PLAN comment streams in early enough on
+    // its own (see the chunk loop below).
+    if(editing){
+      previewTimer = setTimeout(async function(){
+        previewTimer = null;
+        previewController = new AbortController();
+        try{
+          var session2 = await Lumen.session();
+          if(!session2) return;
+          var pres = await fetch('/api/generate/preview', {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+session2.access_token },
+            body: JSON.stringify({ projectId:p.id, brief: full }),
+            signal: previewController.signal
+          });
+          if(!pres.ok) return;
+          var pdata = await pres.json().catch(function(){ return {}; });
+          if(pdata && pdata.text) previewLine(pdata.text);
+        }catch(e){ /* aborted or failed -- the real result is what matters */ }
+      }, 2000);
+    }
 
     function stage(text){
       var el=document.getElementById('buildStage'); if(el) el.textContent = text;
@@ -805,6 +833,10 @@
     function counter(n){
       var el=document.getElementById('buildCount');
       if(el) el.textContent = n > 400 ? (Math.round(n/100)/10) + 'k chars' : '';
+    }
+    function previewLine(text){
+      var el=document.getElementById('planPreview');
+      if(el && text){ el.textContent = text; el.style.display='block'; }
     }
 
     try{
@@ -845,6 +877,21 @@
           }
         }
 
+        // As soon as a new build's own plan comment parses, show its
+        // message early -- it already streams in right after
+        // <!DOCTYPE html>, we're just looking sooner. It stays part of
+        // the saved document (cleanHtml never strips it), so unlike
+        // LUMEN-START this is never removed from buffer.
+        if(!planPreviewShown && !editing){
+          var planMatch = buffer.match(/<!--LUMEN-PLAN (\{[\s\S]*?\}) -->/);
+          if(planMatch){
+            try{
+              var earlyPlan = JSON.parse(planMatch[1]);
+              if(earlyPlan && earlyPlan.message){ previewLine(earlyPlan.message); planPreviewShown = true; }
+            }catch(e){}
+          }
+        }
+
         counter(buffer.length);
 
         // give a sense of what it's doing, from the HTML itself
@@ -862,6 +909,11 @@
           if(mode==='code'){ codeView.innerHTML = highlight(buffer.slice(-6000)); codeView.scrollTop = codeView.scrollHeight; }
         }
       }
+
+      // Whichever happens first -- the timer never fires, or an
+      // in-flight preview call gets cancelled -- the real result wins.
+      if(previewTimer){ clearTimeout(previewTimer); previewTimer = null; }
+      if(previewController){ previewController.abort(); previewController = null; }
 
       // final metadata
       var metaMatch = buffer.match(/<!--LUMEN-META ([\s\S]*?) -->\s*$/);
@@ -899,6 +951,8 @@
       }
 
     }catch(e){
+      if(previewTimer){ clearTimeout(previewTimer); previewTimer = null; }
+      if(previewController){ previewController.abort(); previewController = null; }
       chats[activeId] = msgs.filter(function(m){ return m.role!=='thinking'; });
 
       if(e.name === 'AbortError'){
