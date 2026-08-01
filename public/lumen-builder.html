@@ -256,6 +256,13 @@
   .suggest{font-size:12.5px;color:var(--grey);border:1px solid var(--line);background:transparent;
     padding:8px 14px;border-radius:980px;cursor:pointer;transition:.22s;font-family:var(--font);text-align:left}
   .suggest:hover{border-color:rgba(95,224,255,.4);color:var(--ink);background:rgba(95,224,255,.05)}
+  .pendingbox{margin-top:12px;padding:14px 16px;border:1px solid rgba(246,178,76,.35);background:rgba(246,178,76,.08);border-radius:14px}
+  .pendingbox .pendingtext{font-size:13.5px;color:#F6D8A8;line-height:1.5;margin-bottom:12px}
+  .pendingactions{display:flex;gap:10px;flex-wrap:wrap}
+  .pendingactions .btn{padding:8px 16px;font-size:13.5px}
+  .undobox{margin-top:12px;display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--line-2);border-radius:14px;background:rgba(255,255,255,.03);flex-wrap:wrap}
+  .undobox span{font-size:13px;color:var(--grey)}
+  .undobox .btn{padding:7px 14px;font-size:13px;margin-left:auto}
   .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(23,34,47,0.9); backdrop-filter:blur(12px); border:1px solid var(--line-2); color:var(--ink); font-size:13.5px; padding:12px 20px; border-radius:980px; display:flex; align-items:center; gap:10px; opacity:0; pointer-events:none; transition:.35s cubic-bezier(.2,.7,.2,1); z-index:100}
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
   .toast svg{width:15px; height:15px; color:var(--cyan)}
@@ -616,9 +623,23 @@
           + m.plan.suggestions.map(function(s){ return '<button class="suggest" type="button">'+esc(s)+'</button>'; }).join('')
           + '</div>';
       }
+      var pendingHtml = '';
+      if(m.pending && !m.pendingResolved){
+        pendingHtml = '<div class="pendingbox">'
+          + '<div class="pendingtext">This looked like a full replacement rather than a small change, so nothing has been saved yet.</div>'
+          + '<div class="pendingactions">'
+          + '<button class="btn btn-primary applyPending" type="button">Apply this</button>'
+          + '<button class="btn btn-ghost discardPending" type="button">Keep my current site</button>'
+          + '</div></div>';
+      }
+      var undoHtml = '';
+      if(m.undoToVersionId){
+        undoHtml = '<div class="undobox"><span>This replaced your previous version.</span>'
+          + '<button class="btn btn-ghost undoReplace" type="button" data-version="'+esc(m.undoToVersionId)+'">Undo</button></div>';
+      }
       return '<div class="msg ai">'+aiAvatar+'<div class="body">'+esc(m.text)
         + (m.built?'<div class="built"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Preview updated</div>':'')
-        + planHtml + suggestHtml + '</div></div>';
+        + planHtml + suggestHtml + pendingHtml + undoHtml + '</div></div>';
     }).join('');
     scroll.querySelectorAll('.planhead').forEach(function(head){
       head.addEventListener('click', function(){ head.parentElement.classList.toggle('open'); });
@@ -630,7 +651,66 @@
         send();
       });
     });
+    scroll.querySelectorAll('.applyPending').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        var p=active(); if(!p || !p.pendingReplacement) return;
+        btn.disabled = true; btn.textContent = 'Applying…';
+        try{
+          var out = await Lumen.api('/api/projects/'+p.id+'/apply-replacement', {
+            method:'POST',
+            body: JSON.stringify({ code: p.pendingReplacement.code, title: p.pendingReplacement.title })
+          });
+          p.current_code = out.code;
+          if(out.previewUrl) p.preview_url = out.previewUrl;
+          p.pendingReplacement = null;
+          resolvePendingMessage();
+          chats[activeId].push({ role:'ai', text:'Applied. Take a look.' });
+          renderAll(); paintUndo();
+          toast('Replacement applied');
+        }catch(e){
+          btn.disabled = false; btn.textContent = 'Apply this';
+          toast(e.message || 'Could not apply.');
+        }
+      });
+    });
+    scroll.querySelectorAll('.discardPending').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var p=active(); if(!p) return;
+        p.pendingReplacement = null;
+        resolvePendingMessage();
+        chats[activeId].push({ role:'ai', text:'Kept your current site.' });
+        renderAll();
+        toast('Discarded');
+      });
+    });
+    scroll.querySelectorAll('.undoReplace').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        var versionId = btn.getAttribute('data-version');
+        var p=active(); if(!p || !versionId) return;
+        btn.disabled = true; btn.textContent = 'Restoring…';
+        try{
+          var out = await Lumen.api('/api/projects/'+p.id+'/restore', {
+            method:'POST', body: JSON.stringify({ versionId: versionId })
+          });
+          p.current_code = out.code;
+          renderAll();
+          toast('Restored the previous version');
+        }catch(e){
+          btn.disabled = false; btn.textContent = 'Undo';
+          toast(e.message || 'Could not restore.');
+        }
+      });
+    });
     scroll.scrollTop=scroll.scrollHeight;
+  }
+
+  // Marks the most recent unresolved pending-replacement message as
+  // resolved, so its Apply/Discard buttons stop re-rendering.
+  function resolvePendingMessage(){
+    var arr = chats[activeId] || [];
+    for(var i=arr.length-1; i>=0; i--){
+      if(arr[i].pending && !arr[i].pendingResolved){ arr[i].pendingResolved = true; break; }
+    }
   }
 
   function highlight(code){
@@ -701,6 +781,7 @@
 
     var editing = !!p.current_code;
     pushUndo(p);
+    p.pendingReplacement = null;
 
     var sendBtn = document.getElementById('send');
     sendBtn.classList.add('busy');
@@ -791,19 +872,31 @@
 
       if(meta && meta.error) throw new Error(meta.error);
 
-      p.current_code = (meta && meta.code) ? meta.code : buffer;
-      if(meta){
-        p.preview_url = meta.previewUrl || p.preview_url;
-        if(meta.name) p.name = meta.name;
-      }
-
       chats[activeId] = msgs.filter(function(m){ return m.role!=='thinking'; });
-      var msg = meta && meta.reply ? meta.reply : (editing ? 'Updated your site.' : 'Built your site.');
-      if(meta && meta.truncated) msg += ' (It ran long, so the ending may be clipped — ask me to finish it.)';
-      chats[activeId].push({ role:'ai', text: msg, built:true, plan: meta && meta.plan, model: meta && meta.model });
 
-      renderAll(); paintUndo(); refreshUsage();
-      speak(editing ? 'Updated. Take a look.' : 'Done — ' + ((meta && meta.title) || 'your site') + ' is ready.');
+      if(meta && meta.pending){
+        // A near-total replacement was generated but held back --
+        // current_code is untouched server-side. Hold the candidate
+        // client-side until the user explicitly applies or discards it.
+        p.pendingReplacement = { code: meta.pendingCode, title: meta.title };
+        var pmsg = meta.reply || 'This edit looked like a full replacement rather than a small change, so I held it back.';
+        chats[activeId].push({ role:'ai', text: pmsg, plan: meta.plan, model: meta.model, pending: true });
+        renderAll(); refreshUsage();
+        speak('Held back a change that looked like a full replacement — review it before applying.');
+      } else {
+        p.current_code = (meta && meta.code) ? meta.code : buffer;
+        if(meta){
+          p.preview_url = meta.previewUrl || p.preview_url;
+          if(meta.name) p.name = meta.name;
+        }
+
+        var msg = meta && meta.reply ? meta.reply : (editing ? 'Updated your site.' : 'Built your site.');
+        if(meta && meta.truncated) msg += ' (It ran long, so the ending may be clipped — ask me to finish it.)';
+        chats[activeId].push({ role:'ai', text: msg, built:true, plan: meta && meta.plan, model: meta && meta.model, undoToVersionId: meta && meta.undoToVersionId });
+
+        renderAll(); paintUndo(); refreshUsage();
+        speak(editing ? 'Updated. Take a look.' : 'Done — ' + ((meta && meta.title) || 'your site') + ' is ready.');
+      }
 
     }catch(e){
       chats[activeId] = msgs.filter(function(m){ return m.role!=='thinking'; });

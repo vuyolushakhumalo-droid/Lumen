@@ -147,6 +147,43 @@ export async function POST(request) {
         const title = result.title || 'New site';
         const plan = result.plan || null;
         const previewUrl = `${makeSlug(title)}.lumen.build`;
+
+        // A near-total replacement from the edit fallback path is held
+        // back rather than auto-applied -- current_code stays untouched,
+        // and the client must explicitly confirm via /apply-replacement.
+        if (result.needsConfirmation) {
+          const pendingReply = "This edit came back looking like a full replacement rather than a small change, so I've held it back — review it and confirm if you want to apply it, or keep your current site.";
+
+          await admin.from('messages').insert([
+            { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
+            { project_id: project.id, user_id: profile.id, role: 'assistant', content: pendingReply, plan, model_used: routed.model },
+          ]);
+
+          await logUsageEvent(admin, {
+            userId: profile.id, projectId: project.id, model: routed.model,
+            usage: result.usage, kind: 'edit',
+          });
+
+          await recordBuild(admin, profile, snapshot);
+          const after = await getUsageSnapshot(admin, profile);
+
+          send(`\n<!--LUMEN-META ${JSON.stringify({
+            projectId: project.id,
+            title,
+            pending: true,
+            pendingCode: result.html,
+            plan,
+            reply: pendingReply,
+            model: routed.model,
+            edited: isEdit,
+            buildsLeft: after.buildsLeft,
+            topupCredits: after.topupCredits,
+            resetsAt: after.resetsAt,
+          })} -->`);
+          controller.close();
+          return;
+        }
+
         let reply = plan?.message
           ? plan.message
           : (isEdit
@@ -154,6 +191,19 @@ export async function POST(request) {
               : `Built ${title} — have a look on the right.`);
         if (result.imagesQuotaExhausted) {
           reply += " You've used this month's photo allowance, so any new images use a placeholder style instead — more unlocks next month.";
+        }
+
+        // A committed fallback replacement still gets an explicit undo
+        // path, since it's a bigger change than a normal targeted edit.
+        let undoToVersionId = null;
+        if (result.usedFallback) {
+          const { data: lastVersion } = await admin
+            .from('versions').select('id').eq('project_id', project.id)
+            .order('created_at', { ascending: false }).limit(1).maybeSingle();
+          undoToVersionId = lastVersion?.id || null;
+        }
+        if (undoToVersionId) {
+          reply += " This was a full replacement rather than a small edit — use Undo if it isn't what you wanted.";
         }
 
         await admin.from('messages').insert([
@@ -191,6 +241,7 @@ export async function POST(request) {
           code: result.html,
           plan,
           reply,
+          undoToVersionId,
           previewUrl,
           model: routed.model,
           edited: isEdit,

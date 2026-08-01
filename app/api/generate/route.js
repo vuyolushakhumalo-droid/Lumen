@@ -84,6 +84,41 @@ export const POST = handler(async (request) => {
   const plan = result.plan || null;
   const previewUrl = `${makeSlug(title)}.lumen.build`;
 
+  // A near-total replacement from the edit fallback path is held back
+  // rather than auto-applied -- current_code is left untouched, and
+  // the caller must explicitly confirm via /apply-replacement.
+  if (result.needsConfirmation) {
+    const pendingReply = "This edit came back looking like a full replacement rather than a small change, so I've held it back — review it and confirm if you want to apply it, or keep your current site.";
+
+    await admin.from('messages').insert([
+      { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
+      { project_id: project.id, user_id: profile.id, role: 'assistant', content: pendingReply, plan, model_used: routed.model },
+    ]);
+
+    await logUsageEvent(admin, {
+      userId: profile.id, projectId: project.id, model: routed.model,
+      usage: result.usage, kind: 'edit',
+    });
+
+    const charged = await recordBuild(admin, profile, snapshot);
+    const after = await getUsageSnapshot(admin, profile);
+
+    return Response.json({
+      projectId: project.id,
+      pending: true,
+      pendingCode: code,
+      title,
+      plan,
+      reply: pendingReply,
+      model: routed.model,
+      modelReason: routed.reason,
+      chargedFrom: charged.source,
+      buildsLeft: after.buildsLeft,
+      topupCredits: after.topupCredits,
+      resetsAt: after.resetsAt,
+    });
+  }
+
   // 4a. Save the conversation so it survives a refresh.
   const reply = plan?.message
     ? plan.message
@@ -92,6 +127,20 @@ export const POST = handler(async (request) => {
         : `Built ${title} — have a look on the right.`);
   const imageNote = result.imagesQuotaExhausted
     ? " You've used this month's photo allowance, so any new images use a placeholder style instead — more unlocks next month."
+    : '';
+
+  // A committed fallback replacement (one that passed the similarity
+  // guard) still gets an explicit undo path, since it's a bigger
+  // change than a normal targeted edit.
+  let undoToVersionId = null;
+  if (result.usedFallback) {
+    const { data: lastVersion } = await admin
+      .from('versions').select('id').eq('project_id', project.id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    undoToVersionId = lastVersion?.id || null;
+  }
+  const undoNote = undoToVersionId
+    ? " This was a full replacement rather than a small edit — use Undo if it isn't what you wanted."
     : '';
 
   await admin.from('messages').insert([
@@ -137,7 +186,8 @@ export const POST = handler(async (request) => {
     model: routed.model,
     modelReason: routed.reason,
     plan,
-    reply: reply + imageNote,
+    reply: reply + imageNote + undoNote,
+    undoToVersionId,
     truncated: result.stopReason === 'max_tokens',
     chargedFrom: charged.source,
     buildsLeft: after.buildsLeft,
