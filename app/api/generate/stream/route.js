@@ -7,7 +7,7 @@
 // final metadata line beginning with <!--LUMEN-META.
 // ============================================================
 import { requireUser, ApiError } from '@/lib/auth';
-import { assertCanBuild, recordBuild, getUsageSnapshot } from '@/lib/usage';
+import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent } from '@/lib/usage';
 import { streamSite } from '@/lib/anthropic';
 import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
@@ -164,6 +164,11 @@ export async function POST(request) {
         await admin.from('versions').insert({
           project_id: project.id, label: title, brief: brief.slice(0, 500),
           code: result.html, model_used: routed.model,
+        });
+
+        await logUsageEvent(admin, {
+          userId: profile.id, projectId: project.id, model: routed.model,
+          usage: result.usage, kind: isEdit ? 'edit' : 'build',
         });
 
         const shouldRename =

@@ -6,7 +6,7 @@
 // A failed generation never costs the customer a build.
 // ============================================================
 import { handler, requireUser, ApiError } from '@/lib/auth';
-import { assertCanBuild, recordBuild, getUsageSnapshot } from '@/lib/usage';
+import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent } from '@/lib/usage';
 import { generateSite } from '@/lib/anthropic';
 import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
@@ -106,6 +106,11 @@ export const POST = handler(async (request) => {
     brief: brief.slice(0, 500),
     code,
     model_used: routed.model,
+  });
+
+  await logUsageEvent(admin, {
+    userId: profile.id, projectId: project.id, model: routed.model,
+    usage: result.usage, kind: isEdit ? 'edit' : 'build',
   });
 
   const shouldRename =
