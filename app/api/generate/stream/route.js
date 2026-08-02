@@ -12,6 +12,7 @@ import { streamSite } from '@/lib/anthropic';
 import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
+import { startAttempt, finishAttempt } from '@/lib/attempts';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -116,6 +117,11 @@ export async function POST(request) {
   // nothing) is exactly what caused the original bug. Refuse instead
   // and let the customer decide. No model call, no write, no charge.
   if (!previousHtml && clientExpectsEdit) {
+    const refusedId = await startAttempt(admin, {
+      projectId: project.id, userId: profile.id, kind: 'edit',
+      clientExpectsEdit: true, previousHtmlLength: 0,
+    });
+    await finishAttempt(admin, refusedId, { status: 'refused' });
     return fail(409, 'no_saved_site', {
       message: "This project has no saved site on the server, so it can't be edited. The site you were viewing was never saved. Your next message will start a new build from scratch.",
     });
@@ -129,160 +135,190 @@ export async function POST(request) {
   const isEdit = !!previousHtml;
   const routed = chooseModel({ brief, isEdit, requested: model, allowedModels: snapshot.allowedModels });
 
+  // Logged as early as possible -- before the model call -- so a
+  // failure at any point from here on leaves a trace, not just successes.
+  const attemptId = await startAttempt(admin, {
+    projectId: project.id, userId: profile.id, kind: isEdit ? 'edit' : 'build',
+    model: routed.model, clientExpectsEdit: !!clientExpectsEdit,
+    previousHtmlLength: previousHtml?.length ?? 0,
+  });
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
       const send = (text) => controller.enqueue(encoder.encode(text));
-
-      // Tell the client what we're doing before any HTML arrives.
-      send(`<!--LUMEN-START ${JSON.stringify({
-        projectId: project.id,
-        model: routed.model,
-        reason: routed.reason,
-        editing: isEdit,
-      })} -->\n`);
-
-      let result;
-      try {
-        result = await streamSite({
-          brief,
-          modelKey: routed.model,
-          previousHtml,
-          images: cleanImages,
-          onChunk: (chunk) => send(chunk),
-          signal: request.signal,
-          projectId: project.id,
-          userId: profile.id,
-          plan: snapshot.plan,
-        });
-      } catch (err) {
-        console.error('[generate/stream] failed', err);
-        send(`\n<!--LUMEN-META ${JSON.stringify({
-          error: 'The build failed — please try again. You have not been charged a build.',
-        })} -->`);
-        controller.close();
-        return;
+      let finished = false;
+      async function finish(status, stage, error) {
+        if (finished) return;
+        finished = true;
+        await finishAttempt(admin, attemptId, { status, stage, error });
       }
 
-      // Save everything, then count the build.
       try {
-        const title = result.title || 'New site';
-        const plan = result.plan || null;
-        const previewUrl = `${makeSlug(title)}.lumen.build`;
+        // Tell the client what we're doing before any HTML arrives.
+        send(`<!--LUMEN-START ${JSON.stringify({
+          projectId: project.id,
+          model: routed.model,
+          reason: routed.reason,
+          editing: isEdit,
+        })} -->\n`);
 
-        // A near-total replacement from the edit fallback path is held
-        // back rather than auto-applied -- current_code stays untouched,
-        // and the client must explicitly confirm via /apply-replacement.
-        if (result.needsConfirmation) {
-          const pendingReply = "This edit came back looking like a full replacement rather than a small change, so I've held it back — review it and confirm if you want to apply it, or keep your current site."
-            + (recoveredFromVersion ? " One more thing: your saved site was out of sync, so I recovered your last saved version and worked from that instead." : '');
+        let result;
+        try {
+          result = await streamSite({
+            brief,
+            modelKey: routed.model,
+            previousHtml,
+            images: cleanImages,
+            onChunk: (chunk) => send(chunk),
+            signal: request.signal,
+            projectId: project.id,
+            userId: profile.id,
+            plan: snapshot.plan,
+          });
+        } catch (err) {
+          console.error('[generate/stream] failed', err);
+          const isAbort = err?.name === 'AbortError';
+          await finish(isAbort ? 'aborted' : 'failed', err?.stage || 'model_call', isAbort ? null : err);
+          send(`\n<!--LUMEN-META ${JSON.stringify({
+            error: 'The build failed — please try again. You have not been charged a build.',
+          })} -->`);
+          return;
+        }
+
+        // Save everything, then count the build.
+        try {
+          const title = result.title || 'New site';
+          const plan = result.plan || null;
+          const previewUrl = `${makeSlug(title)}.lumen.build`;
+
+          // A near-total replacement from the edit fallback path is held
+          // back rather than auto-applied -- current_code stays untouched,
+          // and the client must explicitly confirm via /apply-replacement.
+          if (result.needsConfirmation) {
+            const pendingReply = "This edit came back looking like a full replacement rather than a small change, so I've held it back — review it and confirm if you want to apply it, or keep your current site."
+              + (recoveredFromVersion ? " One more thing: your saved site was out of sync, so I recovered your last saved version and worked from that instead." : '');
+
+            await admin.from('messages').insert([
+              { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
+              { project_id: project.id, user_id: profile.id, role: 'assistant', content: pendingReply, plan, model_used: routed.model },
+            ]);
+
+            await logUsageEvent(admin, {
+              userId: profile.id, projectId: project.id, model: routed.model,
+              usage: result.usage, kind: 'edit', editMode: result.editMode,
+            });
+
+            await finish('succeeded', null, null);
+
+            await recordBuild(admin, profile, snapshot);
+            const after = await getUsageSnapshot(admin, profile);
+
+            send(`\n<!--LUMEN-META ${JSON.stringify({
+              projectId: project.id,
+              title,
+              pending: true,
+              pendingCode: result.html,
+              plan,
+              reply: pendingReply,
+              model: routed.model,
+              edited: isEdit,
+              buildsLeft: after.buildsLeft,
+              topupCredits: after.topupCredits,
+              resetsAt: after.resetsAt,
+            })} -->`);
+            return;
+          }
+
+          let reply = plan?.message
+            ? plan.message
+            : (isEdit
+                ? `Updated ${title}.${plan?.changed ? ' ' + plan.changed : ''}`
+                : `Built ${title} — have a look on the right.`);
+          if (result.imagesQuotaExhausted) {
+            reply += " You've used this month's photo allowance, so any new images use a placeholder style instead — more unlocks next month.";
+          }
+          if (recoveredFromVersion) {
+            reply += " One thing to flag: your saved site was out of sync, so I recovered your last saved version and worked from that instead.";
+          }
+
+          // A committed fallback replacement still gets an explicit undo
+          // path, since it's a bigger change than a normal targeted edit.
+          let undoToVersionId = null;
+          if (result.usedFallback) {
+            const { data: lastVersion } = await admin
+              .from('versions').select('id').eq('project_id', project.id)
+              .order('created_at', { ascending: false }).limit(1).maybeSingle();
+            undoToVersionId = lastVersion?.id || null;
+          }
+          if (undoToVersionId) {
+            reply += " This was a full replacement rather than a small edit — use Undo if it isn't what you wanted.";
+          }
 
           await admin.from('messages').insert([
             { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
-            { project_id: project.id, user_id: profile.id, role: 'assistant', content: pendingReply, plan, model_used: routed.model },
+            { project_id: project.id, user_id: profile.id, role: 'assistant', content: reply, plan, model_used: routed.model },
           ]);
+
+          await admin.from('versions').insert({
+            project_id: project.id, label: title, brief: brief.slice(0, 500),
+            code: result.html, model_used: routed.model,
+          });
 
           await logUsageEvent(admin, {
             userId: profile.id, projectId: project.id, model: routed.model,
-            usage: result.usage, kind: 'edit', editMode: result.editMode,
+            usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
           });
+
+          const shouldRename =
+            !project.name || project.name === 'New project' || project.name === 'Untitled project';
+
+          await admin.from('projects').update({
+            current_code: result.html,
+            preview_url: previewUrl,
+            updated_at: new Date().toISOString(),
+            ...(shouldRename ? { name: title } : {}),
+          }).eq('id', project.id);
+
+          await finish('succeeded', null, null);
 
           await recordBuild(admin, profile, snapshot);
           const after = await getUsageSnapshot(admin, profile);
 
           send(`\n<!--LUMEN-META ${JSON.stringify({
             projectId: project.id,
+            name: shouldRename ? title : project.name,
             title,
-            pending: true,
-            pendingCode: result.html,
+            code: result.html,
             plan,
-            reply: pendingReply,
+            reply,
+            undoToVersionId,
+            previewUrl,
             model: routed.model,
             edited: isEdit,
+            truncated: result.stopReason === 'max_tokens',
             buildsLeft: after.buildsLeft,
             topupCredits: after.topupCredits,
             resetsAt: after.resetsAt,
           })} -->`);
-          controller.close();
-          return;
+        } catch (err) {
+          console.error('[generate/stream] save failed', err);
+          await finish('failed', 'db_write', err);
+          send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Built, but could not save. Try again.' })} -->`);
         }
-
-        let reply = plan?.message
-          ? plan.message
-          : (isEdit
-              ? `Updated ${title}.${plan?.changed ? ' ' + plan.changed : ''}`
-              : `Built ${title} — have a look on the right.`);
-        if (result.imagesQuotaExhausted) {
-          reply += " You've used this month's photo allowance, so any new images use a placeholder style instead — more unlocks next month.";
-        }
-        if (recoveredFromVersion) {
-          reply += " One thing to flag: your saved site was out of sync, so I recovered your last saved version and worked from that instead.";
-        }
-
-        // A committed fallback replacement still gets an explicit undo
-        // path, since it's a bigger change than a normal targeted edit.
-        let undoToVersionId = null;
-        if (result.usedFallback) {
-          const { data: lastVersion } = await admin
-            .from('versions').select('id').eq('project_id', project.id)
-            .order('created_at', { ascending: false }).limit(1).maybeSingle();
-          undoToVersionId = lastVersion?.id || null;
-        }
-        if (undoToVersionId) {
-          reply += " This was a full replacement rather than a small edit — use Undo if it isn't what you wanted.";
-        }
-
-        await admin.from('messages').insert([
-          { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
-          { project_id: project.id, user_id: profile.id, role: 'assistant', content: reply, plan, model_used: routed.model },
-        ]);
-
-        await admin.from('versions').insert({
-          project_id: project.id, label: title, brief: brief.slice(0, 500),
-          code: result.html, model_used: routed.model,
-        });
-
-        await logUsageEvent(admin, {
-          userId: profile.id, projectId: project.id, model: routed.model,
-          usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
-        });
-
-        const shouldRename =
-          !project.name || project.name === 'New project' || project.name === 'Untitled project';
-
-        await admin.from('projects').update({
-          current_code: result.html,
-          preview_url: previewUrl,
-          updated_at: new Date().toISOString(),
-          ...(shouldRename ? { name: title } : {}),
-        }).eq('id', project.id);
-
-        await recordBuild(admin, profile, snapshot);
-        const after = await getUsageSnapshot(admin, profile);
-
-        send(`\n<!--LUMEN-META ${JSON.stringify({
-          projectId: project.id,
-          name: shouldRename ? title : project.name,
-          title,
-          code: result.html,
-          plan,
-          reply,
-          undoToVersionId,
-          previewUrl,
-          model: routed.model,
-          edited: isEdit,
-          truncated: result.stopReason === 'max_tokens',
-          buildsLeft: after.buildsLeft,
-          topupCredits: after.topupCredits,
-          resetsAt: after.resetsAt,
-        })} -->`);
       } catch (err) {
-        console.error('[generate/stream] save failed', err);
-        send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Built, but could not save. Try again.' })} -->`);
+        // Last-resort safety net -- anything unexpected that slipped past
+        // the two blocks above still gets logged, rather than leaving a
+        // 'started' row stuck forever.
+        console.error('[generate/stream] unexpected failure', err);
+        await finish('failed', err?.stage || null, err);
+        try {
+          send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Something went wrong. Try again.' })} -->`);
+        } catch (e) {}
+      } finally {
+        controller.close();
       }
-
-      controller.close();
     },
   });
 

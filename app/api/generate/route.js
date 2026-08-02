@@ -11,6 +11,7 @@ import { generateSite } from '@/lib/anthropic';
 import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
+import { startAttempt, finishAttempt } from '@/lib/attempts';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -66,6 +67,11 @@ export const POST = handler(async (request) => {
   // nothing) is exactly what caused the original bug. Refuse instead
   // and let the customer decide. No model call, no write, no charge.
   if (!previousHtml && clientExpectsEdit) {
+    const refusedId = await startAttempt(admin, {
+      projectId: project.id, userId: profile.id, kind: 'edit',
+      clientExpectsEdit: true, previousHtmlLength: 0,
+    });
+    await finishAttempt(admin, refusedId, { status: 'refused' });
     throw new ApiError(409, 'no_saved_site', {
       message: "This project has no saved site on the server, so it can't be edited. The site you were viewing was never saved. Your next message will start a new build from scratch.",
     });
@@ -84,6 +90,14 @@ export const POST = handler(async (request) => {
     allowedModels: snapshot.allowedModels,
   });
 
+  // Logged as early as possible -- before the model call -- so a
+  // failure at any point from here on leaves a trace, not just successes.
+  const attemptId = await startAttempt(admin, {
+    projectId: project.id, userId: profile.id, kind: isEdit ? 'edit' : 'build',
+    model: routed.model, clientExpectsEdit: !!clientExpectsEdit,
+    previousHtmlLength: previousHtml?.length ?? 0,
+  });
+
   // 3. Generate. If this throws, nothing is charged.
   let result;
   try {
@@ -97,6 +111,12 @@ export const POST = handler(async (request) => {
     });
   } catch (err) {
     console.error('[generate] model call failed', err);
+    const isAbort = err?.name === 'AbortError';
+    await finishAttempt(admin, attemptId, {
+      status: isAbort ? 'aborted' : 'failed',
+      stage: err?.stage || 'model_call',
+      error: isAbort ? null : err,
+    });
     throw new ApiError(502, 'The build failed — please try again. You have not been charged a build.');
   }
 
@@ -112,15 +132,22 @@ export const POST = handler(async (request) => {
     const pendingReply = "This edit came back looking like a full replacement rather than a small change, so I've held it back — review it and confirm if you want to apply it, or keep your current site."
       + (recoveredFromVersion ? " One more thing: your saved site was out of sync, so I recovered your last saved version and worked from that instead." : '');
 
-    await admin.from('messages').insert([
-      { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
-      { project_id: project.id, user_id: profile.id, role: 'assistant', content: pendingReply, plan, model_used: routed.model },
-    ]);
+    try {
+      await admin.from('messages').insert([
+        { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
+        { project_id: project.id, user_id: profile.id, role: 'assistant', content: pendingReply, plan, model_used: routed.model },
+      ]);
 
-    await logUsageEvent(admin, {
-      userId: profile.id, projectId: project.id, model: routed.model,
-      usage: result.usage, kind: 'edit', editMode: result.editMode,
-    });
+      await logUsageEvent(admin, {
+        userId: profile.id, projectId: project.id, model: routed.model,
+        usage: result.usage, kind: 'edit', editMode: result.editMode,
+      });
+    } catch (err) {
+      await finishAttempt(admin, attemptId, { status: 'failed', stage: 'db_write', error: err });
+      throw new ApiError(500, 'Built, but could not save. Try again.');
+    }
+
+    await finishAttempt(admin, attemptId, { status: 'succeeded' });
 
     const charged = await recordBuild(admin, profile, snapshot);
     const after = await getUsageSnapshot(admin, profile);
@@ -168,34 +195,42 @@ export const POST = handler(async (request) => {
     ? " This was a full replacement rather than a small edit — use Undo if it isn't what you wanted."
     : '';
 
-  await admin.from('messages').insert([
-    { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
-    { project_id: project.id, user_id: profile.id, role: 'assistant', content: reply, plan, model_used: routed.model },
-  ]);
+  let shouldRename;
+  try {
+    await admin.from('messages').insert([
+      { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
+      { project_id: project.id, user_id: profile.id, role: 'assistant', content: reply, plan, model_used: routed.model },
+    ]);
 
-  // 4. Persist: new version + project head.
-  await admin.from('versions').insert({
-    project_id: project.id,
-    label: title,
-    brief: brief.slice(0, 500),
-    code,
-    model_used: routed.model,
-  });
+    // 4. Persist: new version + project head.
+    await admin.from('versions').insert({
+      project_id: project.id,
+      label: title,
+      brief: brief.slice(0, 500),
+      code,
+      model_used: routed.model,
+    });
 
-  await logUsageEvent(admin, {
-    userId: profile.id, projectId: project.id, model: routed.model,
-    usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
-  });
+    await logUsageEvent(admin, {
+      userId: profile.id, projectId: project.id, model: routed.model,
+      usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
+    });
 
-  const shouldRename =
-    !project.name || project.name === 'New project' || project.name === 'Untitled project';
+    shouldRename =
+      !project.name || project.name === 'New project' || project.name === 'Untitled project';
 
-  await admin.from('projects').update({
-    current_code: code,
-    preview_url: previewUrl,
-    updated_at: new Date().toISOString(),
-    ...(shouldRename ? { name: title } : {}),
-  }).eq('id', project.id);
+    await admin.from('projects').update({
+      current_code: code,
+      preview_url: previewUrl,
+      updated_at: new Date().toISOString(),
+      ...(shouldRename ? { name: title } : {}),
+    }).eq('id', project.id);
+  } catch (err) {
+    await finishAttempt(admin, attemptId, { status: 'failed', stage: 'db_write', error: err });
+    throw new ApiError(500, 'Built, but could not save. Try again.');
+  }
+
+  await finishAttempt(admin, attemptId, { status: 'succeeded' });
 
   // 5. Only now does it count against the allowance.
   const charged = await recordBuild(admin, profile, snapshot);
