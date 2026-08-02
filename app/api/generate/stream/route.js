@@ -154,12 +154,18 @@ export async function POST(request) {
     await finishAttempt(admin, attemptId, { status, stage, error });
   }
 
-  // Drives the Anthropic call's own signal. request.signal reflects the
-  // incoming request, not the response stream -- cancel() below (fired
-  // when the client goes away) is what actually aborts this, so the
-  // upstream call stops generating (and we stop paying for) output
-  // tokens nobody will see, instead of running to completion unread.
+  // Drives the Anthropic call's own signal. Bridged from two sources:
+  // request.signal (fires reliably on client disconnect in this runtime)
+  // and cancel() below (belt and braces, in case the platform ever does
+  // invoke it) -- either aborts the upstream call, so it stops generating
+  // (and we stop paying for) output tokens nobody will see, instead of
+  // running to completion unread.
   const anthropicAbort = new AbortController();
+  if (request.signal.aborted) {
+    anthropicAbort.abort(request.signal.reason);
+  } else {
+    request.signal.addEventListener('abort', () => anthropicAbort.abort(request.signal.reason));
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
