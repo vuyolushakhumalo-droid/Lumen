@@ -145,15 +145,25 @@ export async function POST(request) {
 
   const encoder = new TextEncoder();
 
+  // Shared by start() and cancel() below, so however this attempt ends,
+  // the row is updated exactly once.
+  let finished = false;
+  async function finish(status, stage, error) {
+    if (finished) return;
+    finished = true;
+    await finishAttempt(admin, attemptId, { status, stage, error });
+  }
+
+  // Drives the Anthropic call's own signal. request.signal reflects the
+  // incoming request, not the response stream -- cancel() below (fired
+  // when the client goes away) is what actually aborts this, so the
+  // upstream call stops generating (and we stop paying for) output
+  // tokens nobody will see, instead of running to completion unread.
+  const anthropicAbort = new AbortController();
+
   const stream = new ReadableStream({
     async start(controller) {
       const send = (text) => controller.enqueue(encoder.encode(text));
-      let finished = false;
-      async function finish(status, stage, error) {
-        if (finished) return;
-        finished = true;
-        await finishAttempt(admin, attemptId, { status, stage, error });
-      }
 
       try {
         // Tell the client what we're doing before any HTML arrives.
@@ -172,7 +182,7 @@ export async function POST(request) {
             previousHtml,
             images: cleanImages,
             onChunk: (chunk) => send(chunk),
-            signal: request.signal,
+            signal: anthropicAbort.signal,
             projectId: project.id,
             userId: profile.id,
             plan: snapshot.plan,
@@ -317,8 +327,22 @@ export async function POST(request) {
           send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Something went wrong. Try again.' })} -->`);
         } catch (e) {}
       } finally {
-        controller.close();
+        // If the client already disconnected, the controller may be
+        // closed or errored already -- close() on it throws, and a throw
+        // from finally replaces whatever the try/catch above was doing.
+        try {
+          controller.close();
+        } catch (e) {}
       }
+    },
+    async cancel(reason) {
+      // Fires when the client disconnects or explicitly stops the build --
+      // this can happen instead of start()'s own catch if it occurs
+      // outside the streamSite() call (e.g. during the save phase), since
+      // nothing else here is listening for that. The finished guard means
+      // this never overwrites an outcome start() already recorded.
+      anthropicAbort.abort(reason);
+      await finish('aborted', 'client_disconnect', null);
     },
   });
 
