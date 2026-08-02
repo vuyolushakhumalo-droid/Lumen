@@ -20,6 +20,7 @@ export async function GET(request) {
   // and trash purge has several early returns (lookup failure, nothing
   // expired, delete failure) that shouldn't gate this.
   const staleAttemptsSwept = await sweepStaleAttempts(admin);
+  const oldAttemptsPurged = await purgeOldAttempts(admin);
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -31,21 +32,21 @@ export async function GET(request) {
 
   if (findError) {
     console.error('[cron/purge-trash] lookup failed', findError);
-    return Response.json({ error: 'Lookup failed', staleAttemptsSwept }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
-  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
     console.error('[cron/purge-trash] delete failed', deleteError);
-    return Response.json({ error: 'Delete failed', staleAttemptsSwept }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged }, { status: 500 });
   }
 
-  return Response.json({ purged: ids.length, staleAttemptsSwept });
+  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged });
 }
 
 // On this runtime, a client disconnect kills the streaming function
@@ -65,6 +66,24 @@ async function sweepStaleAttempts(admin) {
 
   if (error) {
     console.error('[cron/purge-trash] stale attempt sweep failed', error);
+    return 0;
+  }
+  return data?.length || 0;
+}
+
+// generation_attempts is a log table with no other retention policy --
+// left alone it grows forever. 30 days is well past anything the sweep
+// above or normal debugging would need.
+async function purgeOldAttempts(admin) {
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await admin
+    .from('generation_attempts')
+    .delete()
+    .lt('created_at', cutoff)
+    .select('id');
+
+  if (error) {
+    console.error('[cron/purge-trash] old attempt purge failed', error);
     return 0;
   }
   return data?.length || 0;
