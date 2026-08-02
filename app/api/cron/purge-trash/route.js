@@ -15,6 +15,12 @@ export async function GET(request) {
   }
 
   const admin = supabaseAdmin();
+
+  // Runs first, independent of trash purge below -- unrelated concerns,
+  // and trash purge has several early returns (lookup failure, nothing
+  // expired, delete failure) that shouldn't gate this.
+  const staleAttemptsSwept = await sweepStaleAttempts(admin);
+
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: expired, error: findError } = await admin
@@ -25,21 +31,19 @@ export async function GET(request) {
 
   if (findError) {
     console.error('[cron/purge-trash] lookup failed', findError);
-    return Response.json({ error: 'Lookup failed' }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
-  if (!ids.length) return Response.json({ purged: 0 });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
     console.error('[cron/purge-trash] delete failed', deleteError);
-    return Response.json({ error: 'Delete failed' }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept }, { status: 500 });
   }
-
-  const staleAttemptsSwept = await sweepStaleAttempts(admin);
 
   return Response.json({ purged: ids.length, staleAttemptsSwept });
 }
