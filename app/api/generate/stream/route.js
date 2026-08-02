@@ -7,7 +7,7 @@
 // final metadata line beginning with <!--LUMEN-META.
 // ============================================================
 import { requireUser, ApiError } from '@/lib/auth';
-import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml } from '@/lib/usage';
+import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml, rollbackVersion } from '@/lib/usage';
 import { streamSite } from '@/lib/anthropic';
 import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
@@ -110,6 +110,12 @@ export async function POST(request) {
   // this can't silently become an unrelated new build that overwrites
   // real prior work.
   const previousHtml = await resolvePreviousHtml(admin, project);
+
+  // The base this edit is computed against -- checked against the current
+  // value at write time so a concurrent write elsewhere can't be silently
+  // overwritten. Not updated_at: that's also touched by unrelated writes
+  // (e.g. renaming a project) and would cause false conflicts.
+  const baseCodeVersion = project.code_version ?? 0;
 
   // The client believes it has a site loaded for this project, but the
   // server has nothing -- no current_code, no version history either.
@@ -247,6 +253,9 @@ export async function POST(request) {
             return;
           }
 
+          const shouldRename =
+            !project.name || project.name === 'New project' || project.name === 'Untitled project';
+
           let reply = plan?.message
             ? plan.message
             : (isEdit
@@ -261,6 +270,8 @@ export async function POST(request) {
 
           // A committed fallback replacement still gets an explicit undo
           // path, since it's a bigger change than a normal targeted edit.
+          // Must run before the version insert below, or it would just
+          // find the version this request is about to create.
           let undoToVersionId = null;
           if (result.usedFallback) {
             const { data: lastVersion } = await admin
@@ -272,32 +283,97 @@ export async function POST(request) {
             reply += " This was a full replacement rather than a small edit — use Undo if it isn't what you wanted.";
           }
 
-          await admin.from('messages').insert([
-            { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
-            { project_id: project.id, user_id: profile.id, role: 'assistant', content: reply, plan, model_used: routed.model },
-          ]);
+          // Insert the version before writing current_code, not after --
+          // so current_code is never written without a matching version
+          // already existing. If the write below conflicts or fails,
+          // this version is rolled back rather than left pointing at
+          // content that was never actually applied.
+          let versionId;
+          try {
+            const { data, error } = await admin.from('versions').insert({
+              project_id: project.id, label: title, brief: brief.slice(0, 500),
+              code: result.html, model_used: routed.model,
+            }).select('id').single();
+            if (error) throw error;
+            versionId = data.id;
+          } catch (err) {
+            console.error('[generate/stream] version insert failed', err);
+            await finish('failed', 'db_write', err);
+            send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Built, but could not save. Try again.' })} -->`);
+            return;
+          }
 
-          await admin.from('versions').insert({
-            project_id: project.id, label: title, brief: brief.slice(0, 500),
-            code: result.html, model_used: routed.model,
-          });
-
-          await logUsageEvent(admin, {
-            userId: profile.id, projectId: project.id, model: routed.model,
-            usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
-          });
-
-          const shouldRename =
-            !project.name || project.name === 'New project' || project.name === 'Untitled project';
-
-          await admin.from('projects').update({
+          // Conditional on code_version so a write that landed elsewhere
+          // while this was generating can't be silently overwritten.
+          const { data: committed, error: commitError } = await admin.from('projects').update({
             current_code: result.html,
             preview_url: previewUrl,
             updated_at: new Date().toISOString(),
+            code_version: baseCodeVersion + 1,
             ...(shouldRename ? { name: title } : {}),
-          }).eq('id', project.id);
+          }).eq('id', project.id).eq('code_version', baseCodeVersion).select('id');
 
-          await finish('succeeded', null, null);
+          if (commitError) {
+            await rollbackVersion(admin, versionId);
+            console.error('[generate/stream] commit failed', commitError);
+            await finish('failed', 'db_write', commitError);
+            send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Built, but could not save. Try again.' })} -->`);
+            return;
+          }
+
+          if (!committed || !committed.length) {
+            // Someone else's write landed first -- current_code was never
+            // touched, nothing was charged. The version inserted above
+            // was never applied, so it's rolled back rather than left
+            // as clutter.
+            await rollbackVersion(admin, versionId);
+            const conflictReply = "This project was changed in another tab while your edit was generating. Your version is ready — apply it, or discard it and start from the current site.";
+            await finish('conflict', 'lock_conflict', null);
+            const after = await getUsageSnapshot(admin, profile);
+            send(`\n<!--LUMEN-META ${JSON.stringify({
+              projectId: project.id,
+              title,
+              pending: true,
+              pendingCode: result.html,
+              plan,
+              reply: conflictReply,
+              model: routed.model,
+              edited: isEdit,
+              conflict: true,
+              buildsLeft: after.buildsLeft,
+              topupCredits: after.topupCredits,
+              resetsAt: after.resetsAt,
+            })} -->`);
+            return;
+          }
+
+          // current_code and its version are now durably committed --
+          // anything from here on is best-effort bookkeeping, not a
+          // reason to tell the customer the build failed.
+          let messagesSaved = true;
+          let bookkeepingError = null;
+          try {
+            await admin.from('messages').insert([
+              { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
+              { project_id: project.id, user_id: profile.id, role: 'assistant', content: reply, plan, model_used: routed.model },
+            ]);
+
+            await logUsageEvent(admin, {
+              userId: profile.id, projectId: project.id, model: routed.model,
+              usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
+            });
+          } catch (err) {
+            console.error('[generate/stream] post-commit bookkeeping failed', err);
+            messagesSaved = false;
+            bookkeepingError = err;
+          }
+
+          // The build itself succeeded, saved, and is about to be
+          // charged -- a bookkeeping failure here doesn't change that,
+          // so it's still logged as succeeded, just flagged with its
+          // own stage rather than folded into 'failed', which would
+          // skew the failure rate this table exists to measure.
+          await finish('succeeded', messagesSaved ? null : 'bookkeeping_incomplete', messagesSaved ? null : bookkeepingError);
 
           await recordBuild(admin, profile, snapshot);
           const after = await getUsageSnapshot(admin, profile);
@@ -308,7 +384,7 @@ export async function POST(request) {
             title,
             code: result.html,
             plan,
-            reply,
+            reply: reply + (messagesSaved ? '' : " Saved, but the chat history didn't update — refresh to see it."),
             undoToVersionId,
             previewUrl,
             model: routed.model,

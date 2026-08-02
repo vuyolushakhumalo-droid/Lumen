@@ -6,7 +6,7 @@
 // A failed generation never costs the customer a build.
 // ============================================================
 import { handler, requireUser, ApiError } from '@/lib/auth';
-import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml } from '@/lib/usage';
+import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml, rollbackVersion } from '@/lib/usage';
 import { generateSite } from '@/lib/anthropic';
 import { makeSlug } from '@/lib/publish';
 import { rateLimit } from '@/lib/ratelimit';
@@ -60,6 +60,12 @@ export const POST = handler(async (request) => {
   //     recovers the last known content so this can't silently become
   //     an unrelated new build that overwrites real prior work.
   const previousHtml = await resolvePreviousHtml(admin, project);
+
+  // The base this edit is computed against -- checked against the current
+  // value at write time so a concurrent write elsewhere can't be silently
+  // overwritten. Not updated_at: that's also touched by unrelated writes
+  // (e.g. renaming a project) and would cause false conflicts.
+  const baseCodeVersion = project.code_version ?? 0;
 
   // The client believes it has a site loaded for this project, but the
   // server has nothing -- no current_code, no version history either.
@@ -195,42 +201,103 @@ export const POST = handler(async (request) => {
     ? " This was a full replacement rather than a small edit — use Undo if it isn't what you wanted."
     : '';
 
-  let shouldRename;
+  const shouldRename =
+    !project.name || project.name === 'New project' || project.name === 'Untitled project';
+
+  // Insert the version before writing current_code, not after -- so
+  // current_code is never updated without a matching version already
+  // existing (the write invariant resolvePreviousHtml protects on the
+  // read side). If the write below conflicts or fails, this version is
+  // rolled back rather than left pointing at content that was never
+  // actually applied.
+  let versionId;
+  try {
+    const { data, error } = await admin.from('versions').insert({
+      project_id: project.id,
+      label: title,
+      brief: brief.slice(0, 500),
+      code,
+      model_used: routed.model,
+    }).select('id').single();
+    if (error) throw error;
+    versionId = data.id;
+  } catch (err) {
+    await finishAttempt(admin, attemptId, { status: 'failed', stage: 'db_write', error: err });
+    throw new ApiError(500, 'Built, but could not save. Try again.');
+  }
+
+  // Conditional on code_version so a write that landed elsewhere while
+  // this was generating can't be silently overwritten.
+  let committed;
+  try {
+    const { data, error } = await admin.from('projects').update({
+      current_code: code,
+      preview_url: previewUrl,
+      updated_at: new Date().toISOString(),
+      code_version: baseCodeVersion + 1,
+      ...(shouldRename ? { name: title } : {}),
+    }).eq('id', project.id).eq('code_version', baseCodeVersion).select('id');
+    if (error) throw error;
+    committed = data;
+  } catch (err) {
+    await rollbackVersion(admin, versionId);
+    await finishAttempt(admin, attemptId, { status: 'failed', stage: 'db_write', error: err });
+    throw new ApiError(500, 'Built, but could not save. Try again.');
+  }
+
+  if (!committed || !committed.length) {
+    // Someone else's write landed first -- current_code was never
+    // touched, nothing was charged. The version inserted above was
+    // never applied, so it's rolled back rather than left as clutter.
+    await rollbackVersion(admin, versionId);
+    const conflictReply = "This project was changed in another tab while your edit was generating. Your version is ready — apply it, or discard it and start from the current site.";
+    await finishAttempt(admin, attemptId, { status: 'conflict', stage: 'lock_conflict' });
+    const after = await getUsageSnapshot(admin, profile);
+    return Response.json({
+      projectId: project.id,
+      pending: true,
+      pendingCode: code,
+      title,
+      plan,
+      reply: conflictReply,
+      model: routed.model,
+      modelReason: routed.reason,
+      conflict: true,
+      buildsLeft: after.buildsLeft,
+      topupCredits: after.topupCredits,
+      resetsAt: after.resetsAt,
+    });
+  }
+
+  // current_code and its version are now durably committed -- anything
+  // from here on is best-effort bookkeeping, not a reason to tell the
+  // customer the build failed.
+  let messagesSaved = true;
+  let bookkeepingError = null;
   try {
     await admin.from('messages').insert([
       { project_id: project.id, user_id: profile.id, role: 'user', content: brief.slice(0, 4000) },
       { project_id: project.id, user_id: profile.id, role: 'assistant', content: reply, plan, model_used: routed.model },
     ]);
 
-    // 4. Persist: new version + project head.
-    await admin.from('versions').insert({
-      project_id: project.id,
-      label: title,
-      brief: brief.slice(0, 500),
-      code,
-      model_used: routed.model,
-    });
-
     await logUsageEvent(admin, {
       userId: profile.id, projectId: project.id, model: routed.model,
       usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
     });
-
-    shouldRename =
-      !project.name || project.name === 'New project' || project.name === 'Untitled project';
-
-    await admin.from('projects').update({
-      current_code: code,
-      preview_url: previewUrl,
-      updated_at: new Date().toISOString(),
-      ...(shouldRename ? { name: title } : {}),
-    }).eq('id', project.id);
   } catch (err) {
-    await finishAttempt(admin, attemptId, { status: 'failed', stage: 'db_write', error: err });
-    throw new ApiError(500, 'Built, but could not save. Try again.');
+    console.error('[generate] post-commit bookkeeping failed', err);
+    messagesSaved = false;
+    bookkeepingError = err;
   }
 
-  await finishAttempt(admin, attemptId, { status: 'succeeded' });
+  // The build itself succeeded, saved, and is about to be charged --
+  // a bookkeeping failure here doesn't change that, so it's still
+  // logged as succeeded, just flagged with its own stage rather than
+  // folded into 'failed', which would skew the failure rate this
+  // table exists to measure.
+  await finishAttempt(admin, attemptId, messagesSaved
+    ? { status: 'succeeded' }
+    : { status: 'succeeded', stage: 'bookkeeping_incomplete', error: bookkeepingError });
 
   // 5. Only now does it count against the allowance.
   const charged = await recordBuild(admin, profile, snapshot);
@@ -246,7 +313,8 @@ export const POST = handler(async (request) => {
     model: routed.model,
     modelReason: routed.reason,
     plan,
-    reply: reply + imageNote + undoNote + recoveryNote,
+    reply: reply + imageNote + undoNote + recoveryNote
+      + (messagesSaved ? '' : " Saved, but the chat history didn't update — refresh to see it."),
     undoToVersionId,
     truncated: result.stopReason === 'max_tokens',
     chargedFrom: charged.source,
