@@ -39,5 +39,29 @@ export async function GET(request) {
     return Response.json({ error: 'Delete failed' }, { status: 500 });
   }
 
-  return Response.json({ purged: ids.length });
+  const staleAttemptsSwept = await sweepStaleAttempts(admin);
+
+  return Response.json({ purged: ids.length, staleAttemptsSwept });
+}
+
+// On this runtime, a client disconnect kills the streaming function
+// outright -- neither the route's own catch nor the ReadableStream's
+// cancel() ever runs, so an aborted build's generation_attempts row can
+// never be resolved at abort time. This sweeps anything left behind.
+// 15 minutes, not 10: a legitimate build took 5 minutes, so this leaves
+// headroom above the slowest real build.
+async function sweepStaleAttempts(admin) {
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { data, error } = await admin
+    .from('generation_attempts')
+    .update({ status: 'aborted', stage: 'client_disconnect', finished_at: new Date().toISOString() })
+    .eq('status', 'started')
+    .lt('created_at', cutoff)
+    .select('id');
+
+  if (error) {
+    console.error('[cron/purge-trash] stale attempt sweep failed', error);
+    return 0;
+  }
+  return data?.length || 0;
 }
