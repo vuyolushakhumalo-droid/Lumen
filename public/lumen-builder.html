@@ -624,7 +624,9 @@
       var pendingHtml = '';
       if(m.pending && !m.pendingResolved){
         pendingHtml = '<div class="pendingbox">'
-          + '<div class="pendingtext">This looked like a full replacement rather than a small change, so nothing has been saved yet.</div>'
+          + '<div class="pendingtext">' + (m.conflict
+            ? 'This project was changed in another tab while this was generating, so nothing has been saved yet.'
+            : 'This looked like a full replacement rather than a small change, so nothing has been saved yet.') + '</div>'
           + '<div class="pendingactions">'
           + '<button class="btn btn-primary applyPending" type="button">Apply this</button>'
           + '<button class="btn btn-ghost discardPending" type="button">Keep my current site</button>'
@@ -929,9 +931,11 @@
         // client-side until the user explicitly applies or discards it.
         p.pendingReplacement = { code: meta.pendingCode, title: meta.title };
         var pmsg = meta.reply || 'This edit looked like a full replacement rather than a small change, so I held it back.';
-        chats[activeId].push({ role:'ai', text: pmsg, plan: meta.plan, model: meta.model, pending: true });
+        chats[activeId].push({ role:'ai', text: pmsg, plan: meta.plan, model: meta.model, pending: true, conflict: !!meta.conflict });
         renderAll(); refreshUsage();
-        speak('Held back a change that looked like a full replacement — review it before applying.');
+        speak(meta.conflict
+          ? 'Another tab changed this project while your edit was generating — review it before applying.'
+          : 'Held back a change that looked like a full replacement — review it before applying.');
       } else {
         p.current_code = (meta && meta.code) ? meta.code : buffer;
         if(meta){
