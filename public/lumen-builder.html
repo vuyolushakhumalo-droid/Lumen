@@ -30,8 +30,14 @@
   .tedit{background:var(--surface-3); border:1px solid rgba(95,224,255,0.45); border-radius:7px; color:var(--ink); font-family:var(--font); font-size:13px; padding:3px 8px; width:130px; outline:none}
   .brand svg{width:21px; height:21px}
   .brand b{font-weight:600; font-size:16px; letter-spacing:-0.01em}
+  .tabswrap{flex:1; display:flex; align-items:center; min-width:0}
   .tabs{display:flex; align-items:center; gap:3px; flex:1; overflow-x:auto; padding:0 6px}
   .tabs::-webkit-scrollbar{height:0}
+  .tabscroll{width:26px; height:26px; border-radius:50%; border:none; background:transparent; color:var(--grey-dim);
+    display:flex; align-items:center; justify-content:center; flex:none; opacity:0; pointer-events:none; transition:.2s}
+  .tabscroll.show{opacity:1; pointer-events:auto}
+  .tabscroll:hover{color:var(--cyan); background:rgba(95,224,255,0.08)}
+  .tabscroll svg{width:15px; height:15px}
   .tab{display:flex; align-items:center; gap:9px; padding:8px 15px; border-radius:980px; font-size:13px; color:var(--grey-dim); background:transparent; white-space:nowrap; transition:color .3s, background .3s}
   .tab:hover{color:var(--ink); background:rgba(255,255,255,0.04)}
   .tab.active{color:var(--ink); background:rgba(95,224,255,0.08)}
@@ -249,7 +255,7 @@
     border-radius:980px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:var(--font)}
   .stopbtn:hover{background:rgba(255,255,255,.12)}
   .send.busy{background:rgba(255,255,255,.08);color:var(--grey)}
-  .livecode{position:absolute;right:14px;bottom:14px;z-index:5;font-family:var(--mono);font-size:10.5px;
+  .livecode{position:absolute;left:14px;bottom:14px;z-index:5;font-family:var(--mono);font-size:10.5px;
     color:var(--cyan);background:rgba(5,8,13,.8);border:1px solid rgba(95,224,255,.2);padding:5px 10px;
     border-radius:980px;pointer-events:none;opacity:0;transition:opacity .3s}
   .livecode.show{opacity:1}
@@ -289,7 +295,15 @@
       <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="#5FE0FF" stroke-width="1.4" opacity="0.35"/><circle cx="20" cy="20" r="9" stroke="#5FE0FF" stroke-width="1.4"/><circle cx="20" cy="20" r="3.4" fill="#5FE0FF"/></svg>
       <b>Lumen</b>
     </a>
-    <div class="tabs" id="tabs"></div>
+    <div class="tabswrap" id="tabswrap">
+      <button class="tabscroll left" id="tabsLeft" title="Scroll tabs left" aria-label="Scroll tabs left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="tabs" id="tabs"></div>
+      <button class="tabscroll right" id="tabsRight" title="Scroll tabs right" aria-label="Scroll tabs right">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
     <button class="newtab" id="newtab" title="New project">+</button>
     <div class="top-actions">
       <a class="allowance" id="allowance" href="/dashboard" title="Your daily allowance"><span>Builds left</span> <b id="bleft">—</b></a>
@@ -447,6 +461,7 @@
 
   // ---------- elements ----------
   var tabsEl=document.getElementById('tabs'), scroll=document.getElementById('scroll'), codeView=document.getElementById('codeView');
+  var tabsLeftBtn=document.getElementById('tabsLeft'), tabsRightBtn=document.getElementById('tabsRight');
   var preview=document.getElementById('preview'), previewEmpty=document.getElementById('previewempty'), urlEl=document.getElementById('url');
   var promptEl=document.getElementById('prompt'), chipsEl=document.getElementById('chips'), projName=document.getElementById('projName');
   var toastEl=document.getElementById('toast'), toastText=document.getElementById('toasttext');
@@ -505,14 +520,19 @@
       var t=document.createElement('div');
       t.className='tab'+(p.id===activeId?' active':'');
       t.title='Double-click to rename';
+      t.dataset.id=p.id;
       t.innerHTML='<span class="dotc"></span><span class="tname">'+esc(p.name)+'</span>'+
                   (projects.length>1?'<span class="close" data-id="'+p.id+'">\u00d7</span>':'');
       t.addEventListener('click', function(e){
         if(e.target.classList.contains('close')||e.target.classList.contains('tedit')) return;
+        // Already active -- nothing to switch, and staying a no-op here
+        // is what lets a following dblclick rename without a switch (and
+        // the re-render it triggers) landing in between the two clicks.
+        if(p.id===activeId) return;
         activeId=p.id; renderAll(); loadChat(p.id);
       });
       var nm=t.querySelector('.tname');
-      nm.addEventListener('dblclick', function(e){ e.stopPropagation(); renameTab(p, nm); });
+      nm.addEventListener('dblclick', function(e){ e.stopPropagation(); renameTab(p); });
       tabsEl.appendChild(t);
     });
     tabsEl.querySelectorAll('.close').forEach(function(c){
@@ -526,9 +546,28 @@
         renderAll();
       });
     });
+    updateTabScroll();
   }
 
-  function renameTab(p, span){
+  // Step size follows the actual rendered tab width, so a click moves
+  // roughly one tab regardless of how long project names are.
+  function tabScrollStep(){
+    var first = tabsEl.querySelector('.tab');
+    return first ? (first.offsetWidth + 3) : 160;
+  }
+  function updateTabScroll(){
+    var overflow = tabsEl.scrollWidth > tabsEl.clientWidth + 1;
+    tabsLeftBtn.classList.toggle('show', overflow && tabsEl.scrollLeft > 4);
+    tabsRightBtn.classList.toggle('show', overflow && tabsEl.scrollLeft < tabsEl.scrollWidth - tabsEl.clientWidth - 4);
+  }
+
+  function renameTab(p){
+    // Looked up live rather than handed a reference captured before the
+    // click -- a click that switches tabs re-renders the whole strip,
+    // which would otherwise leave this holding a detached node.
+    var tabNode = tabsEl.querySelector('.tab[data-id="'+p.id+'"]');
+    var span = tabNode ? tabNode.querySelector('.tname') : null;
+    if(!span) return;
     var inp=document.createElement('input'); inp.className='tedit'; inp.value=p.name;
     span.replaceWith(inp); inp.focus(); inp.select();
     var done=false;
@@ -1036,6 +1075,11 @@
       setMode('chat'); renderAll(); promptEl.focus();
     }catch(e){ toast(e.message); }
   });
+
+  tabsLeftBtn.addEventListener('click', function(){ tabsEl.scrollBy({ left: -tabScrollStep(), behavior:'smooth' }); });
+  tabsRightBtn.addEventListener('click', function(){ tabsEl.scrollBy({ left: tabScrollStep(), behavior:'smooth' }); });
+  tabsEl.addEventListener('scroll', updateTabScroll);
+  window.addEventListener('resize', updateTabScroll);
 
   document.getElementById('fork').addEventListener('click', async function(){
     var p=active(); if(!p) return;
