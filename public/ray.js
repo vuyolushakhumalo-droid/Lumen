@@ -14,10 +14,15 @@
   .ray-fab{position:fixed;right:22px;bottom:22px;z-index:940;display:flex;align-items:center;gap:10px;
     padding:13px 20px 13px 16px;border:none;border-radius:980px;cursor:pointer;
     background:#5FE0FF;color:#04141B;font-family:'Inter',system-ui,sans-serif;font-size:14.5px;font-weight:600;
-    box-shadow:0 14px 40px -12px rgba(95,224,255,.6);transition:transform .2s,box-shadow .25s}
+    box-shadow:0 14px 40px -12px rgba(95,224,255,.6);transition:transform .2s,box-shadow .25s,padding .25s,gap .25s}
   .ray-fab:hover{transform:translateY(-2px);box-shadow:0 18px 50px -12px rgba(95,224,255,.75)}
   .ray-fab svg{width:19px;height:19px}
   .ray-fab.hide{display:none}
+  .ray-fab-label{display:inline-block;max-width:200px;opacity:1;overflow:hidden;white-space:nowrap;
+    transition:max-width .25s ease,opacity .15s ease,margin .25s ease}
+
+  body.generating .ray-fab{padding:13px;gap:0}
+  body.generating .ray-fab-label{max-width:0;opacity:0;margin:0}
 
   .ray-panel{position:fixed;right:22px;bottom:22px;z-index:950;width:min(400px,calc(100vw - 32px));
     height:min(600px,calc(100vh - 48px));display:none;flex-direction:column;overflow:hidden;
@@ -96,7 +101,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
-    Ask Ray
+    <span class="ray-fab-label">Ask Ray</span>
   </button>
 
   <div class="ray-panel" id="rayPanel" role="dialog" aria-label="Chat with Ray, the AI advisor">

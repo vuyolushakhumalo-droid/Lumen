@@ -462,6 +462,7 @@
   // ---------- elements ----------
   var tabsEl=document.getElementById('tabs'), scroll=document.getElementById('scroll'), codeView=document.getElementById('codeView');
   var tabsLeftBtn=document.getElementById('tabsLeft'), tabsRightBtn=document.getElementById('tabsRight');
+  var liveBadge=document.getElementById('liveCode');
   var preview=document.getElementById('preview'), previewEmpty=document.getElementById('previewempty'), urlEl=document.getElementById('url');
   var promptEl=document.getElementById('prompt'), chipsEl=document.getElementById('chips'), projName=document.getElementById('projName');
   var toastEl=document.getElementById('toast'), toastText=document.getElementById('toasttext');
@@ -796,6 +797,14 @@
   // ---------- generating (streamed, so you can watch it build) ----------
   var activeController = null;
 
+  // Single toggle for both the "writing..." badge and Ray's fab
+  // shrinking out of its way -- called from send()'s finally, so it
+  // can't get stuck on a failed/aborted/conflicted build.
+  function setGenerating(on){
+    document.body.classList.toggle('generating', on);
+    liveBadge.classList.toggle('show', on);
+  }
+
   async function send(){
     var v=promptEl.value.trim();
     if(!v && !pendingFiles.length) return;
@@ -825,8 +834,7 @@
     var sendBtn = document.getElementById('send');
     sendBtn.classList.add('busy');
 
-    var liveBadge = document.getElementById('liveCode');
-    liveBadge.classList.add('show');
+    setGenerating(true);
 
     activeController = new AbortController();
     var stopBtn = document.getElementById('stopBuild');
@@ -1029,7 +1037,7 @@
     }finally{
       activeController = null;
       sendBtn.classList.remove('busy');
-      liveBadge.classList.remove('show');
+      setGenerating(false);
     }
   }
 
@@ -1062,7 +1070,20 @@
 
   // ---------- wire up ----------
   document.getElementById('send').addEventListener('click', send);
-  promptEl.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } });
+  promptEl.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && e.altKey){
+      // Browsers don't reliably insert a newline for Alt+Enter in a
+      // textarea the way they do for Shift+Enter, so it's done by hand:
+      // splice \n in at the caret, then put the caret right after it.
+      e.preventDefault();
+      var start=promptEl.selectionStart, end=promptEl.selectionEnd;
+      promptEl.value = promptEl.value.slice(0,start) + '\n' + promptEl.value.slice(end);
+      promptEl.selectionStart = promptEl.selectionEnd = start+1;
+      promptEl.style.height='auto'; promptEl.style.height=Math.min(promptEl.scrollHeight,140)+'px';
+      return;
+    }
+    if(e.key==='Enter' && !e.shiftKey && !e.altKey){ e.preventDefault(); send(); }
+  });
   promptEl.addEventListener('input', function(){ promptEl.style.height='auto'; promptEl.style.height=Math.min(promptEl.scrollHeight,140)+'px'; });
 
   document.getElementById('segChat').addEventListener('click', function(){ setMode('chat'); });
