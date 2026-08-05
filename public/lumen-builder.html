@@ -498,17 +498,27 @@
   }
 
   // ---------- projects ----------
+  function projectIdFromUrl(){
+    try{ return new URLSearchParams(window.location.search).get('project'); }catch(e){ return null; }
+  }
+
   async function loadProjects(){
     var out = await Lumen.api('/api/projects');
     projects = out.projects || [];
     if(!activeId || !active()){
-      var blank = projects.filter(function(p){ return !p.hasBuild; })[0];
-      if(blank){
-        activeId = blank.id;
+      var wanted = projectIdFromUrl();
+      var fromUrl = wanted && projects.filter(function(p){ return p.id===wanted; })[0];
+      if(fromUrl){
+        activeId = fromUrl.id;
       } else {
-        var made = await Lumen.api('/api/projects', { method:'POST', body: JSON.stringify({ name:'New project' }) });
-        projects.push(made.project);
-        activeId = made.project.id;
+        var blank = projects.filter(function(p){ return !p.hasBuild; })[0];
+        if(blank){
+          activeId = blank.id;
+        } else {
+          var made = await Lumen.api('/api/projects', { method:'POST', body: JSON.stringify({ name:'New project' }) });
+          projects.push(made.project);
+          activeId = made.project.id;
+        }
       }
     }
     renderAll();

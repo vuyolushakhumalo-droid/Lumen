@@ -178,13 +178,13 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 <a class="brand" href="/"><svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="#5FE0FF" stroke-width="1.4" opacity="0.35"/><circle cx="20" cy="20" r="9" stroke="#5FE0FF" stroke-width="1.4"/><circle cx="20" cy="20" r="3.4" fill="#5FE0FF"/></svg><b>Lumen</b></a>
 <div class="nav-links"><a href="/#build">Build</a><a href="/#pricing">Pricing</a><a href="/templates">Templates</a><a href="/community">Community</a></div>
 <button class="burger" id="burger" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-<div class="nav-right"><a class="signin" href="#">Sign in</a><a class="btn btn-primary" href="/#pricing" data-gate="build">Start building</a></div>
+<div class="nav-right"><a class="btn btn-primary" href="/#pricing" data-gate="build">Start building</a></div>
 </nav></div></header>
 <div class="mobmenu" id="mobmenu">
 <a href="/#build">Build</a><a href="/#pricing">Pricing</a><a href="/templates">Templates</a>
 <a href="/community">Community</a><a href="/about">About</a><a href="/work">Work</a>
 <a href="/help">Help</a><a href="/contact">Contact</a>
-<div class="mact"><a class="btn btn-ghost signin" href="/start">Sign in</a><a class="btn btn-primary" href="/#pricing" data-gate="build">Start building</a></div>
+<div class="mact"><a class="btn btn-primary" href="/#pricing" data-gate="build">Start building</a></div>
 </div>
 <main><section class="page-hero" style="padding-bottom:0"><div class="wrap reveal">
 <span class="eyebrow">Your account</span><h1>Dashboard</h1>
@@ -201,6 +201,7 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
   <div class="meter-row"><span><b id="used">0</b> used</span><span><b id="left">15</b> left of <span id="cap">15</span></span></div>
   <div class="refresh"><span class="rd"></span><span>Refreshes in <b id="countdown">—</b></span></div>
   <div class="meter-row" id="monthRow" style="margin-top:-10px"><span>This month</span><span><b id="monthUsed">0</b> of <span id="monthLimit">0</span></span></div>
+  <div class="meter-row" id="imagesRow" style="margin-top:-10px;display:none"><span>Images this month</span><span><b id="imagesUsedEl">0</b> of <span id="imagesLimitEl">0</span></span></div>
   <div class="dash-actions">
     <a class="btn btn-primary" href="/builder">Keep building</a>
     <a class="btn btn-ghost" href="#topup">Top up</a>
@@ -330,6 +331,13 @@ document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
       var mu=document.getElementById('monthUsed'), ml=document.getElementById('monthLimit');
       if(mu) mu.textContent = u.monthUsed || 0;
       if(ml) ml.textContent = u.monthLimit || 0;
+
+      var ir=document.getElementById('imagesRow');
+      if(ir && u.imagesLimit > 0){
+        document.getElementById('imagesUsedEl').textContent = u.imagesUsed || 0;
+        document.getElementById('imagesLimitEl').textContent = u.imagesLimit;
+        ir.style.display = 'flex';
+      }
 
       var cap = u.windowLimit || u.dailyLimit;
       var pct = cap ? Math.min(100, (u.used / cap) * 100) : 0;
@@ -507,7 +515,7 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
         + (p.published && url ? '<a href="'+url+'" target="_blank" rel="noopener">'+esc(url.replace(/^https?:\/\//,''))+'</a>' : '')
         + '</div></div>'
         + '<div class="sactions">'
-        + '<a class="sbtn" href="/builder">Open</a>'
+        + '<a class="sbtn" href="/builder?project='+p.id+'">Open</a>'
         + (p.hasBuild ? '<button class="sbtn" data-act="export" data-id="'+p.id+'">Export</button>' : '')
         + (p.published ? '<button class="sbtn" data-act="unpublish" data-id="'+p.id+'">Unpublish</button>' : '')
         + '<button class="sbtn danger" data-act="delete" data-id="'+p.id+'" data-name="'+esc(p.name||'Untitled')+'">Move to Trash</button>'
