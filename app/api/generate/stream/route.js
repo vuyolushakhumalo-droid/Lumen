@@ -16,7 +16,7 @@ import { startAttempt, finishAttempt } from '@/lib/attempts';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
-export const maxDuration = 300;
+export const maxDuration = 800; // needs Fluid compute enabled on the Vercel project (Pro/Enterprise ceiling is 800s with it on, 300s default without)
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 const MAX_IMAGES = 5;

@@ -15,7 +15,7 @@ import { startAttempt, finishAttempt } from '@/lib/attempts';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
-export const maxDuration = 300;   // full sites take longer than a few seconds
+export const maxDuration = 800;   // full sites take longer than a few seconds -- needs Fluid compute enabled on the Vercel project (Pro/Enterprise ceiling is 800s with it on, 300s default without)
 
 export const POST = handler(async (request) => {
   const { profile, admin } = await requireUser(request);

@@ -53,10 +53,12 @@ export async function GET(request) {
 // outright -- neither the route's own catch nor the ReadableStream's
 // cancel() ever runs, so an aborted build's generation_attempts row can
 // never be resolved at abort time. This sweeps anything left behind.
-// 15 minutes, not 10: a legitimate build took 5 minutes, so this leaves
-// headroom above the slowest real build.
+// 25 minutes: the generate routes' maxDuration is 800s (13.3 minutes),
+// so a legitimate build can genuinely still be running at 15 -- this
+// leaves real headroom above the slowest possible build instead of
+// racing it.
 async function sweepStaleAttempts(admin) {
-  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - 25 * 60 * 1000).toISOString();
   const { data, error } = await admin
     .from('generation_attempts')
     .update({ status: 'aborted', stage: 'client_disconnect', finished_at: new Date().toISOString() })
