@@ -771,9 +771,21 @@
     codeView.innerHTML = (p && p.current_code) ? highlight(p.current_code)
       : '<span style="color:#5D6875">// Your generated code appears here once you build something.</span>';
   }
+  // A srcdoc iframe has an opaque (null) origin, so history.pushState/
+  // replaceState throw SecurityError there even though the exact same
+  // call works fine once the site is actually published to a real
+  // origin. Only the preview needs this -- p.current_code itself (what
+  // gets saved and published) is left untouched.
+  function withPreviewNavGuard(html){
+    var guard = '<script>(function(){var h=window.history;["pushState","replaceState"].forEach(function(m){'
+      + 'var orig=h[m];h[m]=function(){try{return orig.apply(h,arguments);}catch(e){}};});})();<\/script>';
+    var m = html.match(/<!doctype[^>]*>/i);
+    return m ? html.slice(0,m.index+m[0].length) + guard + html.slice(m.index+m[0].length) : guard + html;
+  }
+
   function renderPreview(){
     var p=active();
-    if(p && p.current_code){ preview.srcdoc=p.current_code; previewEmpty.style.display='none'; }
+    if(p && p.current_code){ preview.srcdoc=withPreviewNavGuard(p.current_code); previewEmpty.style.display='none'; }
     else { preview.srcdoc=''; previewEmpty.style.display='flex'; }
     urlEl.textContent = (p && p.preview_url) || 'preview.lumen.build';
   }
