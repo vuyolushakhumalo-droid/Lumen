@@ -23,7 +23,7 @@ export const POST = handler(async (request, { params }) => {
   if (!project) throw new ApiError(404, 'Project not found');
 
   const label = title || project.name || 'Update';
-  const previewUrl = `${makeSlug(label)}.lumen.build`;
+  const previewUrl = `${makeSlug(label)}.lintelsites.com`;
 
   await admin.from('versions').insert({
     project_id: project.id,

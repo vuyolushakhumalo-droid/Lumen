@@ -1,5 +1,5 @@
 /* ============================================================
-   Ray — Lumen's AI advisor.
+   Ray — Lintel's AI advisor.
    A floating chat widget. Drop <script src="/ray.js"></script>
    on any page and it appears bottom-right.
    ============================================================ */
@@ -120,7 +120,7 @@
 
     <div class="ray-foot">
       <div class="ray-inputwrap">
-        <textarea class="ray-input" id="rayInput" rows="1" placeholder="Ask me anything about Lumen…"></textarea>
+        <textarea class="ray-input" id="rayInput" rows="1" placeholder="Ask me anything about Lintel…"></textarea>
         <button class="ray-send" id="raySend" aria-label="Send">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
         </button>
@@ -169,7 +169,7 @@
     el.innerHTML =
       '<p>Happy to pass you to a person — they will pick this up from here.</p>' +
       '<div class="row">' +
-      '<a class="primary" href="mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent('Question for the Lumen team') + '">Email the team</a>' +
+      '<a class="primary" href="mailto:' + CONTACT_EMAIL + '?subject=' + encodeURIComponent('Question for the Lintel team') + '">Email the team</a>' +
       '<a class="ghost" href="' + BOOKING_URL + '">Book a call</a>' +
       '</div>';
     body.appendChild(el);
@@ -197,7 +197,7 @@
   function greet() {
     if (started) return;
     started = true;
-    addMsg('assistant', "Hello — I'm Ray, Lumen's AI advisor. Ask me anything about plans, building, or your account, and I'll bring in a human whenever that's more useful.");
+    addMsg('assistant', "Hello — I'm Ray, Lintel's AI advisor. Ask me anything about plans, building, or your account, and I'll bring in a human whenever that's more useful.");
     addChips(['How do the daily builds work?', 'Which plan should I pick?', 'Can I use my own domain?', 'Talk to a human']);
   }
 

@@ -213,7 +213,7 @@ export async function POST(request) {
         try {
           const title = result.title || 'New site';
           const plan = result.plan || null;
-          const previewUrl = `${makeSlug(title)}.lumen.build`;
+          const previewUrl = `${makeSlug(title)}.lintelsites.com`;
 
           // A near-total replacement from the edit fallback path is held
           // back rather than auto-applied -- current_code stays untouched,

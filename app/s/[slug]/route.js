@@ -61,7 +61,7 @@ h1{color:#F5F6F9;font-size:24px;margin:0 0 10px;font-weight:600}
 a{color:#5FE0FF;text-decoration:none}</style></head>
 <body><div><h1>This site isn't here</h1>
 <p>It may have been unpublished or moved.</p>
-<p><a href="/">Build your own with Lumen</a></p></div></body></html>`,
+<p><a href="/">Build your own with Lintel</a></p></div></body></html>`,
     {
       status: 404,
       headers: {

@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
     .eq('custom_domain', host)
     .maybeSingle();
 
-  // 2) otherwise treat the first label as a subdomain (site.lumen.build)
+  // 2) otherwise treat the first label as a subdomain (site.lintelsites.com)
   if (!site) {
     const base = (process.env.SITES_DOMAIN || '').toLowerCase();
     if (base && host.endsWith('.' + base)) {
@@ -61,7 +61,7 @@ background:#05070C;color:#96A0AD;font-family:Inter,system-ui,sans-serif;text-ali
 h1{color:#F5F6F9;font-size:24px;margin:0 0 10px;font-weight:600}a{color:#5FE0FF;text-decoration:none}</style>
 </head><body><div><h1>This site isn't here</h1>
 <p>No published site is connected to this address yet.</p>
-<p><a href="https://lumen.build">Build one with Lumen</a></p></div></body></html>`,
+<p><a href="https://lintelapp.co.uk">Build one with Lintel</a></p></div></body></html>`,
     { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
   );
 }

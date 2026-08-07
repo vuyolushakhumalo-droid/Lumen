@@ -64,7 +64,7 @@ export const GET = handler(async (request) => {
       html: v.code,
     })),
     readme:
-      'This is a complete export of your Lumen project. "currentSite" is the live version — ' +
+      'This is a complete export of your Lintel project. "currentSite" is the live version — ' +
       'save it as index.html and host it anywhere. "versions" holds your earlier builds. ' +
       'Your site is yours: no attribution or permission required.',
   };
@@ -72,7 +72,7 @@ export const GET = handler(async (request) => {
   return new Response(JSON.stringify(bundle, null, 2), {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${name}-lumen-export.json"`,
+      'Content-Disposition': `attachment; filename="${name}-lintel-export.json"`,
     },
   });
 });
