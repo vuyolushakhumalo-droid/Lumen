@@ -99,6 +99,9 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}.reveal{opacity:1;transform:none;transition:none}}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:5px}
 
+.dashnav a{padding:8px 14px;border-radius:980px;transition:color .25s,background .25s}
+.dashnav a.on{color:var(--ink);background:rgba(95,224,255,0.08)}
+.mobmenu a.on{color:var(--cyan)}
 .dash{max-width:900px;margin:0 auto}
 .usage-card{border:1px solid var(--line);border-radius:22px;padding:34px;background:linear-gradient(180deg,var(--surface),var(--bg-2));margin-bottom:22px;position:relative;overflow:hidden}
 .usage-card::after{content:'';position:absolute;top:-40%;left:50%;transform:translateX(-50%);width:70%;height:60%;background:radial-gradient(circle,rgba(95,224,255,.10),transparent 70%);pointer-events:none}
@@ -176,15 +179,15 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 </head><body><div class="amb"></div>
 <header id="hdr"><div class="wrap"><nav class="nav">
 <a class="brand" href="/"><svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="#5FE0FF" stroke-width="1.4" opacity="0.35"/><circle cx="20" cy="20" r="9" stroke="#5FE0FF" stroke-width="1.4"/><circle cx="20" cy="20" r="3.4" fill="#5FE0FF"/></svg><b>Lintel</b></a>
-<div class="nav-links"><a href="/#build">Build</a><a href="/#pricing">Pricing</a><a href="/templates">Templates</a><a href="/demos">Demos</a></div>
+<div class="nav-links dashnav" id="dashNav">
+<a href="#sites" data-tab="sites">Sites</a><a href="#usage" data-tab="usage">Usage</a><a href="#billing" data-tab="billing">Billing</a><a href="#settings" data-tab="settings">Settings</a>
+</div>
 <button class="burger" id="burger" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-<div class="nav-right"><a class="btn btn-primary" href="/#pricing" data-gate="build">Start building</a></div>
+<div class="nav-right"><button class="btn btn-ghost" id="signout" type="button">Sign out</button><a class="btn btn-primary" href="/builder">Keep building</a></div>
 </nav></div></header>
 <div class="mobmenu" id="mobmenu">
-<a href="/#build">Build</a><a href="/#pricing">Pricing</a><a href="/templates">Templates</a>
-<a href="/demos">Demos</a><a href="/about">About</a><a href="/work">Work</a>
-<a href="/help">Help</a><a href="/contact">Contact</a>
-<div class="mact"><a class="btn btn-primary" href="/#pricing" data-gate="build">Start building</a></div>
+<a href="#sites" data-tab="sites">Sites</a><a href="#usage" data-tab="usage">Usage</a><a href="#billing" data-tab="billing">Billing</a><a href="#settings" data-tab="settings">Settings</a>
+<div class="mact"><a class="btn btn-primary" href="/builder">Keep building</a><button class="btn btn-ghost" id="signoutMobile" type="button" style="width:100%;justify-content:center">Sign out</button></div>
 </div>
 <main><section class="page-hero" style="padding-bottom:0"><div class="wrap reveal">
 <span class="eyebrow">Your account</span><h1>Dashboard</h1>
@@ -192,22 +195,7 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 </div></section>
 <section class="sec"><div class="wrap"><div class="dash">
 
-<div class="usage-card reveal">
-  <div class="usage-top">
-    <div><h2>Your builds</h2><p class="grey" style="font-size:14.5px">Your allowance refreshes every few hours.</p></div>
-    <span class="plan-pill" id="planPill">Pro plan</span>
-  </div>
-  <div class="meter"><div class="fill" id="fill" style="width:0%"></div></div>
-  <div class="meter-row"><span><b id="used">0</b> used</span><span><b id="left">15</b> left of <span id="cap">15</span></span></div>
-  <div class="refresh"><span class="rd"></span><span>Refreshes in <b id="countdown">—</b></span></div>
-  <div class="meter-row" id="monthRow" style="margin-top:-10px"><span>This month</span><span><b id="monthUsed">0</b> of <span id="monthLimit">0</span></span></div>
-  <div class="meter-row" id="imagesRow" style="margin-top:-10px;display:none"><span>Images this month</span><span><b id="imagesUsedEl">0</b> of <span id="imagesLimitEl">0</span></span></div>
-  <div class="dash-actions">
-    <a class="btn btn-primary" href="/builder">Keep building</a>
-    <a class="btn btn-ghost" href="#topup">Top up</a>
-  </div>
-</div>
-
+<div class="tabpanel" id="tab-sites">
 <div class="sites reveal" id="sitesPanel">
   <div class="sites-head">
     <div>
@@ -230,19 +218,31 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
   </div>
   <div id="trashList"><div class="sempty">Loading…</div></div>
 </div>
+</div>
 
-<div class="grid2">
-  <div class="mini reveal">
-    <h3>Subscription</h3>
-    <p>Change plan, update your card, download invoices, or cancel — all in one place.</p>
-    <a class="btn btn-ghost" id="portal" href="#">Manage billing</a>
+<div class="tabpanel" id="tab-usage" style="display:none">
+<div class="usage-card reveal">
+  <div class="usage-top">
+    <div><h2>Your builds</h2><p class="grey" style="font-size:14.5px">Your allowance refreshes every few hours.</p></div>
+    <span class="plan-pill" id="planPill">Pro plan</span>
   </div>
-  <div class="mini reveal">
-    <h3>Your advisor</h3>
-    <p>Planning something bigger? Talk it through with a person who can help.</p>
-    <a class="btn btn-ghost" href="/advisor">Connect with your advisor</a>
-    <button class="btn btn-ghost" id="signout" style="margin-top:10px;width:100%;justify-content:center">Sign out</button>
+  <div class="meter"><div class="fill" id="fill" style="width:0%"></div></div>
+  <div class="meter-row"><span><b id="used">0</b> used</span><span><b id="left">15</b> left of <span id="cap">15</span></span></div>
+  <div class="refresh"><span class="rd"></span><span>Refreshes in <b id="countdown">—</b></span></div>
+  <div class="meter-row" id="monthRow" style="margin-top:-10px"><span>This month</span><span><b id="monthUsed">0</b> of <span id="monthLimit">0</span></span></div>
+  <div class="meter-row" id="imagesRow" style="margin-top:-10px;display:none"><span>Images this month</span><span><b id="imagesUsedEl">0</b> of <span id="imagesLimitEl">0</span></span></div>
+  <div class="dash-actions">
+    <a class="btn btn-primary" href="/builder">Keep building</a>
+    <a class="btn btn-ghost" href="#billing">Top up</a>
   </div>
+</div>
+</div>
+
+<div class="tabpanel" id="tab-billing" style="display:none">
+<div class="mini reveal">
+  <h3>Subscription</h3>
+  <p>Change plan, update your card, download invoices, or cancel — all in one place.</p>
+  <a class="btn btn-ghost" id="portal" href="#">Manage billing</a>
 </div>
 
 <div class="mini reveal" id="topup" style="margin-top:22px">
@@ -255,8 +255,10 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
   </div>
   <p class="grey" style="font-size:13px;margin-top:16px;margin-bottom:0">Top-ups are charged at cost plus card fees. No markup.</p>
 </div>
+</div>
 
-<div class="mini reveal" id="pwCard" style="margin-top:22px">
+<div class="tabpanel" id="tab-settings" style="display:none">
+<div class="mini reveal" id="pwCard">
   <h3>Password</h3>
   <p>Change the password you use to sign in.</p>
   <div class="errbox" id="pwErr"></div>
@@ -274,6 +276,13 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
     <input type="password" id="pwConfirm" placeholder="Type it again" autocomplete="new-password">
   </div>
   <button class="btn btn-primary" id="pwSave" type="button">Change password</button>
+</div>
+
+<div class="mini reveal" style="margin-top:22px">
+  <h3>Your advisor</h3>
+  <p>Planning something bigger? Talk it through with a person who can help.</p>
+  <a class="btn btn-ghost" href="/advisor">Connect with your advisor</a>
+</div>
 </div>
 
 </div></div></section></main>
@@ -411,8 +420,42 @@ document.addEventListener('click',function(e){if(m.classList.contains('show')&&!
 m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){m.classList.remove('show');});});})();</script>
 <script>
 (function(){
+  function doSignOut(){ Lumen.signOut(); }
   var b=document.getElementById('signout');
-  if(b) b.addEventListener('click', function(){ Lumen.signOut(); });
+  if(b) b.addEventListener('click', doSignOut);
+  var bm=document.getElementById('signoutMobile');
+  if(bm) bm.addEventListener('click', doSignOut);
+})();
+</script>
+<script>
+(function(){
+  var TABS = ['sites','usage','billing','settings'];
+  var navLinks = document.querySelectorAll('[data-tab]');
+
+  function showTab(name){
+    if(TABS.indexOf(name) === -1) name = 'sites';
+    TABS.forEach(function(t){
+      var panel = document.getElementById('tab-'+t);
+      if(panel) panel.style.display = (t===name) ? 'block' : 'none';
+    });
+    navLinks.forEach(function(a){
+      a.classList.toggle('on', a.getAttribute('data-tab')===name);
+    });
+    if(name === 'sites'){
+      // Always land on the projects list, never leave Trash showing
+      // from before this tab was last left.
+      var sp=document.getElementById('sitesPanel'), tp=document.getElementById('trashPanel');
+      if(sp) sp.style.display='block';
+      if(tp) tp.style.display='none';
+    }
+  }
+
+  function currentTab(){
+    return (window.location.hash||'').replace('#','') || 'sites';
+  }
+
+  window.addEventListener('hashchange', function(){ showTab(currentTab()); });
+  showTab(currentTab());
 })();
 </script>
 <script>
