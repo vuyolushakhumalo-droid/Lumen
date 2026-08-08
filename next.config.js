@@ -13,7 +13,8 @@ module.exports = {
       { source: '/reset',      destination: '/reset.html' },
       { source: '/dashboard',  destination: '/dashboard.html' },
       { source: '/templates',  destination: '/templates.html' },
-      { source: '/community',  destination: '/community.html' },
+      { source: '/demos',      destination: '/demos.html' },
+      { source: '/blog',       destination: '/blog.html' },
       { source: '/about',      destination: '/about.html' },
       { source: '/work',       destination: '/work.html' },
       { source: '/contact',    destination: '/contact.html' },
@@ -24,6 +25,13 @@ module.exports = {
       { source: '/ownership',  destination: '/ownership.html' },
       { source: '/acceptable-use',  destination: '/acceptable-use.html' },
       { source: '/cookies',  destination: '/cookies.html' },
+    ];
+  },
+
+  // Community was replaced by Demos -- keep old links working.
+  async redirects() {
+    return [
+      { source: '/community', destination: '/demos', permanent: true },
     ];
   },
 };

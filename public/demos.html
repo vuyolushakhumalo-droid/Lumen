@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>About — Lintel</title><meta name="description" content="Why Lintel exists — beautiful websites without the busywork or credit anxiety.">
-<meta property="og:title" content="About — Lintel">
-<meta property="og:description" content="Beautiful websites without the busywork.">
+<title>Demos — Lintel</title><meta name="description" content="Real sites built with Lintel — a trattoria, a garden centre, a bakery and a trades business, each produced from a short brief.">
+<meta property="og:title" content="Demos — Lintel">
+<meta property="og:description" content="Real sites built with Lintel, each produced from a short brief in minutes.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="og-image.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="About — Lintel">
-<meta name="twitter:description" content="Beautiful websites without the busywork.">
+<meta name="twitter:title" content="Demos — Lintel">
+<meta name="twitter:description" content="Real sites built with Lintel, each produced from a short brief in minutes.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='16' fill='none' stroke='%235FE0FF' stroke-width='1.4' opacity='0.35'/%3E%3Ccircle cx='20' cy='20' r='9' fill='none' stroke='%235FE0FF' stroke-width='1.4'/%3E%3Ccircle cx='20' cy='20' r='3.4' fill='%235FE0FF'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -40,64 +40,26 @@ header.scrolled{background:rgba(5,7,12,.72);backdrop-filter:blur(20px) saturate(
 .sec{padding:80px 0}.center{text-align:center}
 .reveal{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
 .reveal.in{opacity:1;transform:none}
-/* about */
-.values{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:16px}
-.vcard{border:1px solid var(--line);border-radius:20px;padding:34px 30px;background:linear-gradient(180deg,var(--surface),var(--bg-2));transition:.4s}
-.vcard:hover{transform:translateY(-5px);border-color:var(--line-2)}
-.vcard .vi{width:44px;height:44px;border-radius:12px;background:rgba(95,224,255,.07);border:1px solid rgba(95,224,255,.15);display:flex;align-items:center;justify-content:center;margin-bottom:20px}
-.vcard .vi svg{width:22px;height:22px;color:var(--cyan)}.vcard h3{font-size:20px;margin-bottom:10px}.vcard p{font-size:15px;color:var(--grey);line-height:1.55}
-.story{max-width:720px;margin:0 auto}.story p{font-size:18px;color:var(--ink-2);line-height:1.7;margin-bottom:22px}.story p.grey{color:var(--grey)}
-/* work */
-.work-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:20px}
-.wcard{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--surface);transition:.4s;text-decoration:none;display:block}
-.wcard:hover{transform:translateY(-6px);border-color:var(--line-2)}
-.wthumb{height:190px;position:relative;overflow:hidden}
-.wthumb .mini{position:absolute;inset:0;display:flex;flex-direction:column;padding:22px;gap:8px}
-.wthumb .bar{height:9px;border-radius:4px;background:rgba(255,255,255,.85);width:44%}
-.wthumb .line{height:6px;border-radius:3px;background:rgba(255,255,255,.5);width:70%}.wthumb .line.s{width:55%}
-.wthumb .btnm{margin-top:auto;height:20px;width:70px;border-radius:6px;background:#04141B;opacity:.85}
-.wmeta{padding:20px 22px}.wmeta .wt{font-size:14px;color:var(--cyan);margin-bottom:6px}.wmeta h3{font-size:18px;color:var(--ink);margin-bottom:6px}.wmeta p{font-size:14px;color:var(--grey-dim)}
-/* contact */
-.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:start;margin-top:10px}
-.cmeth{display:flex;gap:15px;align-items:flex-start;margin-bottom:26px}
-.cmeth .ci{width:44px;height:44px;flex:none;border-radius:12px;background:rgba(95,224,255,.07);border:1px solid rgba(95,224,255,.15);display:flex;align-items:center;justify-content:center}
-.cmeth .ci svg{width:21px;height:21px;color:var(--cyan)}.cmeth h4{font-size:16px;margin-bottom:3px}.cmeth p,.cmeth a{font-size:15px;color:var(--grey);text-decoration:none}.cmeth a:hover{color:var(--cyan)}
-.card{border:1px solid var(--line);border-radius:22px;padding:34px;background:linear-gradient(180deg,var(--surface),var(--bg-2))}
-.field{margin-bottom:20px}.field label{display:block;font-size:14px;font-weight:500;color:var(--ink-2);margin-bottom:8px}
-.field input,.field textarea{width:100%;font-family:var(--font);font-size:15px;color:var(--ink);background:rgba(255,255,255,.03);border:1px solid var(--line-2);border-radius:12px;padding:13px 15px;outline:none;transition:.25s}
-.field input:focus,.field textarea:focus{border-color:var(--cyan);background:rgba(95,224,255,.04)}.field textarea{min-height:120px;resize:vertical}
-/* community */
-.wall{max-width:720px;margin:0 auto}
-.composer{border:1px solid var(--line-2);border-radius:20px;background:rgba(255,255,255,.02);padding:20px;margin-bottom:34px;transition:.3s}
-.composer:focus-within{border-color:rgba(95,224,255,.4);box-shadow:0 0 40px -16px var(--glow)}
-.composer input,.composer textarea{width:100%;background:transparent;border:none;outline:none;color:var(--ink);font-family:var(--font);font-size:15px}
-.composer input{font-weight:600;font-size:15px;margin-bottom:8px}.composer textarea{resize:none;min-height:52px;line-height:1.5}
-.composer .row{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
-.composer .hint{font-size:12.5px;color:var(--grey-dim)}
-.post{border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin-bottom:16px;background:linear-gradient(180deg,var(--surface),var(--bg-2));animation:pop .4s ease}
-@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-.post-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.avatar{width:38px;height:38px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:#04141B;background:linear-gradient(135deg,var(--cyan-2),var(--cyan))}
-.post-head .nm{font-size:15px;font-weight:600;color:var(--ink)}.post-head .mt{font-size:12.5px;color:var(--grey-dim)}
-.post-body{font-size:15.5px;color:var(--ink-2);line-height:1.6}
-.tagrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:34px}
-.tagf{font-size:13px;color:var(--grey);border:1px solid var(--line);background:transparent;padding:8px 16px;border-radius:980px;cursor:pointer;transition:.25s}
-.tagf:hover,.tagf.on{border-color:rgba(95,224,255,.4);color:var(--ink);background:rgba(95,224,255,.05)}
-/* legal */
-.legal{max-width:760px;margin:0 auto}
-.notice{border:1px solid rgba(246,178,76,.35);background:rgba(246,178,76,.06);border-radius:14px;padding:16px 20px;margin-bottom:40px;font-size:14px;color:#F6D8A8;line-height:1.55}
-.legal h2{font-size:22px;margin:38px 0 12px}.legal h3{font-size:17px;margin:24px 0 8px;color:var(--ink-2)}
-.legal p{font-size:16px;color:var(--grey);line-height:1.7;margin-bottom:14px}.legal ul{margin:0 0 16px 22px}.legal li{font-size:16px;color:var(--grey);line-height:1.7;margin-bottom:7px}
-.legal .eff{font-size:14px;color:var(--grey-dim);margin-bottom:8px}
 footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .foot-grid{display:flex;justify-content:space-between;flex-wrap:wrap;gap:44px;margin-bottom:48px}
 .foot-brand{max-width:290px}.foot-brand p{font-size:14px;color:var(--grey-dim);margin-top:14px;line-height:1.6}
 .foot-col h5{font-size:13px;font-weight:600;color:var(--grey);margin-bottom:16px}.foot-col a{display:block;color:var(--grey-dim);text-decoration:none;font-size:14.5px;margin-bottom:12px;transition:.25s}.foot-col a:hover{color:var(--cyan)}
 .foot-bottom{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:26px;flex-wrap:wrap;gap:12px}.foot-bottom span{font-size:13px;color:var(--grey-dim)}
-@media(max-width:920px){.values,.work-grid{grid-template-columns:1fr}.contact-grid{grid-template-columns:1fr;gap:32px}.nav-links{display:none}}
+@media(max-width:920px){.nav-links{display:none}}
 @media(max-width:560px){.wrap{padding:0 20px}.sec{padding:60px 0}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}.reveal{opacity:1;transform:none;transition:none}}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:5px}
+
+.dgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;margin-top:8px}
+.dcard{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--surface);transition:.4s;display:flex;flex-direction:column}
+.dcard:hover{transform:translateY(-6px);border-color:var(--line-2)}
+.dprev{height:120px;display:flex;align-items:flex-end;padding:16px 20px}
+.dtag{font-size:12px;font-weight:600;color:#fff;background:rgba(0,0,0,.3);padding:5px 12px;border-radius:980px;backdrop-filter:blur(4px)}
+.dbody{padding:22px 24px;display:flex;flex-direction:column;flex:1}
+.dbody h3{font-size:19px;margin-bottom:8px}
+.dbody p{font-size:14.5px;color:var(--grey);line-height:1.55;margin-bottom:18px;flex:1}
+.dbody .btn{width:100%;justify-content:center}
+@media(max-width:700px){.dgrid{grid-template-columns:1fr}}
 
 .burger{display:none;width:38px;height:38px;border-radius:50%;border:none;background:transparent;color:var(--ink);align-items:center;justify-content:center;cursor:pointer;transition:.25s}
 .burger:hover{background:rgba(255,255,255,.06)}
@@ -126,23 +88,33 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 <div class="mact"><a class="btn btn-ghost signin" href="/start">Sign in</a><a class="btn btn-primary" href="/#pricing" data-gate="build">Start building</a></div>
 </div>
 <main><section class="page-hero"><div class="wrap reveal">
-<span class="eyebrow">About Lintel</span>
-<h1>Beautiful websites,<br>without the busywork.</h1>
-<p>We believe getting a great website online should feel effortless — not a fight with builders, credits, or code.</p>
+<span class="eyebrow">Demos</span><h1>See what Lintel builds.</h1>
+<p>Sites built with Lintel to show what it makes. Each one was produced from a short brief, in minutes.</p>
 </div></section>
-<section class="sec"><div class="wrap"><div class="story reveal">
-<p>Most people who need a website don't want to become web developers. They want a place that looks considered, works everywhere, and gets out of their way — so they can get back to the thing they actually do.</p>
-<p class="grey">The tools that promised to help turned into meters ticking down. Every edit, every retry, every second-guess quietly draining credits. It made people build anxiously, when building should feel exciting.</p>
-<p>Lintel is our answer. Describe what you want and an intelligence builds it — beautifully — while you watch. Prefer we handle everything? A person takes your brief and delivers the whole thing. Either way it's one flat, honest price, and the site is always yours to keep.</p>
-</div></div></section>
-<section class="sec"><div class="wrap"><div class="center reveal" style="margin-bottom:44px"><span class="eyebrow">What we stand for</span><h2 style="font-size:clamp(30px,4vw,44px)">Our principles.</h2></div>
-<div class="values">
-<div class="vcard reveal"><div class="vi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></div><h3>Effortless by default</h3><p>The hard parts — speed, security, hosting, design — are handled. You bring the idea; we carry the weight.</p></div>
-<div class="vcard reveal"><div class="vi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></div><h3>Honest pricing</h3><p>One flat fee, a generous daily allowance, and top-ups at cost. No credit anxiety, no surprise bills.</p></div>
-<div class="vcard reveal"><div class="vi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3a9 9 0 1 0 9 9M12 3v9l6 3"/></svg></div><h3>Always yours</h3><p>Your domain, your content, your code if you want it. Export any time. We never hold your work hostage.</p></div>
-</div></div></section>
-<section class="sec center"><div class="wrap reveal"><h2 style="font-size:clamp(30px,4vw,46px);margin-bottom:18px">Come build something.</h2>
-<a class="btn btn-primary btn-lg" href="/#pricing" data-gate="build">Start building</a></div></section></main>
+<section class="sec" style="padding-top:40px"><div class="wrap">
+<div class="dgrid">
+<div class="dcard reveal">
+<div class="dprev" style="background:linear-gradient(135deg,#B45309,#7C2D12)"><span class="dtag">Italian restaurant</span></div>
+<div class="dbody"><h3>Fico</h3><p>A neighbourhood trattoria with its menu, story and a table-booking form.</p>
+<a class="btn btn-ghost" href="/s/fico-trattoria" target="_blank" rel="noopener">View live site ↗</a></div>
+</div>
+<div class="dcard reveal">
+<div class="dprev" style="background:linear-gradient(135deg,#059669,#0D9488)"><span class="dtag">Garden centre</span></div>
+<div class="dbody"><h3>Fern &amp; Field</h3><p>An independent nursery with opening hours, what's in stock and a visit page.</p>
+<a class="btn btn-ghost" href="/s/fern-field" target="_blank" rel="noopener">View live site ↗</a></div>
+</div>
+<div class="dcard reveal">
+<div class="dprev" style="background:linear-gradient(135deg,#D97706,#DC2626)"><span class="dtag">Bakery</span></div>
+<div class="dbody"><h3>Hearth &amp; Stone</h3><p>A slow-fermented bread bakery with its menu, story and a wholesale enquiry.</p>
+<a class="btn btn-ghost" href="/s/hearth-stone" target="_blank" rel="noopener">View live site ↗</a></div>
+</div>
+<div class="dcard reveal">
+<div class="dprev" style="background:linear-gradient(135deg,#0891B2,#2563EB)"><span class="dtag">Trade services</span></div>
+<div class="dbody"><h3>Redwell Plumbing &amp; Heating</h3><p>A local plumber's site with services, coverage area and a call-out enquiry form.</p>
+<a class="btn btn-ghost" href="/s/redwell-plumbing-heating" target="_blank" rel="noopener">View live site ↗</a></div>
+</div>
+</div>
+</div></section></main>
 <footer><div class="wrap"><div class="foot-grid">
 <div class="foot-brand"><a class="brand" href="/"><svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" stroke="#5FE0FF" stroke-width="1.4" opacity="0.35"/><circle cx="20" cy="20" r="9" stroke="#5FE0FF" stroke-width="1.4"/><circle cx="20" cy="20" r="3.4" fill="#5FE0FF"/></svg><b>Lintel</b></a>
 <p>The website workshop. An intelligence that builds your site beautifully — and keeps it running long after launch.</p></div>
