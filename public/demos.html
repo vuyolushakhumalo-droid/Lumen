@@ -55,8 +55,9 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .dgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;margin-top:8px}
 .dcard{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--surface);transition:.4s;display:flex;flex-direction:column}
 .dcard:hover{transform:translateY(-6px);border-color:var(--line-2)}
-.dprev{height:120px;display:flex;align-items:flex-end;padding:16px 20px}
-.dtag{font-size:12px;font-weight:600;color:#fff;background:rgba(0,0,0,.3);padding:5px 12px;border-radius:980px;backdrop-filter:blur(4px)}
+.dprev{position:relative;aspect-ratio:16/10;overflow:hidden;display:flex;align-items:flex-end;padding:16px 20px}
+.dprev img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.dtag{position:relative;z-index:1;font-size:12px;font-weight:600;color:#fff;background:rgba(0,0,0,.3);padding:5px 12px;border-radius:980px;backdrop-filter:blur(4px)}
 .dbody{padding:22px 24px;display:flex;flex-direction:column;flex:1}
 .dbody h3{font-size:19px;margin-bottom:8px}
 .dbody p{font-size:14.5px;color:var(--grey);line-height:1.55;margin-bottom:18px;flex:1}
@@ -96,22 +97,22 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 <section class="sec" style="padding-top:40px"><div class="wrap">
 <div class="dgrid">
 <div class="dcard reveal">
-<div class="dprev" style="background:linear-gradient(135deg,#B45309,#7C2D12)"><span class="dtag">Italian restaurant</span></div>
+<div class="dprev"><img src="/img/demo-fico.jpg" alt="The Fico Trattoria website, built with Lintel" width="1200" height="750" loading="lazy"><span class="dtag">Italian restaurant</span></div>
 <div class="dbody"><h3>Fico</h3><p>A neighbourhood trattoria with its menu, story and a table-booking form.</p>
 <a class="btn btn-ghost" href="/s/fico-trattoria" target="_blank" rel="noopener">View live site ↗</a></div>
 </div>
 <div class="dcard reveal">
-<div class="dprev" style="background:linear-gradient(135deg,#059669,#0D9488)"><span class="dtag">Garden centre</span></div>
+<div class="dprev"><img src="/img/demo-fern-field.jpg" alt="The Fern &amp; Field Garden Centre website, built with Lintel" width="1200" height="750" loading="lazy"><span class="dtag">Garden centre</span></div>
 <div class="dbody"><h3>Fern &amp; Field</h3><p>An independent nursery with opening hours, what's in stock and a visit page.</p>
 <a class="btn btn-ghost" href="/s/fern-field" target="_blank" rel="noopener">View live site ↗</a></div>
 </div>
 <div class="dcard reveal">
-<div class="dprev" style="background:linear-gradient(135deg,#D97706,#DC2626)"><span class="dtag">Bakery</span></div>
+<div class="dprev"><img src="/img/demo-hearth-stone.jpg" alt="The Hearth &amp; Stone bakery website, built with Lintel" width="1200" height="750" loading="lazy"><span class="dtag">Bakery</span></div>
 <div class="dbody"><h3>Hearth &amp; Stone</h3><p>A slow-fermented bread bakery with its menu, story and a wholesale enquiry.</p>
 <a class="btn btn-ghost" href="/s/hearth-stone" target="_blank" rel="noopener">View live site ↗</a></div>
 </div>
 <div class="dcard reveal">
-<div class="dprev" style="background:linear-gradient(135deg,#0891B2,#2563EB)"><span class="dtag">Trade services</span></div>
+<div class="dprev"><img src="/img/demo-redwell.jpg" alt="The Redwell Plumbing &amp; Heating website, built with Lintel" width="1200" height="750" loading="lazy"><span class="dtag">Trade services</span></div>
 <div class="dbody"><h3>Redwell Plumbing &amp; Heating</h3><p>A local plumber's site with services, coverage area and a call-out enquiry form.</p>
 <a class="btn btn-ghost" href="/s/redwell-plumbing-heating" target="_blank" rel="noopener">View live site ↗</a></div>
 </div>
