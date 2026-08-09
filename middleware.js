@@ -31,7 +31,9 @@ function isAppHost(host) {
   if (h.endsWith('.vercel.app')) return true;                 // your deploy + previews
   const appUrl = process.env.APP_URL || '';
   try {
-    const appHost = new URL(appUrl).hostname.toLowerCase();
+    // Normalized to the apex form regardless of which form APP_URL
+    // holds, so apex and www both match either way it's configured.
+    const appHost = new URL(appUrl).hostname.toLowerCase().replace(/^www\./, '');
     if (appHost && (h === appHost || h === 'www.' + appHost)) return true;
   } catch (e) { /* APP_URL not set yet */ }
   return false;
