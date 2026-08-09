@@ -7,7 +7,7 @@
   if (window.__rayLoaded) return;
   window.__rayLoaded = true;
 
-  var CONTACT_EMAIL = 'vuyolushakhumalo@gmail.com';   // <- your real address
+  var CONTACT_EMAIL = 'support@lintelapp.co.uk';   // <- your real address
   var BOOKING_URL = '/contact';                // where to book a call
 
   var css = `
