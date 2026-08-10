@@ -168,6 +168,17 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .sbtn.danger{border-color:rgba(255,107,107,.3);color:#FF9B9B;background:rgba(255,107,107,.06)}
 .sbtn.danger:hover{background:rgba(255,107,107,.13)}
 .sempty{padding:34px 24px;text-align:center;color:var(--grey-dim);font-size:14.5px}
+.enq-row{cursor:pointer}
+.enq-row .smeta span:first-child{color:var(--ink-2);max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.enq-detail{padding:0 24px 20px;border-bottom:1px solid rgba(255,255,255,.04)}
+.enq-field{display:flex;gap:10px;font-size:13.5px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.enq-field:last-of-type{border-bottom:none}
+.enq-field b{color:var(--ink);min-width:110px;flex:none;font-weight:500}
+.enq-field span{color:var(--grey);word-break:break-word}
+.enq-detail .sbtn{margin-top:12px}
+.sites-head select.sbtn{-webkit-appearance:none;appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2396A0AD' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;background-size:14px}
 .confirm{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:24px;
   background:rgba(3,5,9,.72);backdrop-filter:blur(8px)}
 .confirm.show{display:flex}
@@ -219,6 +230,23 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
     <a class="btn btn-ghost" href="#" id="backToSites">Back to sites</a>
   </div>
   <div id="trashList"><div class="sempty">Loading…</div></div>
+</div>
+
+<div class="sites reveal" id="enqPanel">
+  <div class="sites-head">
+    <div>
+      <h3>Enquiries</h3>
+      <div class="count" id="enqCount">Loading…</div>
+    </div>
+    <select class="sbtn" id="enqSiteFilter" title="Filter by site">
+      <option value="">All sites</option>
+    </select>
+    <button class="sbtn" id="enqExport" type="button">Export CSV</button>
+  </div>
+  <div id="enqList"><div class="sempty">Loading…</div></div>
+  <div id="enqLoadMoreWrap" style="display:none;padding:16px 24px;text-align:center;border-top:1px solid rgba(255,255,255,.04)">
+    <button class="sbtn" id="enqLoadMore" type="button">Load more</button>
+  </div>
 </div>
 </div>
 
@@ -509,8 +537,10 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
   var wrap = document.getElementById('confirmWrap');
   var pending = null;
   var pendingPurge = null;
-  var confirmMode = 'trash'; // 'trash' | 'purge'
+  var pendingSubmission = null;
+  var confirmMode = 'trash'; // 'trash' | 'purge' | 'submission'
   var sitesDomain = '';
+  var siteNames = {}; // siteId -> project name, filled in once projects load
 
   function daysLeft(iso){
     if(!iso) return 30;
@@ -539,6 +569,143 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
     if(days < 30) return days + 'd ago';
     return d.toLocaleDateString();
   }
+
+  // ---------- enquiries (form submissions) ----------
+  var FIELD_WORDS = ['name','email','phone','tel','postcode','message','msg','note','date','time','type','subject'];
+  var LABEL_MAP = { name:'Name', email:'Email', phone:'Phone', tel:'Phone', postcode:'Postcode',
+    message:'Message', msg:'Message', note:'Notes', date:'Date', time:'Time', type:'Enquiry type', subject:'Subject' };
+  var STRIP_RE = new RegExp('^[a-zA-Z](' + FIELD_WORDS.join('|') + ')$', 'i');
+
+  function prettyLabel(key){
+    var k = String(key || '');
+    var m = k.match(STRIP_RE);
+    var base = m ? m[1] : k;
+    var lower = base.toLowerCase();
+    if(LABEL_MAP.hasOwnProperty(lower)) return LABEL_MAP[lower];
+    var spaced = base.replace(/[_-]+/g, ' ');
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  }
+
+  function nonEmptyEntries(payload){
+    var out = [];
+    Object.keys(payload || {}).forEach(function(k){
+      var v = payload[k];
+      if(v === null || v === undefined) return;
+      var s = String(v);
+      if(s.trim() === '') return;
+      out.push([k, s]);
+    });
+    return out;
+  }
+
+  var enqListEl = document.getElementById('enqList');
+  var enqCountEl = document.getElementById('enqCount');
+  var enqLoadMoreWrap = document.getElementById('enqLoadMoreWrap');
+  var enqLoadMoreBtn = document.getElementById('enqLoadMore');
+  var enqSiteFilterEl = document.getElementById('enqSiteFilter');
+  var enqSubmissions = [];
+  var enqBefore = null;
+  var enqExpanded = {}; // id -> true while its detail is open
+
+  function siteLabel(s){ return siteNames[s.site_id] || s.subdomain || 'Unknown site'; }
+
+  function renderEnquiries(){
+    if(!enqSubmissions.length){
+      enqCountEl.textContent = 'Nothing yet';
+      enqListEl.innerHTML = '<div class="sempty">No enquiries yet. They\'ll appear here when someone submits a form on one of your sites.</div>';
+      return;
+    }
+    enqCountEl.textContent = enqSubmissions.length + (enqSubmissions.length===1?' enquiry':' enquiries');
+
+    enqListEl.innerHTML = enqSubmissions.map(function(s){
+      var entries = nonEmptyEntries(s.payload);
+      var preview = entries.length ? entries[0][1] : '(no details)';
+      var open = !!enqExpanded[s.id];
+      var detail = '<div class="enq-detail" id="enq-detail-'+s.id+'" style="display:'+(open?'block':'none')+'">'
+        + entries.map(function(e){
+            return '<div class="enq-field"><b>'+esc(prettyLabel(e[0]))+'</b><span>'+esc(e[1])+'</span></div>';
+          }).join('')
+        + (entries.length ? '' : '<div class="enq-field"><span>No field values were submitted.</span></div>')
+        + '<button class="sbtn danger" data-act="delete-enq" data-id="'+s.id+'">Delete</button>'
+        + '</div>';
+      return '<div class="srow enq-row" data-id="'+s.id+'">'
+        + '<div class="sthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div>'
+        + '<div class="sinfo"><div class="sname">'+esc(siteLabel(s))+(s.kind==='list_signup' ? ' <span class="sbadge draft" style="margin-left:6px">List signup</span>' : '')+'</div>'
+        + '<div class="smeta"><span>'+esc(preview)+'</span><span>'+when(s.created_at)+'</span></div></div>'
+        + '</div>'
+        + detail;
+    }).join('');
+
+    enqListEl.querySelectorAll('.enq-row').forEach(function(row){
+      row.addEventListener('click', function(){
+        var id = row.getAttribute('data-id');
+        var d = document.getElementById('enq-detail-'+id);
+        if(!d) return;
+        var willOpen = d.style.display === 'none';
+        d.style.display = willOpen ? 'block' : 'none';
+        enqExpanded[id] = willOpen;
+      });
+    });
+    enqListEl.querySelectorAll('[data-act="delete-enq"]').forEach(function(b){
+      b.addEventListener('click', function(e){
+        e.stopPropagation();
+        var id = b.getAttribute('data-id');
+        pendingSubmission = { id: id };
+        confirmMode = 'submission';
+        document.getElementById('confirmTitle').textContent = 'Delete this enquiry?';
+        document.getElementById('confirmText').textContent = 'This permanently erases the submission. This cannot be undone.';
+        document.getElementById('confirmYes').textContent = 'Delete';
+        wrap.classList.add('show');
+      });
+    });
+  }
+
+  async function loadEnquiries(reset){
+    if(reset){ enqSubmissions = []; enqBefore = null; enqExpanded = {}; }
+    var qs = new URLSearchParams();
+    if(enqSiteFilterEl.value) qs.set('site', enqSiteFilterEl.value);
+    if(enqBefore) qs.set('before', enqBefore);
+    try{
+      var out = await Lumen.api('/api/submissions?' + qs.toString());
+      var page = out.submissions || [];
+      enqSubmissions = enqSubmissions.concat(page);
+      if(page.length){ enqBefore = page[page.length-1].created_at; }
+      enqLoadMoreWrap.style.display = page.length >= 50 ? 'block' : 'none';
+      renderEnquiries();
+    }catch(e){
+      enqListEl.innerHTML = '<div class="sempty">Could not load enquiries.</div>';
+      enqCountEl.textContent = '';
+    }
+  }
+
+  function csvCell(v){
+    var s = String(v==null?'':v);
+    return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }
+
+  function exportEnquiriesCsv(){
+    if(!enqSubmissions.length) return;
+    var keys = [], seen = {};
+    enqSubmissions.forEach(function(s){
+      nonEmptyEntries(s.payload).forEach(function(e){ if(!seen[e[0]]){ seen[e[0]]=true; keys.push(e[0]); } });
+    });
+    var headers = ['Site','Date','Type'].concat(keys.map(prettyLabel));
+    var lines = [headers.map(csvCell).join(',')];
+    enqSubmissions.forEach(function(s){
+      var row = [siteLabel(s), new Date(s.created_at).toLocaleString(), s.kind==='list_signup'?'List signup':'Message'];
+      keys.forEach(function(k){ row.push(s.payload && s.payload[k] != null ? String(s.payload[k]) : ''); });
+      lines.push(row.map(csvCell).join(','));
+    });
+    var blob = new Blob([lines.join('\r\n')], { type:'text/csv;charset=utf-8;' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    var label = enqSiteFilterEl.value ? (siteNames[enqSiteFilterEl.value]||'site') : 'all-sites';
+    a.download = 'enquiries-' + label.replace(/[^a-z0-9]+/gi,'-').toLowerCase() + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  enqSiteFilterEl.addEventListener('change', function(){ loadEnquiries(true); });
+  enqLoadMoreBtn.addEventListener('click', function(){ loadEnquiries(false); });
+  document.getElementById('enqExport').addEventListener('click', exportEnquiriesCsv);
 
   function render(projects){
     if(!projects.length){
@@ -641,11 +808,25 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
     }catch(e){}
     try{
       var out = await Lumen.api('/api/projects');
-      render(out.projects || []);
+      var projects = out.projects || [];
+      render(projects);
+      populateSiteFilter(projects);
     }catch(e){
       listEl.innerHTML = '<div class="sempty">Could not load your sites.</div>';
       countEl.textContent = '';
     }
+  }
+
+  function populateSiteFilter(projects){
+    var sel = document.getElementById('enqSiteFilter');
+    if(!sel) return;
+    var current = sel.value;
+    projects.forEach(function(p){ if(p.siteId) siteNames[p.siteId] = p.name || 'Untitled'; });
+    var published = projects.filter(function(p){ return p.published && p.siteId; });
+    sel.innerHTML = '<option value="">All sites</option>' + published.map(function(p){
+      return '<option value="'+esc(p.siteId)+'">'+esc(p.name||p.subdomain||'Untitled')+'</option>';
+    }).join('');
+    sel.value = published.some(function(p){ return p.siteId===current; }) ? current : '';
   }
 
   async function exportSite(id, btn){
@@ -680,8 +861,8 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
     document.getElementById('sitesPanel').style.display='block';
   });
 
-  document.getElementById('confirmNo').addEventListener('click', function(){ wrap.classList.remove('show'); pending=null; pendingPurge=null; });
-  wrap.addEventListener('click', function(e){ if(e.target===wrap){ wrap.classList.remove('show'); pending=null; pendingPurge=null; } });
+  document.getElementById('confirmNo').addEventListener('click', function(){ wrap.classList.remove('show'); pending=null; pendingPurge=null; pendingSubmission=null; });
+  wrap.addEventListener('click', function(e){ if(e.target===wrap){ wrap.classList.remove('show'); pending=null; pendingPurge=null; pendingSubmission=null; } });
 
   document.getElementById('confirmYes').addEventListener('click', async function(){
     var b=this;
@@ -696,6 +877,20 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
       finally{ b.disabled=false; b.textContent=plabel; }
       return;
     }
+    if(confirmMode === 'submission'){
+      if(!pendingSubmission) return;
+      b.disabled=true; var slabel=b.textContent; b.textContent='Deleting…';
+      try{
+        await Lumen.api('/api/submissions?id='+pendingSubmission.id, { method:'DELETE' });
+        wrap.classList.remove('show');
+        enqSubmissions = enqSubmissions.filter(function(s){ return s.id !== pendingSubmission.id; });
+        delete enqExpanded[pendingSubmission.id];
+        pendingSubmission = null;
+        renderEnquiries();
+      }catch(e){ alert(e.message || 'Could not delete.'); }
+      finally{ b.disabled=false; b.textContent=slabel; }
+      return;
+    }
     if(!pending) return;
     b.disabled=true; var label=b.textContent; b.textContent='Moving…';
     try{
@@ -706,7 +901,7 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
     finally{ b.disabled=false; b.textContent=label; }
   });
 
-  Lumen.session().then(function(s){ if(s) load(); });
+  Lumen.session().then(function(s){ if(s){ load(); loadEnquiries(true); } });
 })();
 </script>
 </body></html>
