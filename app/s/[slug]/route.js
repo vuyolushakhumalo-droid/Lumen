@@ -3,6 +3,7 @@
 // This is what the public sees. No auth: it's a public website.
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabase';
+import { injectForms } from '@/lib/forms';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -17,7 +18,7 @@ export async function GET(request, { params }) {
 
   const { data: site } = await admin
     .from('sites')
-    .select('project_id, status')
+    .select('id, project_id, status')
     .eq('subdomain', slug)
     .maybeSingle();
 
@@ -31,7 +32,7 @@ export async function GET(request, { params }) {
 
   if (!project?.current_code) return notFound({ supabaseHost, projectId: site.project_id });
 
-  const code = project.current_code;
+  const code = injectForms(project.current_code, site.id);
 
   return new Response(code, {
     status: 200,

@@ -100,8 +100,42 @@ create table if not exists sites (
   custom_domain     text unique,
   provider_site_id  text,
   status            text default 'draft' check (status in ('draft','live')),
-  last_deployed_at  timestamptz
+  last_deployed_at  timestamptz,
+  notify_email      text   -- lets an owner redirect enquiry notifications away from their login address; null means "use the account email"
 );
+
+alter table sites drop constraint if exists sites_notify_email_shape;
+alter table sites add constraint sites_notify_email_shape
+  check (notify_email is null or notify_email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+-- ---------- form submissions from published sites ----------
+-- user_id is denormalised from sites so RLS is a single-column check
+-- rather than a join on every read.
+create table if not exists submissions (
+  id          uuid primary key default gen_random_uuid(),
+  site_id     uuid not null references sites(id) on delete cascade,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  kind        text not null default 'message'
+              check (kind in ('message', 'list_signup')),
+  payload     jsonb not null,
+  ip_hash     text,
+  user_agent  text,
+  notified_at timestamptz,
+  created_at  timestamptz not null default now()
+);
+create index if not exists submissions_user_created_idx on submissions(user_id, created_at desc);
+create index if not exists submissions_site_created_idx on submissions(site_id, created_at desc);
+
+-- ---------- persistent rate limiting ----------
+-- Replaces the in-memory limiter, which is not multi-instance safe on
+-- Vercel. Used by the public form-capture endpoint first, then by the
+-- rest of the mutation routes in the security block.
+create table if not exists rate_limits (
+  key          text primary key,
+  count        integer not null default 0,
+  window_start timestamptz not null default now()
+);
+create index if not exists rate_limits_window_idx on rate_limits(window_start);
 
 -- ---------- audit log (support, abuse, disputes) ----------
 create table if not exists audit_log (
@@ -125,6 +159,8 @@ alter table versions      enable row level security;
 alter table usage_daily   enable row level security;
 alter table topups        enable row level security;
 alter table sites         enable row level security;
+alter table submissions   enable row level security;
+alter table rate_limits   enable row level security;
 
 drop policy if exists "own profile" on profiles;
 create policy "own profile" on profiles
@@ -155,6 +191,25 @@ create policy "own topups" on topups
 drop policy if exists "own sites" on sites;
 create policy "own sites" on sites
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Owners can read their own form submissions.
+drop policy if exists submissions_select_own on submissions;
+create policy submissions_select_own
+  on submissions for select
+  using (auth.uid() = user_id);
+
+-- Owners can delete their own submissions (needed for erasure requests
+-- from the visitors who submitted them).
+drop policy if exists submissions_delete_own on submissions;
+create policy submissions_delete_own
+  on submissions for delete
+  using (auth.uid() = user_id);
+
+-- No INSERT policy on purpose. The public capture endpoint writes with
+-- the service role, which bypasses RLS. Nothing holding an anon key can
+-- write here, so a leaked anon key cannot be used to flood the table.
+
+-- rate_limits: no policies at all, service role only.
 
 -- ============================================================
 -- Helper: atomically increment today's build count.
@@ -198,3 +253,63 @@ begin
   return true;
 end;
 $$;
+
+-- ============================================================
+-- Helper: atomically bump a rate-limit counter and report whether the
+-- caller is allowed. Returns true when the request is ALLOWED. Used by
+-- the public form-capture endpoint (app/api/f/[siteId]).
+-- ============================================================
+create or replace function check_rate_limit(
+  p_key        text,
+  p_limit      integer,
+  p_window_sec integer
+) returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count integer;
+begin
+  insert into rate_limits as r (key, count, window_start)
+  values (p_key, 1, now())
+  on conflict (key) do update
+    set count = case
+          when r.window_start < now() - make_interval(secs => p_window_sec)
+          then 1
+          else r.count + 1
+        end,
+        window_start = case
+          when r.window_start < now() - make_interval(secs => p_window_sec)
+          then now()
+          else r.window_start
+        end
+  returning r.count into v_count;
+
+  return v_count <= p_limit;
+end;
+$$;
+
+revoke all on function check_rate_limit(text, integer, integer) from public, anon, authenticated;
+
+-- ============================================================
+-- Helper: drop rate_limits rows whose window closed long ago. Called
+-- from the existing purge cron rather than adding a second schedule.
+-- ============================================================
+create or replace function sweep_rate_limits()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_deleted integer;
+begin
+  delete from rate_limits
+  where window_start < now() - interval '1 day';
+  get diagnostics v_deleted = row_count;
+  return v_deleted;
+end;
+$$;
+
+revoke all on function sweep_rate_limits() from public, anon, authenticated;

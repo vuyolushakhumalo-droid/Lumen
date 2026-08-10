@@ -3,6 +3,7 @@
 // or by subdomain host. The middleware rewrites here.
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabase';
+import { injectForms } from '@/lib/forms';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -14,7 +15,7 @@ export async function GET(request, { params }) {
   // 1) exact custom domain match
   let { data: site } = await admin
     .from('sites')
-    .select('project_id, status')
+    .select('id, project_id, status')
     .eq('custom_domain', host)
     .maybeSingle();
 
@@ -25,7 +26,7 @@ export async function GET(request, { params }) {
       const slug = host.slice(0, -(base.length + 1));
       const res = await admin
         .from('sites')
-        .select('project_id, status')
+        .select('id, project_id, status')
         .eq('subdomain', slug)
         .maybeSingle();
       site = res.data;
@@ -42,7 +43,7 @@ export async function GET(request, { params }) {
 
   if (!project?.current_code) return missing();
 
-  return new Response(project.current_code, {
+  return new Response(injectForms(project.current_code, site.id), {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
