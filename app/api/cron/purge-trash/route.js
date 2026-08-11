@@ -21,6 +21,7 @@ export async function GET(request) {
   // expired, delete failure) that shouldn't gate this.
   const staleAttemptsSwept = await sweepStaleAttempts(admin);
   const oldAttemptsPurged = await purgeOldAttempts(admin);
+  const rateLimitsSwept = await sweepRateLimits(admin);
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -32,21 +33,21 @@ export async function GET(request) {
 
   if (findError) {
     console.error('[cron/purge-trash] lookup failed', findError);
-    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
-  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
     console.error('[cron/purge-trash] delete failed', deleteError);
-    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept }, { status: 500 });
   }
 
-  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged });
+  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept });
 }
 
 // On this runtime, a client disconnect kills the streaming function
@@ -89,4 +90,18 @@ async function purgeOldAttempts(admin) {
     return 0;
   }
   return data?.length || 0;
+}
+
+// rate_limits accumulates one row per distinct key (per user, per IP,
+// per site) touched by check_rate_limit(). Nothing else prunes it --
+// this calls the DB function built for that (see
+// supabase/migrations/0001_submissions.sql), which returns the deleted
+// count directly rather than a set of rows.
+async function sweepRateLimits(admin) {
+  const { data, error } = await admin.rpc('sweep_rate_limits');
+  if (error) {
+    console.error('[cron/purge-trash] rate limit sweep failed', error);
+    return 0;
+  }
+  return data || 0;
 }
