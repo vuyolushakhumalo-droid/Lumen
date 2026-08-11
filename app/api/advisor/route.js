@@ -8,8 +8,9 @@
 // ============================================================
 import Anthropic from '@anthropic-ai/sdk';
 import { MODEL_IDS } from '@/lib/plans';
-import { rateLimit } from '@/lib/ratelimit';
+import { rateLimitDb } from '@/lib/ratelimit';
 import { handler, ApiError } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,8 @@ export const POST = handler(async (request) => {
     'anon';
 
   // Support is cheap but not free — keep it sane.
-  rateLimit(`advisor:${ip}`, { max: 12, windowMs: 60_000 });
+  const admin = supabaseAdmin();
+  await rateLimitDb(admin, `advisor:${ip}`, { max: 12, failOpen: false });
 
   const body = await request.json().catch(() => ({}));
   const history = Array.isArray(body.messages) ? body.messages : [];

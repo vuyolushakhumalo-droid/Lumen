@@ -7,7 +7,7 @@ import { handler, requireUser, ApiError } from '@/lib/auth';
 import { getSubscription, logUsageEvent } from '@/lib/usage';
 import { ACTIVE_STATUSES } from '@/lib/plans';
 import { previewSummary } from '@/lib/anthropic';
-import { rateLimit } from '@/lib/ratelimit';
+import { rateLimitDb } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -19,7 +19,7 @@ export const POST = handler(async (request) => {
   // this must never cannibalize a user's actual build rate limit, but
   // an unprotected endpoint that costs money per call still needs
   // some abuse guard.
-  rateLimit(`preview:${profile.id}`, { max: 20, windowMs: 60_000 });
+  await rateLimitDb(admin, `preview:${profile.id}`, { max: 20 });
 
   const { projectId, brief } = await request.json().catch(() => ({}));
   if (!projectId) throw new ApiError(400, 'No project specified');

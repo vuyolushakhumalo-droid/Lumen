@@ -10,7 +10,7 @@ import { requireUser, ApiError } from '@/lib/auth';
 import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml, rollbackVersion } from '@/lib/usage';
 import { streamSite } from '@/lib/anthropic';
 import { makeSlug } from '@/lib/publish';
-import { rateLimit } from '@/lib/ratelimit';
+import { rateLimitDb } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 import { startAttempt, finishAttempt } from '@/lib/attempts';
 
@@ -62,7 +62,7 @@ export async function POST(request) {
   const { profile, admin } = ctx;
 
   try {
-    rateLimit(`gen:${profile.id}`, { max: 6, windowMs: 60_000 });
+    await rateLimitDb(admin, `gen:${profile.id}`, { max: 6 });
   } catch (e) {
     return fail(429, e.message, e.extra);
   }
