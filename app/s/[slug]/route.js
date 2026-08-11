@@ -24,6 +24,16 @@ export async function GET(request, { params }) {
 
   if (!site || site.status !== 'live') return notFound({ supabaseHost });
 
+  // While migrating to lintelsites.com subdomains: once SITES_DOMAIN is
+  // set, stop serving HTML here and redirect there instead. 307, not
+  // 301 -- this needs to stay reversible while testing, and permanent
+  // redirects get cached hard by browsers.
+  const sitesDomain = (process.env.SITES_DOMAIN || '').toLowerCase();
+  if (sitesDomain) {
+    const { search } = new URL(request.url);
+    return Response.redirect(`https://${slug}.${sitesDomain}${search}`, 307);
+  }
+
   const { data: project } = await admin
     .from('projects')
     .select('current_code')
