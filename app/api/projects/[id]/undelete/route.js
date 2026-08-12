@@ -17,7 +17,7 @@ export const POST = handler(async (request, { params }) => {
   const { data, error } = await admin
     .from('projects')
     .update({ deleted_at: null })
-    .eq('id', params.id)
+    .eq('id', params.id).eq('user_id', profile.id)
     .select().single();
   if (error) throw new ApiError(500, 'Could not restore the project');
 

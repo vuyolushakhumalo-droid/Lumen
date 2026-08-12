@@ -37,7 +37,7 @@ export const POST = handler(async (request, { params }) => {
     current_code: code,
     preview_url: previewUrl,
     updated_at: new Date().toISOString(),
-  }).eq('id', project.id);
+  }).eq('id', project.id).eq('user_id', profile.id);
 
   return Response.json({ ok: true, code, previewUrl });
 });

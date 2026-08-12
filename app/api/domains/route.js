@@ -72,7 +72,7 @@ export const POST = handler(async (request) => {
   const vercel = await addToVercel(clean);
 
   const { data: updated, error } = await admin
-    .from('sites').update({ custom_domain: clean }).eq('id', site.id).select().single();
+    .from('sites').update({ custom_domain: clean }).eq('id', site.id).eq('user_id', profile.id).select().single();
   if (error) throw new ApiError(500, 'Could not save the domain');
 
   const apex = clean.split('.').length === 2;

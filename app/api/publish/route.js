@@ -54,7 +54,7 @@ export const POST = handler(async (request) => {
   }
 
   const { data: existing } = await admin
-    .from('sites').select('*').eq('project_id', projectId).maybeSingle();
+    .from('sites').select('*').eq('project_id', projectId).eq('user_id', profile.id).maybeSingle();
 
   // Work out the address.
   let subdomain;
@@ -80,7 +80,7 @@ export const POST = handler(async (request) => {
   let site;
   if (existing) {
     const { data, error } = await admin
-      .from('sites').update(row).eq('id', existing.id).select().single();
+      .from('sites').update(row).eq('id', existing.id).eq('user_id', profile.id).select().single();
     if (error) throw new ApiError(500, 'Could not publish the site');
     site = data;
   } else {

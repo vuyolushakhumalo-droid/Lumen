@@ -40,7 +40,7 @@ export const PATCH = handler(async (request, { params }) => {
   if (typeof body.name === 'string' && body.name.trim()) {
     const { data } = await admin.from('projects')
       .update({ name: body.name.trim().slice(0, 80), updated_at: new Date().toISOString() })
-      .eq('id', project.id).select().single();
+      .eq('id', project.id).eq('user_id', profile.id).select().single();
     return Response.json({ project: data });
   }
   throw new ApiError(400, 'Nothing to update');
@@ -56,18 +56,18 @@ export const DELETE = handler(async (request, { params }) => {
       throw new ApiError(400, 'Move the project to Trash before deleting it permanently.');
     }
     await deleteProjectImages(params.id);
-    await admin.from('projects').delete().eq('id', params.id);
+    await admin.from('projects').delete().eq('id', params.id).eq('user_id', profile.id);
     return Response.json({ ok: true, permanent: true });
   }
 
   await admin.from('projects')
     .update({ deleted_at: new Date().toISOString() })
-    .eq('id', params.id);
+    .eq('id', params.id).eq('user_id', profile.id);
 
   // Take any published site offline — a deleted project shouldn't stay live.
   await admin.from('sites')
     .update({ status: 'draft' })
-    .eq('project_id', params.id);
+    .eq('project_id', params.id).eq('user_id', profile.id);
 
   return Response.json({ ok: true });
 });

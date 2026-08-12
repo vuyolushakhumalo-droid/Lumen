@@ -19,7 +19,7 @@ export const POST = handler(async (request, { params }) => {
 
   await admin.from('projects')
     .update({ current_code: version.code, updated_at: new Date().toISOString() })
-    .eq('id', project.id);
+    .eq('id', project.id).eq('user_id', profile.id);
 
   await admin.from('versions').insert({
     project_id: project.id,

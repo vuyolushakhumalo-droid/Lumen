@@ -236,7 +236,7 @@ export const POST = handler(async (request) => {
       updated_at: new Date().toISOString(),
       code_version: baseCodeVersion + 1,
       ...(shouldRename ? { name: title } : {}),
-    }).eq('id', project.id).eq('code_version', baseCodeVersion).select('id');
+    }).eq('id', project.id).eq('user_id', profile.id).eq('code_version', baseCodeVersion).select('id');
     if (error) throw error;
     committed = data;
   } catch (err) {
