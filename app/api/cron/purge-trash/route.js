@@ -22,6 +22,7 @@ export async function GET(request) {
   const staleAttemptsSwept = await sweepStaleAttempts(admin);
   const oldAttemptsPurged = await purgeOldAttempts(admin);
   const rateLimitsSwept = await sweepRateLimits(admin);
+  const versionsPruned = await pruneVersions(admin);
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -33,21 +34,21 @@ export async function GET(request) {
 
   if (findError) {
     console.error('[cron/purge-trash] lookup failed', findError);
-    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
-  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
     console.error('[cron/purge-trash] delete failed', deleteError);
-    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned }, { status: 500 });
   }
 
-  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept });
+  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned });
 }
 
 // On this runtime, a client disconnect kills the streaming function
@@ -101,6 +102,18 @@ async function sweepRateLimits(admin) {
   const { data, error } = await admin.rpc('sweep_rate_limits');
   if (error) {
     console.error('[cron/purge-trash] rate limit sweep failed', error);
+    return 0;
+  }
+  return data || 0;
+}
+
+// versions keeps one row per build/edit/restore/fork with no other
+// retention policy -- capped here at the same 100-per-project ceiling
+// prune_versions() enforces (see supabase/migrations/0003_prune_versions.sql).
+async function pruneVersions(admin) {
+  const { data, error } = await admin.rpc('prune_versions', { p_keep: 100 });
+  if (error) {
+    console.error('[cron/purge-trash] version prune failed', error);
     return 0;
   }
   return data || 0;
