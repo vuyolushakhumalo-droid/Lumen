@@ -23,6 +23,7 @@ export async function GET(request) {
   const oldAttemptsPurged = await purgeOldAttempts(admin);
   const rateLimitsSwept = await sweepRateLimits(admin);
   const versionsPruned = await pruneVersions(admin);
+  const submissionsPurged = await purgeSubmissions(admin);
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -34,21 +35,21 @@ export async function GET(request) {
 
   if (findError) {
     console.error('[cron/purge-trash] lookup failed', findError);
-    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
-  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
     console.error('[cron/purge-trash] delete failed', deleteError);
-    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged }, { status: 500 });
   }
 
-  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned });
+  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged });
 }
 
 // On this runtime, a client disconnect kills the streaming function
@@ -114,6 +115,18 @@ async function pruneVersions(admin) {
   const { data, error } = await admin.rpc('prune_versions', { p_keep: 100 });
   if (error) {
     console.error('[cron/purge-trash] version prune failed', error);
+    return 0;
+  }
+  return data || 0;
+}
+
+// submissions accumulates form captures forever unless a customer
+// manually erases one -- purge_submissions() drops anything past a
+// year old (see supabase/migrations/0004_purge_submissions.sql).
+async function purgeSubmissions(admin) {
+  const { data, error } = await admin.rpc('purge_submissions', { p_days: 365 });
+  if (error) {
+    console.error('[cron/purge-trash] submission purge failed', error);
     return 0;
   }
   return data || 0;
