@@ -5,7 +5,7 @@
 // ============================================================
 import { handler, requireUser, ApiError } from '@/lib/auth';
 import { getUsageSnapshot } from '@/lib/usage';
-import { findFreeSlug, validateSlug, makeSlug, publicUrl } from '@/lib/publish';
+import { findFreeSlug, validateSlug, makeSlug, publicUrl, findHardBlock } from '@/lib/publish';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -51,6 +51,13 @@ export const POST = handler(async (request) => {
   const project = await ownedProject(admin, profile.id, projectId);
   if (!project.current_code) {
     throw new ApiError(400, 'Build something first — there is nothing to publish yet.');
+  }
+
+  const hardBlock = findHardBlock(project.current_code);
+  if (hardBlock) {
+    throw new ApiError(400, `Your site contains ${hardBlock.label}, which isn't allowed on Lintel. See our Acceptable Use Policy for detail.`, {
+      reason: 'hard_block', ruleId: hardBlock.id, acceptableUse: '/acceptable-use',
+    });
   }
 
   const { data: existing } = await admin

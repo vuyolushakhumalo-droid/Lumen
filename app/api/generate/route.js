@@ -8,7 +8,7 @@
 import { handler, requireUser, ApiError } from '@/lib/auth';
 import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml, rollbackVersion } from '@/lib/usage';
 import { generateSite } from '@/lib/anthropic';
-import { makeSlug } from '@/lib/publish';
+import { makeSlug, screenLiveSite } from '@/lib/publish';
 import { rateLimitDb } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 import { startAttempt, finishAttempt } from '@/lib/attempts';
@@ -268,6 +268,12 @@ export const POST = handler(async (request) => {
       resetsAt: after.resetsAt,
     });
   }
+
+  // Publish-time abuse screening also applies to edits on an already-
+  // live site: the edit itself is never blocked, but content that
+  // would fail hard-block screening takes the site offline rather
+  // than staying live with it.
+  await screenLiveSite(admin, { projectId: project.id, code });
 
   // current_code and its version are now durably committed -- anything
   // from here on is best-effort bookkeeping, not a reason to tell the
