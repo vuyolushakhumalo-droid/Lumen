@@ -57,7 +57,7 @@ export async function GET(request, { params }) {
     return new Response(xml, { status: 200, headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
   }
 
-  if (rest.length > 0) return missing();
+  if (rest.length > 0) return pageNotFound(host);
 
   const { data: project } = await admin
     .from('projects')
@@ -103,6 +103,23 @@ h1{color:#F5F6F9;font-size:24px;margin:0 0 10px;font-weight:600}a{color:#5FE0FF;
 </head><body><div><h1>This site isn't here</h1>
 <p>No published site is connected to this address yet.</p>
 <p><a href="https://lintelapp.co.uk">Build one with Lintel</a></p></div></body></html>`,
+    { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
+
+// The site itself resolved fine (live, has content) -- this is a path
+// under it that doesn't exist. Distinct from missing() above, which
+// means the host isn't connected to a published site at all.
+function pageNotFound(host) {
+  return new Response(
+    `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<title>Page not found</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+background:#05070C;color:#96A0AD;font-family:Inter,system-ui,sans-serif;text-align:center;padding:24px}
+h1{color:#F5F6F9;font-size:24px;margin:0 0 10px;font-weight:600}a{color:#5FE0FF;text-decoration:none}</style>
+</head><body><div><h1>Page not found</h1>
+<p>This site doesn't have a page at that address.</p>
+<p><a href="https://${host}/">Back to the homepage</a></p></div></body></html>`,
     { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
   );
 }
