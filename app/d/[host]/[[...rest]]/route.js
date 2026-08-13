@@ -50,8 +50,17 @@ export async function GET(request, { params }) {
   }
 
   if (rest.length === 1 && rest[0] === 'sitemap.xml') {
-    const lastmod = site.last_deployed_at
-      ? new Date(site.last_deployed_at).toISOString().slice(0, 10)
+    // last_deployed_at only moves on an explicit (re)publish action --
+    // ordinary edits go live immediately without one, so it's stale
+    // relative to the actual content. updated_at tracks every edit.
+    const { data: proj } = await admin
+      .from('projects')
+      .select('updated_at')
+      .eq('id', site.project_id)
+      .maybeSingle();
+    const lastmodSource = proj?.updated_at || site.last_deployed_at;
+    const lastmod = lastmodSource
+      ? new Date(lastmodSource).toISOString().slice(0, 10)
       : new Date().toISOString().slice(0, 10);
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n<url><loc>https://${host}/</loc><lastmod>${lastmod}</lastmod></url>\n</urlset>\n`;
     return new Response(xml, { status: 200, headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
