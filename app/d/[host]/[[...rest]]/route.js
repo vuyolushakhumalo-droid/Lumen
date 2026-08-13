@@ -17,7 +17,7 @@ export async function GET(request, { params }) {
   // 1) exact custom domain match
   let { data: site } = await admin
     .from('sites')
-    .select('id, project_id, status, last_deployed_at')
+    .select('id, project_id, status, last_deployed_at, custom_domain')
     .eq('custom_domain', host)
     .maybeSingle();
 
@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
       const slug = host.slice(0, -(base.length + 1));
       const res = await admin
         .from('sites')
-        .select('id, project_id, status, last_deployed_at')
+        .select('id, project_id, status, last_deployed_at, custom_domain')
         .eq('subdomain', slug)
         .maybeSingle();
       site = res.data;
@@ -67,7 +67,23 @@ export async function GET(request, { params }) {
 
   if (!project?.current_code) return missing();
 
-  return new Response(injectForms(project.current_code, site.id), {
+  // A custom domain, once set, is the address that should rank -- the
+  // subdomain is still reachable (e.g. before DNS/cert propagates) but
+  // shouldn't compete with it in search results.
+  const preferredHost = site.custom_domain || host;
+  const canonicalTag = `<link rel="canonical" href="https://${preferredHost}/">`;
+  let html = injectForms(project.current_code, site.id);
+  html = html.includes('</head>')
+    ? html.replace('</head>', `${canonicalTag}</head>`)
+    : canonicalTag + html;
+
+  // Not noindexing the subdomain when custom_domain is set: that column
+  // is written as soon as the customer submits the domain, before DNS
+  // or the certificate are verified, so this would de-index a working
+  // subdomain site whose custom domain never actually went live. Add
+  // it back once there's a verified flag to gate on -- provider_site_id
+  // would do.
+  return new Response(html, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
