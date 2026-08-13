@@ -1,6 +1,8 @@
 // ============================================================
-// GET /d/:host — serves a published site by its custom domain
-// or by subdomain host. The middleware rewrites here.
+// GET /d/:host and /d/:host/* — serves a published site by its custom
+// domain or by subdomain host. The middleware rewrites here, now
+// preserving the original pathname, so this is an optional catch-all
+// that also handles robots.txt and sitemap.xml.
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabase';
 import { injectForms } from '@/lib/forms';
@@ -15,7 +17,7 @@ export async function GET(request, { params }) {
   // 1) exact custom domain match
   let { data: site } = await admin
     .from('sites')
-    .select('id, project_id, status')
+    .select('id, project_id, status, last_deployed_at')
     .eq('custom_domain', host)
     .maybeSingle();
 
@@ -26,7 +28,7 @@ export async function GET(request, { params }) {
       const slug = host.slice(0, -(base.length + 1));
       const res = await admin
         .from('sites')
-        .select('id, project_id, status')
+        .select('id, project_id, status, last_deployed_at')
         .eq('subdomain', slug)
         .maybeSingle();
       site = res.data;
@@ -34,6 +36,28 @@ export async function GET(request, { params }) {
   }
 
   if (!site || site.status !== 'live') return missing();
+
+  // Generated sites are single-file with section-based (#anchor)
+  // navigation, so there are no real sub-paths today -- this is the
+  // code to revisit if multi-file project storage lands.
+  const rest = (params.rest || []).filter(Boolean);
+
+  if (rest.length === 1 && rest[0] === 'robots.txt') {
+    return new Response(
+      `User-agent: *\nAllow: /\nSitemap: https://${host}/sitemap.xml\n`,
+      { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
+    );
+  }
+
+  if (rest.length === 1 && rest[0] === 'sitemap.xml') {
+    const lastmod = site.last_deployed_at
+      ? new Date(site.last_deployed_at).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n<url><loc>https://${host}/</loc><lastmod>${lastmod}</lastmod></url>\n</urlset>\n`;
+    return new Response(xml, { status: 200, headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
+  }
+
+  if (rest.length > 0) return missing();
 
   const { data: project } = await admin
     .from('projects')

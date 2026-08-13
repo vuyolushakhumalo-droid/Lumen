@@ -46,7 +46,8 @@ export function middleware(request) {
   // --- customer sites on their own domain / subdomain ---
   if (!isAppHost(host) && !pathname.startsWith('/api/') && !pathname.startsWith('/_next/')) {
     const url = request.nextUrl.clone();
-    url.pathname = `/d/${host.toLowerCase().split(':')[0]}`;
+    const p = request.nextUrl.pathname;
+    url.pathname = `/d/${host.toLowerCase().split(':')[0]}${p === '/' ? '' : p}`;
     return NextResponse.rewrite(url);
   }
 
