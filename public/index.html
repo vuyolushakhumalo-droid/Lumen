@@ -346,15 +346,69 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 .sc-panel.is-on{opacity:1;pointer-events:auto}
 
 /* intro panel */
-.sc-intro{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:22px;object-fit:unset;text-align:center;padding:24px}
+.sc-intro{display:flex;align-items:center;justify-content:center;
+  object-fit:unset;padding:clamp(14px,2.6vw,30px);overflow:hidden}
 .sc-intro::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(60% 60% at 50% 45%,var(--hero-glow,rgba(95,224,255,.13)),transparent 70%)}
-.sc-logo{height:56px;width:auto;position:relative;z-index:1;opacity:0;transform:translateY(6px)}
-.sc-line{position:relative;z-index:1;margin:0;font-size:clamp(18px,2.6vw,26px);
-  color:var(--ink,#F5F6F9);font-weight:500;letter-spacing:-.01em;opacity:0;transform:translateY(6px)}
-.sc-intro.is-on .sc-logo{animation:scRise .9s ease forwards}
-.sc-intro.is-on .sc-line{animation:scRise .9s ease .45s forwards}
+  background:radial-gradient(70% 70% at 30% 40%,var(--hero-glow,rgba(95,224,255,.14)),transparent 72%)}
+
+.sc-grid{position:relative;z-index:1;width:100%;height:100%;
+  display:grid;grid-template-columns:0.85fr 1.15fr;gap:clamp(12px,2.4vw,26px);align-items:center}
+
+/* ---- left ---- */
+.sc-left{text-align:left}
+.sc-head{margin:0 0 clamp(12px,2vw,20px);font-size:clamp(16px,2.5vw,27px);
+  font-weight:600;line-height:1.22;letter-spacing:-.02em;color:var(--ink,#F5F6F9)}
+.sc-head b{color:var(--hero-accent,#5FE0FF);font-weight:600}
+
+.sc-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
+  gap:clamp(6px,1.1vw,11px)}
+.sc-steps li{display:flex;align-items:center;gap:9px;
+  font-size:clamp(11px,1.25vw,13.5px);color:var(--grey,#96A0AD);line-height:1.3}
+.sc-steps b{color:var(--ink,#F5F6F9);font-weight:600}
+.sc-sico{width:clamp(22px,2.4vw,28px);height:clamp(22px,2.4vw,28px);flex:none;
+  display:flex;align-items:center;justify-content:center;border-radius:8px;
+  color:var(--hero-accent,#5FE0FF);background:rgba(95,224,255,.09);
+  border:1px solid rgba(95,224,255,.16)}
+.sc-sico svg{width:55%;height:55%}
+
+/* ---- right: layered mock ---- */
+.sc-right{position:relative;height:100%;display:flex;align-items:center}
+.sc-mock{position:relative;width:100%;padding-bottom:14%}
+
+.sc-preview{border:1px solid var(--line,rgba(255,255,255,.12));border-radius:12px;
+  overflow:hidden;background:#0B0E13;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.sc-ptop{display:flex;align-items:center;gap:5px;padding:6px 10px;
+  border-bottom:1px solid var(--line,rgba(255,255,255,.09));background:rgba(255,255,255,.02)}
+.sc-ptop i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.16)}
+.sc-ptop span{flex:1;text-align:center;font-size:clamp(8px,.85vw,10px);color:var(--grey-dim,#7C8697)}
+.sc-preview img{display:block;width:100%;height:auto}
+
+.sc-chat{position:absolute;left:-6%;bottom:-4%;z-index:2;width:min(74%,330px);
+  padding:clamp(9px,1.3vw,14px);border-radius:13px;
+  border:1px solid rgba(95,224,255,.20);background:rgba(11,14,19,.92);
+  backdrop-filter:blur(8px);box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.sc-chat-top{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.sc-chat-top img{height:clamp(11px,1.2vw,14px);width:auto}
+.sc-chat-top span{font-size:clamp(9.5px,1vw,12px);font-weight:600;color:var(--ink,#F5F6F9)}
+
+.sc-ask{margin:0 0 7px;font-size:clamp(9px,.95vw,11px);color:var(--grey-dim,#7C8697)}
+.sc-bubble{padding:7px 10px;border-radius:9px 9px 9px 3px;
+  background:rgba(255,255,255,.06);border:1px solid var(--line,rgba(255,255,255,.09));
+  font-size:clamp(9.5px,1vw,12px);color:var(--ink,#F5F6F9);line-height:1.4}
+.sc-reply{margin-top:8px;padding:8px 10px;border-radius:9px;
+  background:rgba(95,224,255,.08);border:1px solid rgba(95,224,255,.18)}
+.sc-reply span:first-child{display:block;font-size:clamp(9.5px,1vw,12px);color:var(--ink,#F5F6F9)}
+.sc-prog{display:block;height:3px;margin-top:7px;border-radius:3px;
+  background:rgba(255,255,255,.12);overflow:hidden;position:relative}
+.sc-prog::after{content:"";position:absolute;inset:0;border-radius:3px;
+  background:var(--hero-accent,#5FE0FF);transform:translateX(-100%)}
+.sc-intro.is-on .sc-prog::after{animation:scSweep 2.4s ease .8s forwards}
+@keyframes scSweep{to{transform:translateX(-6%)}}
+
+/* entrance */
+.sc-left,.sc-right{opacity:0;transform:translateY(8px)}
+.sc-intro.is-on .sc-left{animation:scRise .8s ease forwards}
+.sc-intro.is-on .sc-right{animation:scRise .8s ease .18s forwards}
 @keyframes scRise{to{opacity:1;transform:none}}
 
 .sc-bar{display:flex;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap;min-height:24px}
@@ -444,8 +498,47 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 
             <!-- intro: logo fades in, then the line -->
             <div class="sc-panel sc-intro is-on" data-url="lintelapp.co.uk" data-label="">
-              <img class="sc-logo" src="/mark-white.png" alt="Lintel" width="106" height="96">
-              <p class="sc-line">Launch your site in a few clicks.</p>
+              <div class="sc-grid">
+
+                <!-- left: the pitch -->
+                <div class="sc-left">
+                  <p class="sc-head">Describe it.<br><b>Lintel builds it.</b><br>You launch it.</p>
+
+                  <ol class="sc-steps">
+                    <li><span class="sc-sico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.7-.8L3 21l1.9-5.2A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg></span><b>Describe</b> your idea</li>
+                    <li><span class="sc-sico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/></svg></span><b>Lintel</b> builds it</li>
+                    <li><span class="sc-sico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span><b>Refine</b> by talking</li>
+                    <li><span class="sc-sico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18Z"/></svg></span><b>Go live</b> in a click</li>
+                  </ol>
+                </div>
+
+                <!-- right: layered mock -->
+                <div class="sc-right">
+                  <div class="sc-mock">
+
+                    <div class="sc-chat">
+                      <div class="sc-chat-top">
+                        <img src="/mark-white.png" alt="" width="106" height="96">
+                        <span>Lintel Workshop</span>
+                      </div>
+                      <p class="sc-ask">What would you like to build?</p>
+                      <div class="sc-bubble">A calm site for my garden centre, with opening hours and a visit page.</div>
+                      <div class="sc-reply">
+                        <span>Got it — building your site now…</span>
+                        <span class="sc-prog"></span>
+                      </div>
+                    </div>
+
+                    <div class="sc-preview">
+                      <div class="sc-ptop"><i></i><i></i><i></i><span>fern-field.lintelsites.com</span></div>
+                      <img src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel"
+                           width="1200" height="750" loading="lazy">
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
             </div>
 
             <img class="sc-panel" src="/img/demo-fico.jpg" alt="A restaurant website built with Lintel"
@@ -944,7 +1037,7 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
   if(panels.length < 2 || !dots) return;
 
   var i = 0, timer = null;
-  var INTRO = 3200, DWELL = 4200;
+  var INTRO = 5600, DWELL = 4200;
   var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   panels.forEach(function(p, n){
