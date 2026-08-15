@@ -328,6 +328,57 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
   text-align:center;font-size:15px;color:var(--grey);line-height:1.5;min-height:24px;transition:opacity .3s}
 .voicehint .said{color:var(--ink);font-weight:500}
 .voice-unsupported{font-size:13px;color:var(--grey-dim)}
+
+.showcase{max-width:780px;margin:56px auto 0;padding:0 4px}
+
+.sc-frame{border:1px solid var(--line,rgba(255,255,255,.09));border-radius:14px;overflow:hidden;
+  background:var(--surface,#0B0E13);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+
+.sc-chrome{display:flex;align-items:center;gap:7px;padding:10px 14px;
+  border-bottom:1px solid var(--line,rgba(255,255,255,.09));background:rgba(255,255,255,.02)}
+.sc-dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.14);flex:none}
+.sc-url{flex:1;text-align:center;font-size:12.5px;color:var(--grey-dim,#7C8697);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.sc-stage{position:relative;aspect-ratio:1200/750;background:var(--surface,#0B0E13)}
+.sc-panel{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .8s ease;pointer-events:none}
+.sc-panel.is-on{opacity:1;pointer-events:auto}
+
+/* intro panel */
+.sc-intro{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:22px;object-fit:unset;text-align:center;padding:24px}
+.sc-intro::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(60% 60% at 50% 45%,var(--hero-glow,rgba(95,224,255,.13)),transparent 70%)}
+.sc-logo{height:56px;width:auto;position:relative;z-index:1;opacity:0;transform:translateY(6px)}
+.sc-line{position:relative;z-index:1;margin:0;font-size:clamp(18px,2.6vw,26px);
+  color:var(--ink,#F5F6F9);font-weight:500;letter-spacing:-.01em;opacity:0;transform:translateY(6px)}
+.sc-intro.is-on .sc-logo{animation:scRise .9s ease forwards}
+.sc-intro.is-on .sc-line{animation:scRise .9s ease .45s forwards}
+@keyframes scRise{to{opacity:1;transform:none}}
+
+.sc-bar{display:flex;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap;min-height:24px}
+.sc-label{font-size:13px;color:var(--grey,#96A0AD);letter-spacing:.02em}
+.sc-dots{display:flex;gap:8px;margin:0 auto}
+.sc-pip{width:7px;height:7px;border-radius:50%;border:0;padding:0;cursor:pointer;
+  background:rgba(255,255,255,.18);transition:.3s}
+.sc-pip[aria-selected="true"]{background:var(--hero-accent,#5FE0FF);
+  box-shadow:0 0 10px var(--hero-glow,rgba(95,224,255,.5))}
+.sc-visit{font-size:13.5px;color:var(--hero-accent,#5FE0FF);text-decoration:none}
+.sc-visit:hover{text-decoration:underline}
+.sc-visit[hidden]{display:none}
+
+@media(max-width:720px){
+  .showcase{margin-top:38px}
+  .sc-bar{justify-content:center}
+  .sc-dots{margin:0}
+  .sc-logo{height:42px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .sc-panel{transition:none}
+  .sc-logo,.sc-line{opacity:1;transform:none;animation:none}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/lumen-app.js"></script>
@@ -380,6 +431,47 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
         <a class="textlink" href="#build">See how it works
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>
         </a>
+      </div>
+
+      <div class="showcase" id="showcase">
+        <div class="sc-frame">
+          <div class="sc-chrome">
+            <span class="sc-dot"></span><span class="sc-dot"></span><span class="sc-dot"></span>
+            <div class="sc-url"><span id="scUrl">lintelapp.co.uk</span></div>
+          </div>
+
+          <div class="sc-stage">
+
+            <!-- intro: logo fades in, then the line -->
+            <div class="sc-panel sc-intro is-on" data-url="lintelapp.co.uk" data-label="">
+              <img class="sc-logo" src="/mark-white.png" alt="Lintel" width="106" height="96">
+              <p class="sc-line">Launch your site in a few clicks.</p>
+            </div>
+
+            <img class="sc-panel" src="/img/demo-fico.jpg" alt="A restaurant website built with Lintel"
+                 width="1200" height="750" loading="lazy" data-url="fico.lintelsites.com"
+                 data-href="https://fico.lintelsites.com" data-label="A neighbourhood restaurant">
+            <img class="sc-panel" src="/img/demo-redwell.jpg" alt="A plumbing website built with Lintel"
+                 width="1200" height="750" loading="lazy" data-url="redwell-plumbing-heating.lintelsites.com"
+                 data-href="https://redwell-plumbing-heating.lintelsites.com" data-label="A local plumber">
+            <img class="sc-panel" src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel"
+                 width="1200" height="750" loading="lazy" data-url="fern-field.lintelsites.com"
+                 data-href="https://fern-field.lintelsites.com" data-label="An independent nursery">
+
+            <img class="sc-panel" src="/img/shot-builder.jpg" alt="The Lintel builder, editing a site by chat"
+                 width="1200" height="750" loading="lazy" data-url="lintelapp.co.uk/builder"
+                 data-label="Describe a change — watch it happen">
+            <img class="sc-panel" src="/img/shot-dashboard.jpg" alt="The Lintel dashboard listing published sites"
+                 width="1200" height="750" loading="lazy" data-url="lintelapp.co.uk/dashboard"
+                 data-label="Every site, live or draft, in one place">
+          </div>
+        </div>
+
+        <div class="sc-bar">
+          <span class="sc-label" id="scLabel"></span>
+          <div class="sc-dots" id="scDots" role="tablist" aria-label="Choose a slide"></div>
+          <a class="sc-visit" id="scVisit" href="#" target="_blank" rel="noopener" hidden>View live site ↗</a>
+        </div>
       </div>
     </div>
     <div class="reactor-stage">
@@ -837,6 +929,65 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
     if(V.listening){ V.stop(); return; }
     V.listen({ continuous:false });
   });
+})();
+</script>
+<script>
+(function(){
+  var wrap = document.getElementById('showcase');
+  if(!wrap) return;
+
+  var panels = [].slice.call(wrap.querySelectorAll('.sc-panel'));
+  var dots   = document.getElementById('scDots');
+  var urlEl  = document.getElementById('scUrl');
+  var lblEl  = document.getElementById('scLabel');
+  var visit  = document.getElementById('scVisit');
+  if(panels.length < 2 || !dots) return;
+
+  var i = 0, timer = null;
+  var INTRO = 3200, DWELL = 4200;
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  panels.forEach(function(p, n){
+    var b = document.createElement('button');
+    b.className = 'sc-pip'; b.type = 'button';
+    b.setAttribute('role','tab');
+    b.setAttribute('aria-selected', n === 0 ? 'true' : 'false');
+    b.setAttribute('aria-label', p.getAttribute('data-label') || 'Intro');
+    b.addEventListener('click', function(){ show(n); restart(); });
+    dots.appendChild(b);
+  });
+  var pips = [].slice.call(dots.children);
+
+  function show(n){
+    i = (n + panels.length) % panels.length;
+    panels.forEach(function(p, k){ p.classList.toggle('is-on', k === i); });
+    pips.forEach(function(p, k){ p.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
+
+    var cur = panels[i];
+    urlEl.textContent = cur.getAttribute('data-url') || '';
+    lblEl.textContent = cur.getAttribute('data-label') || '';
+    var href = cur.getAttribute('data-href');
+    if(href){ visit.href = href; visit.hidden = false; } else { visit.hidden = true; }
+  }
+
+  function delay(){ return i === 0 ? INTRO : DWELL; }
+  function tick(){ show(i + 1); schedule(); }
+  function schedule(){ stop(); if(!still) timer = setTimeout(tick, delay()); }
+  function stop(){ clearTimeout(timer); timer = null; }
+  function restart(){ schedule(); }
+
+  wrap.addEventListener('mouseenter', stop);
+  wrap.addEventListener('mouseleave', schedule);
+  wrap.addEventListener('focusin', stop);
+  wrap.addEventListener('focusout', schedule);
+  document.addEventListener('visibilitychange', function(){ document.hidden ? stop() : schedule(); });
+
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(function(e){ e[0].isIntersecting ? schedule() : stop(); },
+      { threshold: 0.25 }).observe(wrap);
+  } else { schedule(); }
+
+  show(0);
 })();
 </script>
 </body>
