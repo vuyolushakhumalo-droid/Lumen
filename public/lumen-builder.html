@@ -189,9 +189,13 @@
   .livelabel{font-size:12.5px;color:var(--grey-dim);display:flex;align-items:center;gap:8px}
   .livedot{width:7px;height:7px;border-radius:50%;background:#4ADE80;box-shadow:0 0 8px #4ADE80}
   .pubactions{display:flex;gap:10px;flex-wrap:wrap}
-  .pubactions .btnp{flex:1;min-width:150px;justify-content:center;border:none;border-radius:980px;
+  /* Appearance belongs to .btnp itself -- it was scoped to .pubactions,
+     so any button outside that row (#domainGo) fell back to the browser
+     default border and corners. Only the row layout stays scoped. */
+  .btnp{justify-content:center;border:none;border-radius:980px;
     padding:13px 20px;font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;
     display:inline-flex;align-items:center;gap:8px;transition:.2s}
+  .pubactions .btnp{flex:1;min-width:150px}
   .btnp.primary{background:var(--cyan);color:#04141B;box-shadow:0 0 34px -12px var(--glow)}
   .btnp.primary:hover{transform:translateY(-1px)}
   .btnp.primary:disabled{opacity:.5;transform:none;cursor:default}
