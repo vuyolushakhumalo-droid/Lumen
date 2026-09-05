@@ -6,6 +6,7 @@
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabase';
 import { injectForms } from '@/lib/forms';
+import { injectAnalytics } from '@/lib/analytics';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -85,6 +86,7 @@ export async function GET(request, { params }) {
   const preferredHost = verifiedDomain || host;
   const canonicalTag = `<link rel="canonical" href="https://${preferredHost}/">`;
   let html = injectForms(project.current_code, site.id);
+  html = injectAnalytics(html, site.id);
   html = html.includes('</head>')
     ? html.replace('</head>', `${canonicalTag}</head>`)
     : canonicalTag + html;

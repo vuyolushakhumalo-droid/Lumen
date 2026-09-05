@@ -136,6 +136,43 @@ create table if not exists submissions (
 create index if not exists submissions_user_created_idx on submissions(user_id, created_at desc);
 create index if not exists submissions_site_created_idx on submissions(site_id, created_at desc);
 
+-- ---------- site analytics: raw events ----------
+-- One row per beacon. High volume, never read by a customer, aged out
+-- after 90 days by purge_site_events(). No IP is stored: `visitor` is
+-- an HMAC of (ip + user-agent + day) keyed by ANALYTICS_SALT, which
+-- distinguishes a returning visitor within one day and nothing further.
+create table if not exists site_events (
+  id       bigserial primary key,
+  site_id  uuid not null references sites(id) on delete cascade,
+  user_id  uuid not null references auth.users(id) on delete cascade,
+  day      date not null default (now() at time zone 'utc')::date,
+  ts       timestamptz not null default now(),
+  section  text,
+  ref_host text,
+  country  text,
+  device   text check (device in ('desktop','mobile','tablet')),
+  visitor  text not null
+);
+create index if not exists site_events_site_day_idx on site_events(site_id, day);
+
+-- ---------- site analytics: daily rollup ----------
+-- The read path: one row per site per day, written only by
+-- rollup_site_events(). This is what the dashboard charts.
+create table if not exists site_daily (
+  site_id   uuid not null references sites(id) on delete cascade,
+  user_id   uuid not null references auth.users(id) on delete cascade,
+  day       date not null,
+  views     integer not null default 0,
+  visitors  integer not null default 0,
+  bounces   integer not null default 0,
+  sections  jsonb not null default '{}'::jsonb,
+  countries jsonb not null default '{}'::jsonb,
+  referrers jsonb not null default '{}'::jsonb,
+  devices   jsonb not null default '{}'::jsonb,
+  primary key (site_id, day)
+);
+create index if not exists site_daily_user_day_idx on site_daily(user_id, day desc);
+
 -- ---------- persistent rate limiting ----------
 -- Replaces the in-memory limiter, which is not multi-instance safe on
 -- Vercel. Used by the public form-capture endpoint first, then by the
@@ -171,6 +208,8 @@ alter table topups        enable row level security;
 alter table sites         enable row level security;
 alter table submissions   enable row level security;
 alter table rate_limits   enable row level security;
+alter table site_events   enable row level security;
+alter table site_daily    enable row level security;
 
 drop policy if exists "own profile" on profiles;
 create policy "own profile" on profiles
@@ -220,6 +259,17 @@ create policy submissions_delete_own
 -- write here, so a leaked anon key cannot be used to flood the table.
 
 -- rate_limits: no policies at all, service role only.
+
+-- site_events: no policies at all either, same reasoning as rate_limits.
+-- The public beacon writes with the service role, and customers never
+-- read raw events -- they read the daily rollup below.
+
+-- Owners can read their own daily rollups. No write policy: only
+-- rollup_site_events() writes here.
+drop policy if exists site_daily_select_own on site_daily;
+create policy site_daily_select_own
+  on site_daily for select
+  using (auth.uid() = user_id);
 
 -- ============================================================
 -- Helper: atomically increment today's build count.

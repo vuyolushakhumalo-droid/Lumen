@@ -26,6 +26,7 @@ export async function GET(request) {
   const versionsPruned = await pruneVersions(admin);
   const submissionsPurged = await purgeSubmissions(admin);
   const domainsVerified = await sweepPendingDomains(admin);
+  const { rolled: analyticsRolled, purged: eventsPurged } = await sweepAnalytics(admin);
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -37,21 +38,21 @@ export async function GET(request) {
 
   if (findError) {
     console.error('[cron/purge-trash] lookup failed', findError);
-    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
-  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, analyticsRolled, eventsPurged });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
     console.error('[cron/purge-trash] delete failed', deleteError);
-    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
-  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified });
+  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, analyticsRolled, eventsPurged });
 }
 
 // On this runtime, a client disconnect kills the streaming function
@@ -172,4 +173,33 @@ async function sweepPendingDomains(admin) {
     }
   }
   return verified;
+}
+
+// Analytics: fold yesterday's raw beacons into the per-day rollup the
+// dashboard reads, then age out raw events past 90 days. Yesterday, not
+// today, so the day being aggregated is closed -- this runs at 03:00 UTC
+// (see vercel.json).
+//
+// The rollup upserts, so a re-run for the same day recomputes rather
+// than double-counts, and a missed night can be replayed by calling
+// rollup_site_events(date) directly.
+const EVENT_RETENTION_DAYS = 90;
+
+async function sweepAnalytics(admin) {
+  let rolled = 0;
+  let purged = 0;
+
+  const { data: rollData, error: rollError } = await admin.rpc('rollup_site_events', { p_day: null });
+  if (rollError) console.error('[cron/purge-trash] analytics rollup failed', rollError);
+  else rolled = rollData || 0;
+
+  // Independent of the rollup: retention must still run even if
+  // aggregation failed, or raw events would grow unbounded.
+  const { data: purgeData, error: purgeError } = await admin.rpc('purge_site_events', {
+    p_days: EVENT_RETENTION_DAYS,
+  });
+  if (purgeError) console.error('[cron/purge-trash] site event purge failed', purgeError);
+  else purged = purgeData || 0;
+
+  return { rolled, purged };
 }
