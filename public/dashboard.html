@@ -181,6 +181,27 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .sites-head select.sbtn{-webkit-appearance:none;appearance:none;padding-right:30px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2396A0AD' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 10px center;background-size:14px}
+.an-body{padding:22px 24px}
+.an-totals{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px}
+.an-tot{flex:1;min-width:132px;border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:rgba(255,255,255,.02)}
+.an-tot .n{font-size:24px;font-weight:600;color:var(--ink)}
+.an-tot .l{font-size:12.5px;color:var(--grey-dim);margin-top:4px}
+.an-chart{display:flex;align-items:flex-end;gap:3px;height:120px}
+.an-bar{flex:1;min-width:0;min-height:2px;border-radius:3px 3px 0 0;opacity:.75;transition:opacity .2s;
+  background:linear-gradient(180deg,var(--cyan-2),var(--cyan))}
+.an-bar:hover{opacity:1}
+.an-bar.zero{background:rgba(255,255,255,.06)}
+.an-axis{display:flex;justify-content:space-between;font-size:12px;color:var(--grey-dim);margin:8px 0 26px}
+.an-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:18px 24px}
+.an-list h4{font-size:13px;font-weight:600;color:var(--grey);margin-bottom:8px}
+.an-li{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.an-li:last-child{border-bottom:none}
+.an-li span{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-li b{color:var(--grey);font-weight:500;flex:none}
+.an-teaser{padding:34px 24px;text-align:center}
+.an-teaser .n{font-size:34px;font-weight:600;color:var(--ink)}
+.an-teaser .l{font-size:13px;color:var(--grey-dim);margin-top:4px}
+.an-teaser p{font-size:14.5px;color:var(--grey);line-height:1.55;max-width:400px;margin:16px auto 20px}
 .confirm{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:24px;
   background:rgba(3,5,9,.72);backdrop-filter:blur(8px)}
 .confirm.show{display:flex}
@@ -233,6 +254,17 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
     <a class="btn btn-ghost" href="#" id="backToSites">Back to sites</a>
   </div>
   <div id="trashList"><div class="sempty">Loading…</div></div>
+</div>
+
+<div class="sites reveal" id="anPanel">
+  <div class="sites-head">
+    <div>
+      <h3>Analytics</h3>
+      <div class="count" id="anCount">Last 30 days</div>
+    </div>
+    <select class="sbtn" id="anSite" title="Choose a site"></select>
+  </div>
+  <div id="anBody"><div class="sempty">Loading&#8230;</div></div>
 </div>
 
 <div class="sites reveal" id="enqPanel">
@@ -718,6 +750,111 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
   enqLoadMoreBtn.addEventListener('click', function(){ loadEnquiries(false); });
   document.getElementById('enqExport').addEventListener('click', exportEnquiriesCsv);
 
+  // ---------- analytics (site traffic) ----------
+  // The endpoint reads one site at a time -- there is no "all sites"
+  // rollup -- so this dropdown always has a concrete site selected,
+  // unlike the enquiries filter above.
+  var anSiteEl = document.getElementById('anSite');
+  var anBodyEl = document.getElementById('anBody');
+  var anCountEl = document.getElementById('anCount');
+  var anSeq = 0; // a slow response for a site the user has since switched away from is dropped
+
+  var DEVICE_LABELS = { desktop:'Desktop', mobile:'Mobile', tablet:'Tablet', unknown:'Unknown' };
+
+  function anNum(n){ return Number(n||0).toLocaleString(); }
+
+  // Days come back as plain YYYY-MM-DD, bucketed in UTC. Reading them
+  // back in UTC keeps a late-evening view from labelling itself as the
+  // next day.
+  function anDayLabel(iso){
+    var d = new Date(iso + 'T00:00:00Z');
+    if(isNaN(d)) return iso;
+    return d.toLocaleDateString(undefined, { day:'numeric', month:'short', timeZone:'UTC' });
+  }
+
+  function anList(title, items, labeller){
+    var rows = (items && items.length)
+      ? items.map(function(it){
+          var name = labeller ? labeller(it.name) : it.name;
+          return '<div class="an-li"><span>'+esc(name)+'</span><b>'+anNum(it.count)+'</b></div>';
+        }).join('')
+      : '<div class="an-li"><span class="grey">Nothing yet</span></div>';
+    return '<div class="an-list"><h4>'+esc(title)+'</h4>'+rows+'</div>';
+  }
+
+  // Bars scale against the busiest day in the range, so the shape reads
+  // whether the site sees five views a day or five hundred.
+  function anChart(daily){
+    if(!daily || !daily.length) return '';
+    var max = daily.reduce(function(m,d){ return Math.max(m, d.views); }, 0);
+    var bars = daily.map(function(d, i){
+      var label = (i === daily.length-1) ? 'Today' : anDayLabel(d.day);
+      var title = d.views
+        ? label+' \u00b7 '+anNum(d.views)+' views \u00b7 '+anNum(d.visitors)+' visitors'
+        : label+' \u00b7 no views';
+      var h = max ? Math.max(2, Math.round(d.views/max*100)) : 2;
+      return '<div class="an-bar'+(d.views?'':' zero')+'" style="height:'+h+'%" title="'+esc(title)+'"></div>';
+    }).join('');
+    return '<div class="an-chart">'+bars+'</div>'
+      + '<div class="an-axis"><span>'+esc(anDayLabel(daily[0].day))+'</span><span>Today</span></div>';
+  }
+
+  function renderAnalytics(a){
+    // Standard sees the visitor count and nothing else -- enough to know
+    // the site is being read. The breakdown is the upgrade.
+    if(a.teaser){
+      anBodyEl.innerHTML = '<div class="an-teaser">'
+        + '<div class="n">'+anNum(a.visitors)+'</div>'
+        + '<div class="l">'+(a.visitors===1?'visitor':'visitors')+' in the last '+esc(a.days)+' days</div>'
+        + '<p>See which sections they read, where they came from, and what '
+        + 'they\'re browsing on \u2014 included with Pro and above.</p>'
+        + '<a class="btn btn-primary" href="#billing">Upgrade your plan</a>'
+        + '</div>';
+      return;
+    }
+    if(!a.totals || !a.totals.views){
+      anBodyEl.innerHTML = '<div class="sempty">No visits recorded yet. They\'ll appear here once someone opens your site.</div>';
+      return;
+    }
+    anBodyEl.innerHTML = '<div class="an-body">'
+      + '<div class="an-totals">'
+      +   '<div class="an-tot"><div class="n">'+anNum(a.totals.views)+'</div><div class="l">Page views</div></div>'
+      +   '<div class="an-tot"><div class="n">'+anNum(a.totals.visitors)+'</div><div class="l">Visitors</div></div>'
+      +   '<div class="an-tot"><div class="n">'+Math.round((a.totals.bounceRate||0)*100)+'%</div><div class="l">Bounce rate</div></div>'
+      + '</div>'
+      + anChart(a.daily)
+      + '<div class="an-lists">'
+      +   anList('Sections', a.sections)
+      +   anList('Countries', a.countries)
+      +   anList('Referrers', a.referrers)
+      +   anList('Devices', a.devices, function(n){ return DEVICE_LABELS[n] || n; })
+      + '</div>'
+      + '</div>';
+  }
+
+  async function loadAnalytics(){
+    if(!anBodyEl) return;
+    if(!anSiteEl || !anSiteEl.value){
+      anBodyEl.innerHTML = '<div class="sempty">Publish a site and its traffic will show up here.</div>';
+      anCountEl.textContent = '';
+      return;
+    }
+    var seq = ++anSeq;
+    anBodyEl.innerHTML = '<div class="sempty">Loading\u2026</div>';
+    anCountEl.textContent = 'Last 30 days';
+    try{
+      var a = await Lumen.api('/api/analytics?site=' + encodeURIComponent(anSiteEl.value) + '&days=30');
+      if(seq !== anSeq) return;
+      renderAnalytics(a);
+    }catch(e){
+      if(seq !== anSeq) return;
+      anBodyEl.innerHTML = '<div class="sempty">Could not load analytics.</div>';
+      anCountEl.textContent = '';
+    }
+  }
+
+  if(anSiteEl) anSiteEl.addEventListener('change', loadAnalytics);
+
   function render(projects){
     if(!projects.length){
       countEl.textContent = 'Nothing yet';
@@ -830,15 +967,34 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
   }
 
   function populateSiteFilter(projects){
-    var sel = document.getElementById('enqSiteFilter');
-    if(!sel) return;
-    var current = sel.value;
     projects.forEach(function(p){ if(p.siteId) siteNames[p.siteId] = p.name || 'Untitled'; });
     var published = projects.filter(function(p){ return p.published && p.siteId; });
-    sel.innerHTML = '<option value="">All sites</option>' + published.map(function(p){
+
+    var sel = document.getElementById('enqSiteFilter');
+    if(sel){
+      var current = sel.value;
+      sel.innerHTML = '<option value="">All sites</option>' + published.map(function(p){
+        return '<option value="'+esc(p.siteId)+'">'+esc(p.name||p.subdomain||'Untitled')+'</option>';
+      }).join('');
+      sel.value = published.some(function(p){ return p.siteId===current; }) ? current : '';
+    }
+
+    populateAnalyticsSites(published);
+  }
+
+  // No "All sites" option here: the analytics endpoint needs one site.
+  // A selection that survives a reload is kept, so republishing doesn't
+  // bounce the card back to the first site and refetch for nothing.
+  function populateAnalyticsSites(published){
+    if(!anSiteEl) return;
+    var current = anSiteEl.value;
+    anSiteEl.innerHTML = published.map(function(p){
       return '<option value="'+esc(p.siteId)+'">'+esc(p.name||p.subdomain||'Untitled')+'</option>';
     }).join('');
-    sel.value = published.some(function(p){ return p.siteId===current; }) ? current : '';
+    var keep = published.some(function(p){ return p.siteId===current; });
+    anSiteEl.value = keep ? current : (published.length ? published[0].siteId : '');
+    anSiteEl.style.display = published.length ? '' : 'none';
+    if(!keep) loadAnalytics();
   }
 
   async function exportSite(id, btn){
