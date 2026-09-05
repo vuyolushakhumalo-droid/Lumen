@@ -8,8 +8,9 @@
 // the visitor's device, and there is no cross-site or cross-day
 // identifier, so this needs no cookie banner.
 //
-// New env var required in Vercel:
-//   ANALYTICS_SALT - any long random string; rotating it orphans every
+// New env var REQUIRED in Vercel:
+//   ANALYTICS_SALT - any long random string. Without it this route
+//                    records nothing at all. Rotating it orphans every
 //                    existing visitor hash, which is the escape hatch.
 
 import { createClient } from '@supabase/supabase-js';
@@ -64,12 +65,29 @@ function clientIp(req) {
   return fwd.split(',')[0].trim() || 'unknown';
 }
 
+// No salt, no recording. This used to fall back to a hardcoded key,
+// which meant a deployment that forgot the env var silently wrote rows
+// keyed by a value published in this repo -- enough for anyone holding
+// a visitor's IP and user-agent to confirm they visited a given site on
+// a given day. Failing closed costs page views; failing open costs the
+// one guarantee this table makes.
+let _warnedNoSalt = false;
+function analyticsSalt() {
+  const salt = process.env.ANALYTICS_SALT;
+  if (salt) return salt;
+  if (!_warnedNoSalt) {
+    _warnedNoSalt = true;
+    console.error('[analytics] ANALYTICS_SALT is not set -- refusing to record events');
+  }
+  return null;
+}
+
 // Identifies a returning visitor within one day and nothing beyond it:
 // the day is inside the hash, so tomorrow the same person is a
 // different string, and there is no way back to the IP.
-function visitorHash(ip, ua, day) {
+function visitorHash(ip, ua, day, salt) {
   return crypto
-    .createHmac('sha256', process.env.ANALYTICS_SALT || 'lintel')
+    .createHmac('sha256', salt)
     .update(`${ip}|${ua}|${day}`)
     .digest('hex')
     .slice(0, 32);
@@ -102,6 +120,13 @@ export async function POST(req, { params }) {
   if (req.headers.get('dnt') === '1' || req.headers.get('sec-gpc') === '1') {
     return noContent(origin);
   }
+
+  // Before any lookup, hash or write: without a salt there is no
+  // privacy-preserving way to record this, so we don't record it. Sits
+  // with the opt-outs so a misconfigured deployment doesn't spend a
+  // site lookup and a rate-limit slot per beacon either.
+  const salt = analyticsSalt();
+  if (!salt) return noContent(origin);
 
   const ua = (req.headers.get('user-agent') || '').slice(0, 300);
   if (!ua || BOT_RE.test(ua)) return noContent(origin);
@@ -157,7 +182,7 @@ export async function POST(req, { params }) {
     ref_host: refHost,
     country,
     device: deviceFrom(ua),
-    visitor: visitorHash(clientIp(req), ua, day),
+    visitor: visitorHash(clientIp(req), ua, day, salt),
   });
 
   // A dropped page view is not worth a visible failure on a customer's
