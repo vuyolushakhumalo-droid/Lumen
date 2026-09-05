@@ -101,8 +101,18 @@ create table if not exists sites (
   provider_site_id  text,
   status            text default 'draft' check (status in ('draft','live')),
   last_deployed_at  timestamptz,
-  notify_email      text   -- lets an owner redirect enquiry notifications away from their login address; null means "use the account email"
+  notify_email      text,  -- lets an owner redirect enquiry notifications away from their login address; null means "use the account email"
+  -- What we've actually confirmed about custom_domain with the host.
+  -- 'pending' until verified; 'error' means the check itself failed,
+  -- not that the customer's DNS is wrong (that stays 'pending').
+  domain_status     text not null default 'pending' check (domain_status in ('pending','verified','error')),
+  domain_checked_at timestamptz,
+  domain_error      text
 );
+
+create index if not exists sites_domain_pending_idx
+  on public.sites (domain_status)
+  where custom_domain is not null;
 
 alter table sites drop constraint if exists sites_notify_email_shape;
 alter table sites add constraint sites_notify_email_shape

@@ -5,6 +5,7 @@
 // pattern of skipping requireUser() for service-to-service calls.
 import { supabaseAdmin } from '@/lib/supabase';
 import { deleteProjectImages } from '@/lib/images';
+import { refreshDomainStatus, vercelConfigured } from '@/lib/domains';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,7 @@ export async function GET(request) {
   const rateLimitsSwept = await sweepRateLimits(admin);
   const versionsPruned = await pruneVersions(admin);
   const submissionsPurged = await purgeSubmissions(admin);
+  const domainsVerified = await sweepPendingDomains(admin);
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -35,21 +37,21 @@ export async function GET(request) {
 
   if (findError) {
     console.error('[cron/purge-trash] lookup failed', findError);
-    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
-  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
     console.error('[cron/purge-trash] delete failed', deleteError);
-    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified }, { status: 500 });
   }
 
-  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged });
+  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified });
 }
 
 // On this runtime, a client disconnect kills the streaming function
@@ -130,4 +132,44 @@ async function purgeSubmissions(admin) {
     return 0;
   }
   return data || 0;
+}
+
+// A custom domain sits 'pending' until something confirms DNS actually
+// points here, and otherwise that only happens when the customer opens
+// the builder and looks. This finishes the job overnight: a domain set
+// up on Tuesday evening is verified by Wednesday morning without them
+// pressing anything.
+//
+// Sequential, not Promise.all: this is a courtesy sweep against a
+// third-party API, and there's no deadline worth rate-limiting for.
+// Capped so one runaway account can't stretch the cron run.
+const DOMAIN_SWEEP_LIMIT = 200;
+
+async function sweepPendingDomains(admin) {
+  if (!vercelConfigured()) return 0;
+
+  const { data, error } = await admin
+    .from('sites')
+    .select('id, custom_domain, domain_status, domain_checked_at, domain_error')
+    .not('custom_domain', 'is', null)
+    .neq('domain_status', 'verified')
+    .limit(DOMAIN_SWEEP_LIMIT);
+
+  if (error) {
+    console.error('[cron/purge-trash] domain sweep lookup failed', error);
+    return 0;
+  }
+
+  let verified = 0;
+  for (const site of data || []) {
+    try {
+      const out = await refreshDomainStatus(admin, site);
+      if (out?.status === 'verified') verified++;
+    } catch (err) {
+      // refreshDomainStatus already swallows its own failures; this is
+      // belt-and-braces so one bad row can't abandon the rest.
+      console.error('[cron/purge-trash] domain check failed', site.id, err);
+    }
+  }
+  return verified;
 }

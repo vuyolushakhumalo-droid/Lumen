@@ -11,7 +11,7 @@ export const GET = handler(async (request) => {
 
   let query = admin
     .from('projects')
-    .select('id, name, preview_url, current_code, updated_at, deleted_at, sites(id, subdomain, custom_domain, status)')
+    .select('id, name, preview_url, current_code, updated_at, deleted_at, sites(id, subdomain, custom_domain, status, domain_status)')
     .eq('user_id', profile.id);
 
   query = trashed ? query.not('deleted_at', 'is', null) : query.is('deleted_at', null);
@@ -32,6 +32,7 @@ export const GET = handler(async (request) => {
       siteId: site?.id || null,
       subdomain: site?.subdomain || null,
       customDomain: site?.custom_domain || null,
+      domainStatus: site?.domain_status || null,
     };
   });
 

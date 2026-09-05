@@ -161,6 +161,7 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .sbadge{font-size:11.5px;padding:3px 10px;border-radius:980px}
 .sbadge.live{color:#4ADE80;background:rgba(74,222,128,.1)}
 .sbadge.draft{color:var(--grey);background:rgba(255,255,255,.06)}
+.sbadge.pending{color:#FBBF24;background:rgba(251,191,36,.1);cursor:help}
 .smeta a{color:var(--cyan);text-decoration:none}
 .sactions{display:flex;gap:8px;flex-wrap:wrap}
 .sbtn{font-family:var(--font);font-size:13px;font-weight:500;border-radius:980px;padding:8px 15px;cursor:pointer;
@@ -552,8 +553,16 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+  // Only link to a custom domain once it's confirmed working. Until
+  // then the domain is just something the customer typed -- linking to
+  // it sends them to a dead address and makes their own site look
+  // broken. The subdomain always works, so that's what we show.
+  function domainPending(p){
+    return !!p.customDomain && p.domainStatus !== 'verified';
+  }
+
   function liveUrl(p){
-    if(p.customDomain) return 'https://' + p.customDomain;
+    if(p.customDomain && p.domainStatus === 'verified') return 'https://' + p.customDomain;
     if(!p.subdomain) return null;
     return sitesDomain ? ('https://' + p.subdomain + '.' + sitesDomain)
                        : (window.location.origin + '/s/' + p.subdomain);
@@ -727,6 +736,7 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
         + (p.published ? '<span class="sbadge live">Live</span>' : '<span class="sbadge draft">'+(p.hasBuild?'Draft':'Empty')+'</span>')
         + '<span>Edited '+when(p.updated_at)+'</span>'
         + (p.published && url ? '<a href="'+url+'" target="_blank" rel="noopener">'+esc(url.replace(/^https?:\/\//,''))+'</a>' : '')
+        + (p.published && domainPending(p) ? '<span class="sbadge pending" title="'+esc(p.customDomain)+' isn\'t live yet — open the site to check your DNS records">domain pending</span>' : '')
         + '</div></div>'
         + '<div class="sactions">'
         + '<a class="sbtn" href="/builder?project='+p.id+'">Open</a>'

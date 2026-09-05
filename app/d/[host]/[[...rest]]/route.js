@@ -17,7 +17,7 @@ export async function GET(request, { params }) {
   // 1) exact custom domain match
   let { data: site } = await admin
     .from('sites')
-    .select('id, project_id, status, last_deployed_at, custom_domain')
+    .select('id, project_id, status, last_deployed_at, custom_domain, domain_status')
     .eq('custom_domain', host)
     .maybeSingle();
 
@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
       const slug = host.slice(0, -(base.length + 1));
       const res = await admin
         .from('sites')
-        .select('id, project_id, status, last_deployed_at, custom_domain')
+        .select('id, project_id, status, last_deployed_at, custom_domain, domain_status')
         .eq('subdomain', slug)
         .maybeSingle();
       site = res.data;
@@ -76,30 +76,31 @@ export async function GET(request, { params }) {
 
   if (!project?.current_code) return missing();
 
-  // A custom domain, once set, is the address that should rank -- the
-  // subdomain is still reachable (e.g. before DNS/cert propagates) but
-  // shouldn't compete with it in search results.
-  const preferredHost = site.custom_domain || host;
+  // A custom domain is the address that should rank -- but only once
+  // it's confirmed live. custom_domain is written the moment the
+  // customer types it, so pointing the canonical at an unverified
+  // domain would aim search engines at an address that may never
+  // resolve. Until then the subdomain remains canonical.
+  const verifiedDomain = site.domain_status === 'verified' ? site.custom_domain : null;
+  const preferredHost = verifiedDomain || host;
   const canonicalTag = `<link rel="canonical" href="https://${preferredHost}/">`;
   let html = injectForms(project.current_code, site.id);
   html = html.includes('</head>')
     ? html.replace('</head>', `${canonicalTag}</head>`)
     : canonicalTag + html;
 
-  // Not noindexing the subdomain when custom_domain is set: that column
-  // is written as soon as the customer submits the domain, before DNS
-  // or the certificate are verified, so this would de-index a working
-  // subdomain site whose custom domain never actually went live. Add
-  // it back once there's a verified flag to gate on -- provider_site_id
-  // would do.
-  return new Response(html, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=0, s-maxage=0, must-revalidate',
-      'X-Content-Type-Options': 'nosniff',
-    },
-  });
+  // The gate the old comment here was waiting for. Now that a verified
+  // flag exists, the subdomain can be de-indexed in favour of the real
+  // domain -- and only when that domain is actually working, so a site
+  // whose custom domain never went live keeps its subdomain indexed.
+  const headers = {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'public, max-age=0, s-maxage=0, must-revalidate',
+    'X-Content-Type-Options': 'nosniff',
+  };
+  if (verifiedDomain && host !== verifiedDomain) headers['X-Robots-Tag'] = 'noindex';
+
+  return new Response(html, { status: 200, headers });
 }
 
 function missing() {

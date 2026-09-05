@@ -199,6 +199,13 @@
   .btnp.ghost:hover{background:rgba(255,255,255,.09)}
   .domainlink{font-size:13.5px;color:var(--grey);margin-top:18px;text-align:center}
   .domainlink a{color:var(--cyan);text-decoration:none;cursor:pointer}
+  .domainstate{display:flex;align-items:center;gap:10px;margin-top:14px}
+  .pill{font-size:11.5px;padding:3px 10px;border-radius:980px;font-weight:500}
+  .pill.pending{color:#FBBF24;background:rgba(251,191,36,.12)}
+  .pill.verified{color:#4ADE80;background:rgba(74,222,128,.12)}
+  .pill.error{color:#F87171;background:rgba(248,113,113,.12)}
+  .recheck{margin-left:auto;background:none;border:0;padding:0;font:inherit;font-size:12.5px;color:var(--cyan);cursor:pointer}
+  .recheck:disabled{opacity:.5;cursor:default}
   .dnsbox{margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:none}
   .dnsbox.show{display:block}
   .dnsbox table{width:100%;border-collapse:collapse;font-size:13px}
@@ -431,6 +438,10 @@
         <div class="slugrow"><input id="pubDomain" type="text" placeholder="mystudio.com" autocomplete="off" spellcheck="false"></div>
       </div>
       <button class="btnp primary" id="domainGo" type="button" style="width:100%">Connect domain</button>
+      <div class="domainstate" id="domainState" style="display:none">
+        <span class="pill" id="domainPill">Pending</span>
+        <button class="recheck" id="domainRecheck" type="button">Check again</button>
+      </div>
       <div class="dnsbox" id="dnsBox">
         <table><thead><tr><th>Type</th><th>Name</th><th>Value</th></tr></thead><tbody id="dnsRows"></tbody></table>
       </div>
@@ -1158,7 +1169,10 @@
       document.getElementById('pubTitle').textContent='Your site is live';
       document.getElementById('pubSub').textContent='Any changes you make are published when you press update.';
       if(data.subdomain) pubSlug.value=data.subdomain;
-      if(data.customDomain) document.getElementById('pubDomain').value=data.customDomain;
+      if(data.customDomain){
+        document.getElementById('pubDomain').value=data.customDomain;
+        loadDomainStatus();
+      }
     } else {
       liveBox.style.display='none';
       pubOff.style.display='none';
@@ -1234,6 +1248,75 @@
     navigator.clipboard.writeText(liveUrl.textContent).then(function(){ toast('Address copied'); });
   });
 
+  // --- custom domain status ----------------------------------------
+  // The DNS records used to exist only in the POST response, so they
+  // vanished on reload with no way back to them short of re-submitting
+  // the domain. The panel now asks where the domain stands whenever it
+  // opens, and says so plainly.
+  var DOMAIN_LABEL = { pending:'Pending', verified:'Verified', error:'Error' };
+
+  function renderDnsRows(rows){
+    document.getElementById('dnsRows').innerHTML = (rows||[]).map(function(r){
+      return '<tr><td>'+esc(r.type)+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.value)+'</td></tr>';
+    }).join('');
+  }
+
+  function renderDomain(out){
+    var state=document.getElementById('domainState');
+    var pill=document.getElementById('domainPill');
+    var box=document.getElementById('dnsBox');
+    var note=document.getElementById('dnsNote');
+
+    if(!out || !out.status){
+      state.style.display='none';
+      box.classList.remove('show');
+      return;
+    }
+
+    state.style.display='flex';
+    pill.textContent = DOMAIN_LABEL[out.status] || out.status;
+    pill.className = 'pill ' + out.status;
+
+    // Verified needs no instructions.
+    if(out.status==='verified'){
+      box.classList.remove('show');
+      note.textContent = out.domain ? (out.domain + ' is live.') : 'Your domain is live.';
+      return;
+    }
+
+    // Otherwise re-show what's still needed -- the DNS records, plus
+    // any TXT challenge, which is the one thing that blocks an
+    // otherwise correct setup.
+    renderDnsRows((out.records||[]).concat(out.verification||[]));
+    box.classList.add('show');
+    note.textContent = out.error || out.note ||
+      'Add these records at your domain registrar. HTTPS is issued automatically once they resolve.';
+  }
+
+  async function loadDomainStatus(){
+    var p=active(); if(!p) return;
+    try{
+      var out = await Lumen.api('/api/domains/status?projectId='+encodeURIComponent(p.id));
+      if(out && out.domain){
+        document.getElementById('domainBlock').style.display='block';
+        document.getElementById('pubDomain').value = out.domain;
+        renderDomain(out);
+      }
+    }catch(e){ /* a failed status check must never block the panel */ }
+  }
+
+  document.getElementById('domainRecheck').addEventListener('click', async function(){
+    var p=active(); if(!p) return;
+    pubClear();
+    var b=this; b.disabled=true; b.textContent='Checking…';
+    try{
+      var out = await Lumen.api('/api/domains/status?projectId='+encodeURIComponent(p.id));
+      renderDomain(out);
+      if(out && out.status==='verified') toast('Domain verified');
+    }catch(e){ pubError(e.message || "Couldn't check that domain."); }
+    finally{ b.disabled=false; b.textContent='Check again'; }
+  });
+
   document.getElementById('showDomain').addEventListener('click', function(){
     var b=document.getElementById('domainBlock');
     b.style.display = b.style.display==='none' ? 'block' : 'none';
@@ -1247,12 +1330,13 @@
     var b=this; b.disabled=true; b.textContent='Connecting…';
     try{
       var out = await Lumen.api('/api/domains', { method:'POST', body: JSON.stringify({ projectId:p.id, domain:d }) });
-      var rows = (out.dns||[]).map(function(r){
-        return '<tr><td>'+esc(r.type)+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.value)+'</td></tr>';
-      }).join('');
-      document.getElementById('dnsRows').innerHTML = rows;
-      document.getElementById('dnsBox').classList.add('show');
-      document.getElementById('dnsNote').textContent = out.note || '';
+      renderDomain({
+        status: out.status || 'pending',
+        domain: out.domain,
+        records: out.dns,
+        verification: [],
+        note: out.note,
+      });
       toast('Domain saved');
     }catch(e){ pubError(e.message || 'Could not connect that domain.'); }
     finally{ b.disabled=false; b.textContent='Connect domain'; }
