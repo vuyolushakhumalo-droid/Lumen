@@ -178,6 +178,9 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .enq-field b{color:var(--ink);min-width:110px;flex:none;font-weight:500}
 .enq-field span{color:var(--grey);word-break:break-word}
 .enq-detail .sbtn{margin-top:12px}
+/* native dropdowns follow the OS theme, not ours: white-on-white on Windows Chrome */
+select{color-scheme:dark}
+select option{background:var(--surface);color:var(--ink-2)}
 .sites-head select.sbtn{-webkit-appearance:none;appearance:none;padding-right:30px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2396A0AD' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 10px center;background-size:14px}
