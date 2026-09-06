@@ -92,9 +92,12 @@ export async function GET(request, { params }) {
         status: 200,
         headers: {
           'Content-Type': 'image/png',
-          // Scrapers fetch this once and cache it themselves; a long
-          // shared cache keeps re-shares off the render path entirely.
-          'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+          // The CDN holds it for a day so re-shares never hit the
+          // renderer. The browser copy is deliberately short: an hour
+          // of private caching means a fix to the card looks like it
+          // did not deploy, which is exactly the confusion this
+          // header caused the first time round.
+          'Cache-Control': 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800',
         },
       });
     } catch (err) {
