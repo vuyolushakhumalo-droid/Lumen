@@ -6,7 +6,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { deleteProjectImages } from '@/lib/images';
 import { refreshDomainStatus, vercelConfigured, removeDomainFromVercel } from '@/lib/domains';
-import { logError } from '@/lib/monitor';
+import { logError, flushMonitoring } from '@/lib/monitor';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,10 +40,12 @@ export async function GET(request) {
 
   if (findError) {
     logError('[cron/purge-trash] lookup failed', findError);
+    await flushMonitoring();
     return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
+  await flushMonitoring();
   if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
@@ -51,9 +53,11 @@ export async function GET(request) {
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
     logError('[cron/purge-trash] delete failed', deleteError);
+    await flushMonitoring();
     return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
+  await flushMonitoring();
   return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
 }
 
