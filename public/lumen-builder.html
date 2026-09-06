@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lintel — Builder</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -75,6 +77,7 @@
   .msg.user .av{background:rgba(255,255,255,0.05); color:var(--grey-dim)}
   .msg.ai .av{background:rgba(95,224,255,0.08); border:1px solid rgba(95,224,255,0.16); box-shadow:0 0 22px -8px var(--glow)}
   .msg .av svg{width:15px; height:15px}
+  .msg .av img{height:15px; width:auto; display:block}
   .msg .body{font-size:15px; line-height:1.66; color:var(--ink); padding-top:4px}
   .msg.user .body{color:var(--grey)}
   .msg .built{display:inline-flex; align-items:center; gap:8px; margin-top:12px; font-size:12.5px; color:var(--cyan); background:rgba(95,224,255,0.06); padding:7px 13px; border-radius:980px}
@@ -473,6 +476,36 @@
   var chats = {};   // in-memory conversation per project
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // Dates: one format across the product. Relative for the first week,
+  // then an absolute en-GB date, with the full timestamp on hover.
+  // Deliberately identical to the dashboard's copy -- see the note there
+  // for why the locale is pinned rather than left to the browser.
+  var RELATIVE_DAYS = 7;
+
+  function fullDate(iso){
+    if(!iso) return '';
+    var d = new Date(iso);
+    if(isNaN(d)) return '';
+    return d.toLocaleString('en-GB', {
+      weekday:'long', day:'numeric', month:'long', year:'numeric',
+      hour:'2-digit', minute:'2-digit'
+    });
+  }
+
+  function whenDate(iso){
+    if(!iso) return '';
+    var d = new Date(iso);
+    if(isNaN(d)) return '';
+    var mins = Math.round((Date.now() - d)/60000);
+    if(mins < 1) return 'just now';
+    if(mins < 60) return mins + 'm ago';
+    var hrs = Math.round(mins/60);
+    if(hrs < 24) return hrs + 'h ago';
+    var days = Math.round(hrs/24);
+    if(days < RELATIVE_DAYS) return days + 'd ago';
+    return d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  }
   function active(){ return projects.filter(function(p){return p.id===activeId;})[0]; }
 
   // ---------- elements ----------
@@ -649,7 +682,7 @@
       });
       return;
     }
-    var aiAvatar='<div class="av"><svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="9" stroke="#5FE0FF" stroke-width="2"/><circle cx="20" cy="20" r="3" fill="#5FE0FF"/></svg></div>';
+    var aiAvatar='<div class="av"><img src="/mark-white.png" alt="" width="106" height="96"></div>';
     scroll.innerHTML=msgs.map(function(m){
       if(m.role==='user') return '<div class="msg user"><div class="av">You</div><div class="body">'+esc(m.text)+'</div></div>';
       if(m.role==='thinking') return '<div class="msg ai">'+aiAvatar+'<div class="body"><div class="buildbar">'
@@ -1105,7 +1138,7 @@
       var v = out.versions || [];
       if(!v.length){ histList.innerHTML='<div class="none">No versions yet — build something and each version is saved here.</div>'; return; }
       histList.innerHTML = v.map(function(x,i){
-        return '<div class="hrow" data-id="'+x.id+'"><div class="hn">v'+(v.length-i)+'</div><div><div class="ht">'+esc(x.label||'Build')+'</div><div class="hm">'+new Date(x.created_at).toLocaleString()+'</div></div></div>';
+        return '<div class="hrow" data-id="'+x.id+'"><div class="hn">v'+(v.length-i)+'</div><div><div class="ht">'+esc(x.label||'Build')+'</div><div class="hm" title="'+esc(fullDate(x.created_at))+'">'+esc(whenDate(x.created_at))+'</div></div></div>';
       }).join('');
       histList.querySelectorAll('.hrow').forEach(function(r){
         r.addEventListener('click', async function(){
