@@ -947,7 +947,15 @@
       }, 2000);
     }
 
-    function stage(text){
+    // The stage line is normally derived from how much HTML has arrived.
+    // A pinned stage wins over that: it's sent when the server has
+    // something to say that the buffer can't show — a retry, where no
+    // content arrives at all and the heuristics would otherwise leave
+    // "Finishing up" on screen through a whole second generation.
+    var stagePinned = false;
+    function stage(text, pin){
+      if(stagePinned && !pin) return;
+      if(pin) stagePinned = true;
       var el=document.getElementById('buildStage'); if(el) el.textContent = text;
     }
     function counter(n){
@@ -995,6 +1003,19 @@
             }catch(e){}
             buffer = buffer.replace(startMatch[0], '');
           }
+        }
+
+        // Stage lines the server sends directly. Stripped from the
+        // buffer so they never reach the preview, the code view or the
+        // saved document. A while loop, not an if: more than one could
+        // arrive inside a single chunk.
+        var stageMatch;
+        while((stageMatch = buffer.match(/<!--LUMEN-STAGE (\{[\s\S]*?\}) -->/))){
+          try{
+            var stageInfo = JSON.parse(stageMatch[1]);
+            if(stageInfo && stageInfo.text) stage(stageInfo.text, true);
+          }catch(e){}
+          buffer = buffer.replace(stageMatch[0], '');
         }
 
         // As soon as a new build's own plan comment parses, show its
