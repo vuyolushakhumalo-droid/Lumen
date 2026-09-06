@@ -21,6 +21,10 @@ import { findHardBlock, offlineSummary } from '../lib/publish.js';
 
 const args = new Set(process.argv.slice(2));
 const APPLY = args.has('--unpublish');
+// Rules not yet trusted on the publish path. Read-only by design: see
+// the refusal further down that stops --experimental combining with
+// --unpublish.
+const EXPERIMENTAL = args.has('--experimental');
 const AS_JSON = args.has('--json');
 const PAGE = 200;
 
@@ -30,6 +34,7 @@ Scan every live site for hard-block content.
 
   (no flags)    dry run -- report only, change nothing
   --json        machine-readable output
+  --experimental also apply rules not yet live on the publish path
   --unpublish   ALSO take the failing sites offline (writes to the database)
   --help        this message
 `.trim());
@@ -85,7 +90,7 @@ async function main() {
       continue;
     }
 
-    const hit = findHardBlock(project.current_code);
+    const hit = findHardBlock(project.current_code, { experimental: EXPERIMENTAL });
     if (!hit) continue;
 
     findings.push({
@@ -96,6 +101,9 @@ async function main() {
       address: site.custom_domain || site.subdomain || '(no address)',
       ruleId: hit.id,
       block: hit.label,
+      // Rules with their own matcher report what they matched -- for the
+      // inline-request rule that is the URL, which is the whole story.
+      detail: hit.detail || null,
       summary: offlineSummary(hit.id),
     });
   }
@@ -116,6 +124,7 @@ async function main() {
         console.log(`    owner    ${f.email}`);
         console.log(`    address  ${f.address}`);
         console.log(`    problem  ${f.block}  [${f.ruleId}]`);
+        if (f.detail) console.log(`    matched  ${f.detail}`);
         console.log(`    project  ${f.projectId}`);
         console.log('');
       }
@@ -133,6 +142,15 @@ async function main() {
   // Same write screenLiveSite() makes, so a site taken down here is
   // indistinguishable from one taken down by an edit -- including the
   // dashboard reading "Needs attention" and the reason behind it.
+  // An unproven rule must never be the thing that takes a customer's
+  // site offline. Audit with --experimental, promote the rule once the
+  // findings look right, then apply.
+  if (EXPERIMENTAL) {
+    console.error('Refusing to --unpublish while --experimental is on.');
+    console.error('Audit first, promote the rule out of experimental, then apply.');
+    process.exit(1);
+  }
+
   console.log(`Unpublishing ${findings.length} site(s)…`);
   let done = 0;
   for (const f of findings) {
