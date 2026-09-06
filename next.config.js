@@ -2,6 +2,13 @@
 module.exports = {
   reactStrictMode: true,
 
+  // Runs instrumentation.js at server start, which is where Sentry is
+  // initialised for both the node and edge runtimes. Still behind a
+  // flag on Next 14; stable from 15.
+  experimental: {
+    instrumentationHook: true,
+  },
+
   // Your website lives in /public as plain HTML files.
   // These rules give them clean URLs (/about instead of /about.html)
   // and serve the landing page at the root.

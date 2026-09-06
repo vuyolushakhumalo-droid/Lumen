@@ -13,6 +13,7 @@ import { makeSlug, screenLiveSite } from '@/lib/publish';
 import { rateLimitDb } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 import { startAttempt, finishAttempt } from '@/lib/attempts';
+import { logError } from '@/lib/monitor';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -200,7 +201,7 @@ export async function POST(request) {
             plan: snapshot.plan,
           });
         } catch (err) {
-          console.error('[generate/stream] failed', err);
+          logError('[generate/stream] failed', err);
           const isAbort = err?.name === 'AbortError';
           await finish(isAbort ? 'aborted' : 'failed', err?.stage || 'model_call', isAbort ? null : err);
           send(`\n<!--LUMEN-META ${JSON.stringify({
@@ -297,7 +298,7 @@ export async function POST(request) {
             if (error) throw error;
             versionId = data.id;
           } catch (err) {
-            console.error('[generate/stream] version insert failed', err);
+            logError('[generate/stream] version insert failed', err);
             await finish('failed', 'db_write', err);
             send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Built, but could not save. Try again.' })} -->`);
             return;
@@ -315,7 +316,7 @@ export async function POST(request) {
 
           if (commitError) {
             await rollbackVersion(admin, versionId);
-            console.error('[generate/stream] commit failed', commitError);
+            logError('[generate/stream] commit failed', commitError);
             await finish('failed', 'db_write', commitError);
             send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Built, but could not save. Try again.' })} -->`);
             return;
@@ -369,7 +370,7 @@ export async function POST(request) {
               usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
             });
           } catch (err) {
-            console.error('[generate/stream] post-commit bookkeeping failed', err);
+            logError('[generate/stream] post-commit bookkeeping failed', err);
             messagesSaved = false;
             bookkeepingError = err;
           }
@@ -402,7 +403,7 @@ export async function POST(request) {
             resetsAt: after.resetsAt,
           })} -->`);
         } catch (err) {
-          console.error('[generate/stream] save failed', err);
+          logError('[generate/stream] save failed', err);
           await finish('failed', 'db_write', err);
           send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Built, but could not save. Try again.' })} -->`);
         }
@@ -410,7 +411,7 @@ export async function POST(request) {
         // Last-resort safety net -- anything unexpected that slipped past
         // the two blocks above still gets logged, rather than leaving a
         // 'started' row stuck forever.
-        console.error('[generate/stream] unexpected failure', err);
+        logError('[generate/stream] unexpected failure', err);
         await finish('failed', err?.stage || null, err);
         try {
           send(`\n<!--LUMEN-META ${JSON.stringify({ error: 'Something went wrong. Try again.' })} -->`);

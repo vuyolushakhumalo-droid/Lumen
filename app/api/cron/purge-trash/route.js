@@ -6,6 +6,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { deleteProjectImages } from '@/lib/images';
 import { refreshDomainStatus, vercelConfigured, removeDomainFromVercel } from '@/lib/domains';
+import { logError } from '@/lib/monitor';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ export async function GET(request) {
     .lt('deleted_at', cutoff);
 
   if (findError) {
-    console.error('[cron/purge-trash] lookup failed', findError);
+    logError('[cron/purge-trash] lookup failed', findError);
     return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
@@ -49,7 +50,7 @@ export async function GET(request) {
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
-    console.error('[cron/purge-trash] delete failed', deleteError);
+    logError('[cron/purge-trash] delete failed', deleteError);
     return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
@@ -74,7 +75,7 @@ async function sweepStaleAttempts(admin) {
     .select('id');
 
   if (error) {
-    console.error('[cron/purge-trash] stale attempt sweep failed', error);
+    logError('[cron/purge-trash] stale attempt sweep failed', error);
     return 0;
   }
   return data?.length || 0;
@@ -92,7 +93,7 @@ async function purgeOldAttempts(admin) {
     .select('id');
 
   if (error) {
-    console.error('[cron/purge-trash] old attempt purge failed', error);
+    logError('[cron/purge-trash] old attempt purge failed', error);
     return 0;
   }
   return data?.length || 0;
@@ -106,7 +107,7 @@ async function purgeOldAttempts(admin) {
 async function sweepRateLimits(admin) {
   const { data, error } = await admin.rpc('sweep_rate_limits');
   if (error) {
-    console.error('[cron/purge-trash] rate limit sweep failed', error);
+    logError('[cron/purge-trash] rate limit sweep failed', error);
     return 0;
   }
   return data || 0;
@@ -118,7 +119,7 @@ async function sweepRateLimits(admin) {
 async function pruneVersions(admin) {
   const { data, error } = await admin.rpc('prune_versions', { p_keep: 100 });
   if (error) {
-    console.error('[cron/purge-trash] version prune failed', error);
+    logError('[cron/purge-trash] version prune failed', error);
     return 0;
   }
   return data || 0;
@@ -130,7 +131,7 @@ async function pruneVersions(admin) {
 async function purgeSubmissions(admin) {
   const { data, error } = await admin.rpc('purge_submissions', { p_days: 365 });
   if (error) {
-    console.error('[cron/purge-trash] submission purge failed', error);
+    logError('[cron/purge-trash] submission purge failed', error);
     return 0;
   }
   return data || 0;
@@ -158,7 +159,7 @@ async function sweepPendingDomains(admin) {
     .limit(DOMAIN_SWEEP_LIMIT);
 
   if (error) {
-    console.error('[cron/purge-trash] domain sweep lookup failed', error);
+    logError('[cron/purge-trash] domain sweep lookup failed', error);
     return 0;
   }
 
@@ -170,7 +171,7 @@ async function sweepPendingDomains(admin) {
     } catch (err) {
       // refreshDomainStatus already swallows its own failures; this is
       // belt-and-braces so one bad row can't abandon the rest.
-      console.error('[cron/purge-trash] domain check failed', site.id, err);
+      logError('[cron/purge-trash] domain check failed', site.id, err);
     }
   }
   return verified;
@@ -200,7 +201,7 @@ async function sweepUnverifiedDomains(admin) {
     .limit(DOMAIN_SWEEP_MAX);
 
   if (error) {
-    console.error('[cron/purge-trash] unverified domain lookup failed', error);
+    logError('[cron/purge-trash] unverified domain lookup failed', error);
     return 0;
   }
   if (!data?.length) return 0;
@@ -228,7 +229,7 @@ async function sweepUnverifiedDomains(admin) {
         .eq('id', site.id);
 
       if (updateError) {
-        console.error('[cron/purge-trash] could not clear domain', domain, updateError);
+        logError('[cron/purge-trash] could not clear domain', domain, updateError);
         continue;
       }
 
@@ -245,7 +246,7 @@ async function sweepUnverifiedDomains(admin) {
 
       removed++;
     } catch (err) {
-      console.error('[cron/purge-trash] domain cleanup failed', domain, err);
+      logError('[cron/purge-trash] domain cleanup failed', domain, err);
     }
   }
   return removed;
@@ -266,7 +267,7 @@ async function sweepAnalytics(admin) {
   let purged = 0;
 
   const { data: rollData, error: rollError } = await admin.rpc('rollup_site_events', { p_day: null });
-  if (rollError) console.error('[cron/purge-trash] analytics rollup failed', rollError);
+  if (rollError) logError('[cron/purge-trash] analytics rollup failed', rollError);
   else rolled = rollData || 0;
 
   // Independent of the rollup: retention must still run even if
@@ -274,7 +275,7 @@ async function sweepAnalytics(admin) {
   const { data: purgeData, error: purgeError } = await admin.rpc('purge_site_events', {
     p_days: EVENT_RETENTION_DAYS,
   });
-  if (purgeError) console.error('[cron/purge-trash] site event purge failed', purgeError);
+  if (purgeError) logError('[cron/purge-trash] site event purge failed', purgeError);
   else purged = purgeData || 0;
 
   return { rolled, purged };

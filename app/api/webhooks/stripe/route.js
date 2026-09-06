@@ -7,6 +7,7 @@
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabase';
 import Stripe from 'stripe';
+import { logError } from '@/lib/monitor';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ async function userIdForCustomer(admin, customerId, fallbackMetadata = {}) {
 async function upsertSubscription(admin, subscription) {
   const userId = await userIdForCustomer(admin, subscription.customer, subscription.metadata || {});
   if (!userId) {
-    console.error('[webhook] no user for customer', subscription.customer);
+    logError('[webhook] no user for customer', subscription.customer);
     return;
   }
 
@@ -88,7 +89,7 @@ export async function POST(request) {
   try {
     event = stripeClient().webhooks.constructEvent(raw, signature, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
-    console.error('[webhook] bad signature', err.message);
+    logError('[webhook] bad signature', err.message);
     return new Response('Invalid signature', { status: 400 });
   }
 
@@ -147,7 +148,7 @@ export async function POST(request) {
         break;
     }
   } catch (err) {
-    console.error('[webhook] handler failed', event.type, err);
+    logError('[webhook] handler failed', event.type, err);
     // 500 tells Stripe to retry, which is what we want on a transient failure.
     return new Response('Handler error', { status: 500 });
   }

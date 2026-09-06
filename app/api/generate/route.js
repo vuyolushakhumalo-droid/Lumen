@@ -12,6 +12,7 @@ import { makeSlug, screenLiveSite } from '@/lib/publish';
 import { rateLimitDb } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 import { startAttempt, finishAttempt } from '@/lib/attempts';
+import { logError } from '@/lib/monitor';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -116,7 +117,7 @@ export const POST = handler(async (request) => {
       plan: snapshot.plan,
     });
   } catch (err) {
-    console.error('[generate] model call failed', err);
+    logError('[generate] model call failed', err);
     const isAbort = err?.name === 'AbortError';
     await finishAttempt(admin, attemptId, {
       status: isAbort ? 'aborted' : 'failed',
@@ -291,7 +292,7 @@ export const POST = handler(async (request) => {
       usage: result.usage, kind: isEdit ? 'edit' : 'build', editMode: result.editMode,
     });
   } catch (err) {
-    console.error('[generate] post-commit bookkeeping failed', err);
+    logError('[generate] post-commit bookkeeping failed', err);
     messagesSaved = false;
     bookkeepingError = err;
   }
