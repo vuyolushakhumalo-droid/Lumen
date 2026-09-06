@@ -5,7 +5,7 @@
 // ============================================================
 import { handler, requireUser, ApiError } from '@/lib/auth';
 import { getUsageSnapshot } from '@/lib/usage';
-import { findFreeSlug, validateSlug, makeSlug, publicUrl, findHardBlock } from '@/lib/publish';
+import { findFreeSlug, validateSlug, makeSlug, publicUrl, findHardBlock, rememberOldSlug } from '@/lib/publish';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -101,10 +101,15 @@ export const POST = handler(async (request) => {
     site = data;
   }
 
+  // Keep the old address working. Best-effort on purpose: a redirect
+  // that didn't get recorded is a broken old link, which is where we
+  // already were -- it is not a reason to fail the publish itself.
+  await rememberOldSlug(admin, site.id, existing?.subdomain, subdomain);
+
   await admin.from('audit_log').insert({
     user_id: profile.id,
     action: 'site.published',
-    meta: { projectId, subdomain },
+    meta: { projectId, subdomain, previousSubdomain: existing?.subdomain || null },
   });
 
   return Response.json({

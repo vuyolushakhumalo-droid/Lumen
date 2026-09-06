@@ -213,6 +213,8 @@
   .pill.error{color:#F87171;background:rgba(248,113,113,.12)}
   .recheck{margin-left:auto;background:none;border:0;padding:0;font:inherit;font-size:12.5px;color:var(--cyan);cursor:pointer}
   .recheck:disabled{opacity:.5;cursor:default}
+  .domainnote{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:13.5px;line-height:1.5;
+    color:#F6D8A8;background:rgba(246,178,76,.08);border:1px solid rgba(246,178,76,.3)}
   .dnsbox{margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:none}
   .dnsbox.show{display:block}
   .dnsbox table{width:100%;border-collapse:collapse;font-size:13px}
@@ -449,6 +451,7 @@
         <span class="pill" id="domainPill">Pending</span>
         <button class="recheck" id="domainRecheck" type="button">Check again</button>
       </div>
+      <div class="domainnote" id="domainNote" style="display:none"></div>
       <div class="dnsbox" id="dnsBox">
         <table><thead><tr><th>Type</th><th>Name</th><th>Value</th></tr></thead><tbody id="dnsRows"></tbody></table>
       </div>
@@ -1346,6 +1349,18 @@
       'Add these records at your domain registrar. HTTPS is issued automatically once they resolve.';
   }
 
+  // A removed domain leaves a note behind and no domain, so the note is
+  // shown independently of whether one is currently attached -- that is
+  // the only case where there is something to say and nothing to show.
+  function renderDomainNote(out){
+    var el = document.getElementById('domainNote');
+    if(!el) return;
+    var text = out && out.note;
+    el.textContent = text || '';
+    el.style.display = text ? 'block' : 'none';
+    if(text) document.getElementById('domainBlock').style.display='block';
+  }
+
   async function loadDomainStatus(){
     var p=active(); if(!p) return;
     try{
@@ -1355,6 +1370,7 @@
         document.getElementById('pubDomain').value = out.domain;
         renderDomain(out);
       }
+      renderDomainNote(out);
     }catch(e){ /* a failed status check must never block the panel */ }
   }
 

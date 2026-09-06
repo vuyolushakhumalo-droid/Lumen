@@ -53,9 +53,22 @@ export const POST = handler(async (request) => {
       domain_status: 'pending',
       domain_checked_at: null,
       domain_error: null,
+      // Starts the 14-day clock the nightly cleanup runs against, and
+      // clears any note explaining why a previous domain was removed.
+      domain_added_at: new Date().toISOString(),
+      domain_note: null,
     })
     .eq('id', site.id).eq('user_id', profile.id).select().single();
-  if (error) throw new ApiError(500, 'Could not save the domain');
+  if (error) {
+    // sites.custom_domain is unique, which is what actually prevents two
+    // sites claiming one domain -- the check above is a read-then-write
+    // and two requests can both pass it. When the constraint catches the
+    // loser, say what happened rather than reporting a server error.
+    if (error.code === '23505') {
+      throw new ApiError(409, 'That domain is already connected to another site.');
+    }
+    throw new ApiError(500, 'Could not save the domain');
+  }
 
   return Response.json({
     domain: updated.custom_domain,
@@ -88,6 +101,8 @@ export const DELETE = handler(async (request) => {
       domain_status: 'pending',
       domain_checked_at: null,
       domain_error: null,
+      domain_added_at: null,
+      domain_note: null,
     })
     .eq('project_id', projectId).eq('user_id', profile.id);
 

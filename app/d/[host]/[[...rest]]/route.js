@@ -24,16 +24,49 @@ export async function GET(request, { params }) {
     .maybeSingle();
 
   // 2) otherwise treat the first label as a subdomain (site.lintelsites.com)
-  if (!site) {
-    const base = (process.env.SITES_DOMAIN || '').toLowerCase();
-    if (base && host.endsWith('.' + base)) {
-      const slug = host.slice(0, -(base.length + 1));
-      const res = await admin
+  const base = (process.env.SITES_DOMAIN || '').toLowerCase();
+  const isSubdomainHost = base && host.endsWith('.' + base);
+  const slug = isSubdomainHost ? host.slice(0, -(base.length + 1)) : null;
+
+  if (!site && slug) {
+    const res = await admin
+      .from('sites')
+      .select('id, project_id, status, last_deployed_at, custom_domain, domain_status')
+      .eq('subdomain', slug)
+      .maybeSingle();
+    site = res.data;
+  }
+
+  // 3) an address the site used to live at. Someone shared that link
+  // before the customer renamed the site, and it used to 404.
+  if (!site && slug) {
+    const { data: redirect } = await admin
+      .from('slug_redirects')
+      .select('site_id')
+      .eq('old_slug', slug)
+      .maybeSingle();
+
+    if (redirect) {
+      const { data: target } = await admin
         .from('sites')
-        .select('id, project_id, status, last_deployed_at, custom_domain, domain_status')
-        .eq('subdomain', slug)
+        .select('subdomain, custom_domain, domain_status, status')
+        .eq('id', redirect.site_id)
         .maybeSingle();
-      site = res.data;
+
+      // Only forward to somewhere that actually works. A redirect to an
+      // unpublished or deleted site is a worse 404 than the plain one.
+      if (target && target.status === 'live') {
+        const destHost =
+          target.domain_status === 'verified' && target.custom_domain
+            ? target.custom_domain
+            : `${target.subdomain}.${base}`;
+
+        const path = (params.rest || []).filter(Boolean).join('/');
+        const { search } = new URL(request.url);
+        // 301: the move is permanent, and the whole point is to pass
+        // whatever ranking and bookmarks the old address had.
+        return Response.redirect(`https://${destHost}/${path}${search}`, 301);
+      }
     }
   }
 

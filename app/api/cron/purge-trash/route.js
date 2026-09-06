@@ -5,7 +5,7 @@
 // pattern of skipping requireUser() for service-to-service calls.
 import { supabaseAdmin } from '@/lib/supabase';
 import { deleteProjectImages } from '@/lib/images';
-import { refreshDomainStatus, vercelConfigured } from '@/lib/domains';
+import { refreshDomainStatus, vercelConfigured, removeDomainFromVercel } from '@/lib/domains';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +26,7 @@ export async function GET(request) {
   const versionsPruned = await pruneVersions(admin);
   const submissionsPurged = await purgeSubmissions(admin);
   const domainsVerified = await sweepPendingDomains(admin);
+  const domainsRemoved = await sweepUnverifiedDomains(admin);
   const { rolled: analyticsRolled, purged: eventsPurged } = await sweepAnalytics(admin);
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -38,21 +39,21 @@ export async function GET(request) {
 
   if (findError) {
     console.error('[cron/purge-trash] lookup failed', findError);
-    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, analyticsRolled, eventsPurged }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
-  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, analyticsRolled, eventsPurged });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
   const { error: deleteError } = await admin.from('projects').delete().in('id', ids);
   if (deleteError) {
     console.error('[cron/purge-trash] delete failed', deleteError);
-    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, analyticsRolled, eventsPurged }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
-  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, analyticsRolled, eventsPurged });
+  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
 }
 
 // On this runtime, a client disconnect kills the streaming function
@@ -173,6 +174,81 @@ async function sweepPendingDomains(admin) {
     }
   }
   return verified;
+}
+
+// A domain the customer typed but never pointed at us stays registered
+// on the hosting project forever, and shows in their builder as a
+// permanently "pending" domain they've long forgotten about. Two weeks
+// is long past a DNS change taking effect, so at that point it is
+// abandoned rather than in progress.
+//
+// The note is the point of doing this here rather than silently: the
+// customer gets told what happened and what to do, next time they open
+// the builder.
+const DOMAIN_PENDING_DAYS = 14;
+const DOMAIN_SWEEP_MAX = 50;
+
+async function sweepUnverifiedDomains(admin) {
+  const cutoff = new Date(Date.now() - DOMAIN_PENDING_DAYS * 86400000).toISOString();
+
+  const { data, error } = await admin
+    .from('sites')
+    .select('id, user_id, custom_domain, domain_added_at')
+    .not('custom_domain', 'is', null)
+    .neq('domain_status', 'verified')
+    .lt('domain_added_at', cutoff)
+    .limit(DOMAIN_SWEEP_MAX);
+
+  if (error) {
+    console.error('[cron/purge-trash] unverified domain lookup failed', error);
+    return 0;
+  }
+  if (!data?.length) return 0;
+
+  let removed = 0;
+  for (const site of data) {
+    const domain = site.custom_domain;
+    try {
+      // Best-effort upstream, same as the customer-initiated detach:
+      // if the host won't release it we still clear our side, because
+      // leaving the customer stuck with a dead domain is worse than
+      // leaving a stale registration behind.
+      await removeDomainFromVercel(domain);
+
+      const { error: updateError } = await admin
+        .from('sites')
+        .update({
+          custom_domain: null,
+          domain_status: 'pending',
+          domain_checked_at: null,
+          domain_error: null,
+          domain_added_at: null,
+          domain_note: `We removed ${domain} because it was never connected — add it again when your DNS is ready.`,
+        })
+        .eq('id', site.id);
+
+      if (updateError) {
+        console.error('[cron/purge-trash] could not clear domain', domain, updateError);
+        continue;
+      }
+
+      await admin.from('audit_log').insert({
+        user_id: site.user_id,
+        action: 'domain.removed_unverified',
+        meta: {
+          siteId: site.id,
+          domain,
+          addedAt: site.domain_added_at,
+          days: DOMAIN_PENDING_DAYS,
+        },
+      });
+
+      removed++;
+    } catch (err) {
+      console.error('[cron/purge-trash] domain cleanup failed', domain, err);
+    }
+  }
+  return removed;
 }
 
 // Analytics: fold yesterday's raw beacons into the per-day rollup the

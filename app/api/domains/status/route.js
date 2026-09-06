@@ -19,13 +19,15 @@ export const GET = handler(async (request) => {
 
   const { data: site } = await admin
     .from('sites')
-    .select('id, custom_domain, domain_status, domain_checked_at, domain_error')
+    .select('id, custom_domain, domain_status, domain_checked_at, domain_error, domain_note')
     .eq('project_id', projectId)
     .eq('user_id', profile.id)
     .maybeSingle();
   if (!site) throw new ApiError(404, 'No site for this project');
 
-  // No domain attached is a normal state, not an error.
+  // No domain attached is a normal state, not an error. It may still
+  // carry a note -- this is how a customer finds out the nightly
+  // cleanup removed a domain they never pointed at us.
   if (!site.custom_domain) {
     return Response.json({
       domain: null,
@@ -34,6 +36,7 @@ export const GET = handler(async (request) => {
       verification: [],
       error: null,
       checkedAt: null,
+      note: site.domain_note || null,
     });
   }
 
@@ -47,5 +50,6 @@ export const GET = handler(async (request) => {
     error: out.error,
     checkedAt: out.checkedAt,
     automated: out.automated,
+    note: site.domain_note || null,
   });
 });

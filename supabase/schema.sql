@@ -113,6 +113,12 @@ create table if not exists sites (
   domain_status     text not null default 'pending' check (domain_status in ('pending','verified','error')),
   domain_checked_at timestamptz,
   domain_error      text,
+  -- When the domain was attached, not when it was last looked at --
+  -- domain_checked_at moves on every sweep, so it can't answer "how
+  -- long has this been pending?". The 14-day cleanup runs off this.
+  domain_added_at   timestamptz,
+  -- Why a domain disappeared, for the builder to tell the customer.
+  domain_note       text,
   -- Set when WE took the site offline (a hard-block rule id), null when
   -- the customer unpublished it themselves. Same status either way, so
   -- this is what tells "Needs attention" apart from "Draft".
@@ -127,6 +133,17 @@ create index if not exists sites_domain_pending_idx
 alter table sites drop constraint if exists sites_notify_email_shape;
 alter table sites add constraint sites_notify_email_shape
   check (notify_email is null or notify_email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+-- ---------- old subdomains, so shared links keep working ----------
+-- old_slug is the primary key on purpose: a slug points at one site or
+-- none, so a new site claiming a used address is a delete + insert and
+-- there is no state where two sites both own it. Service role only.
+create table if not exists slug_redirects (
+  old_slug   text primary key,
+  site_id    uuid not null references sites(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index if not exists slug_redirects_site_idx on slug_redirects(site_id, created_at desc);
 
 -- ---------- form submissions from published sites ----------
 -- user_id is denormalised from sites so RLS is a single-column check
