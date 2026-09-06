@@ -11,6 +11,11 @@ create table if not exists profiles (
   timezone            text default 'Europe/London',
   stripe_customer_id  text unique,
   is_admin            boolean default false,
+  -- Which version of the terms this account accepted, and when. Set once
+  -- and never overwritten -- the first acceptance is the binding one.
+  -- audit_log keeps the dated history; see lib/terms.js.
+  terms_accepted_at   timestamptz,
+  terms_version       text,
   created_at          timestamptz default now()
 );
 

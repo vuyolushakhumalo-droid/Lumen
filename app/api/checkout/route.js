@@ -5,6 +5,12 @@
 import { handler, requireUser, ApiError } from '@/lib/auth';
 import { getSubscription } from '@/lib/usage';
 import { ACTIVE_STATUSES } from '@/lib/plans';
+import {
+  stampTermsAccepted,
+  hasTermsAudit,
+  recordTermsAudit,
+  requestMeta,
+} from '@/lib/terms';
 import Stripe from 'stripe';
 
 export const dynamic = 'force-dynamic';
@@ -120,9 +126,29 @@ export const POST = handler(async (request) => {
       },
       metadata: { supabase_user_id: user.id, plan },
       allow_promotion_codes: true,
+      // Stripe keeps its own independent record of the agreement, tied
+      // to the payment rather than to our database.
+      //
+      // REQUIRES a Terms of Service URL in the Stripe Dashboard
+      // (Settings -> Business -> Public details). Without it this call
+      // fails outright and nobody can subscribe.
+      consent_collection: { terms_of_service: 'required' },
       success_url: `${process.env.APP_URL}/builder?subscribed=1`,
       cancel_url: `${process.env.APP_URL}/#pricing`,
     });
+  }
+
+  // Terms, recorded server-side before we take any money. The browser's
+  // consent call is fire-and-forget, and for an account that had to
+  // confirm an email first it never fires at all -- sign-up returns
+  // before there is a session to authenticate it with. So this is the
+  // backstop: reaching checkout means going through the sign-up form and
+  // its agreement checkbox, and no subscriber should exist without a
+  // record of that. Both writes no-op if one is already there.
+  await stampTermsAccepted(admin, user.id);
+  if (!(await hasTermsAudit(admin, user.id))) {
+    const { ip, userAgent } = requestMeta(request);
+    await recordTermsAudit(admin, user.id, { ip, userAgent, source: 'checkout' });
   }
 
   let session;

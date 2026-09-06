@@ -460,7 +460,6 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 
 <script>
 (function(){
-  var TERMS_VERSION = '1.0';   // bump this when you publish updated terms
   var mode = 'signup';   // or 'signin'
   var errEl = document.getElementById('err');
   var okEl  = document.getElementById('ok');
@@ -614,8 +613,10 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
         return;
       }
 
-      // Record which version of the terms they accepted, and when.
-      try { await Lumen.api('/api/consent', { method:'POST', body: JSON.stringify({ version: TERMS_VERSION }) }); }
+      // Record that they accepted, and when. The server decides which
+      // version that is -- see lib/terms.js. Checkout stamps the same
+      // record as a backstop, so a failure here is not the last chance.
+      try { await Lumen.api('/api/consent', { method:'POST' }); }
       catch (e) { /* never block sign-up on this */ }
 
       // --- straight into Stripe checkout ---

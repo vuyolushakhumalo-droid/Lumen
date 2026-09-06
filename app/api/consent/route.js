@@ -1,34 +1,33 @@
 // ============================================================
-// POST /api/consent  { version }
+// POST /api/consent
 // Records that a user accepted the Terms and Privacy Policy.
 //
-// Keeping a dated record of who agreed to which version is what
-// makes the agreement provable later.
+// The version is NOT taken from the request. The browser used to send
+// its own string, which meant the recorded version was whatever the
+// page posted -- and that recorded version is what makes the agreement
+// provable later. It now comes from lib/terms.js, server-side, and
+// anything the client sends is ignored.
+//
+// Two writes, both in lib/terms.js: the profile is stamped once (the
+// state), and the log gets a dated row every time (the history).
 // ============================================================
 import { handler, requireUser } from '@/lib/auth';
+import {
+  TERMS_VERSION,
+  stampTermsAccepted,
+  recordTermsAudit,
+  requestMeta,
+} from '@/lib/terms';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 export const POST = handler(async (request) => {
   const { profile, admin } = await requireUser(request);
-  const { version } = await request.json().catch(() => ({}));
+  const { ip, userAgent } = requestMeta(request);
 
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    null;
+  await stampTermsAccepted(admin, profile.id);
+  await recordTermsAudit(admin, profile.id, { ip, userAgent, source: 'signup' });
 
-  await admin.from('audit_log').insert({
-    user_id: profile.id,
-    action: 'terms.accepted',
-    meta: {
-      version: String(version || '1.0').slice(0, 20),
-      ip,
-      userAgent: (request.headers.get('user-agent') || '').slice(0, 300),
-      at: new Date().toISOString(),
-    },
-  });
-
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, version: TERMS_VERSION });
 });
