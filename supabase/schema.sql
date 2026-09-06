@@ -112,7 +112,12 @@ create table if not exists sites (
   -- not that the customer's DNS is wrong (that stays 'pending').
   domain_status     text not null default 'pending' check (domain_status in ('pending','verified','error')),
   domain_checked_at timestamptz,
-  domain_error      text
+  domain_error      text,
+  -- Set when WE took the site offline (a hard-block rule id), null when
+  -- the customer unpublished it themselves. Same status either way, so
+  -- this is what tells "Needs attention" apart from "Draft".
+  offline_reason    text,
+  offline_at        timestamptz
 );
 
 create index if not exists sites_domain_pending_idx

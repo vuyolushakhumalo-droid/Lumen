@@ -351,7 +351,7 @@ export async function POST(request) {
           // already-live site: the edit itself is never blocked, but
           // content that would fail hard-block screening takes the
           // site offline rather than staying live with it.
-          await screenLiveSite(admin, { projectId: project.id, code: result.html });
+          const unpublished = await screenLiveSite(admin, { projectId: project.id, code: result.html });
 
           // current_code and its version are now durably committed --
           // anything from here on is best-effort bookkeeping, not a
@@ -391,6 +391,7 @@ export async function POST(request) {
             code: result.html,
             plan,
             reply: reply + (messagesSaved ? '' : " Saved, but the chat history didn't update — refresh to see it."),
+            unpublished: unpublished ? { id: unpublished.id, message: unpublished.message } : null,
             undoToVersionId,
             previewUrl,
             model: routed.model,

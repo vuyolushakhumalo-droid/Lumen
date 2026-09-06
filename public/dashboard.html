@@ -162,6 +162,7 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .sbadge.live{color:#4ADE80;background:rgba(74,222,128,.1)}
 .sbadge.draft{color:var(--grey);background:rgba(255,255,255,.06)}
 .sbadge.pending{color:#FBBF24;background:rgba(251,191,36,.1);cursor:help}
+.sbadge.attention{color:#FF9B9B;background:rgba(255,107,107,.1);cursor:help}
 .smeta a{color:var(--cyan);text-decoration:none}
 .sactions{display:flex;gap:8px;flex-wrap:wrap}
 .sbtn{font-family:var(--font);font-size:13px;font-weight:500;border-radius:980px;padding:8px 15px;cursor:pointer;
@@ -873,7 +874,13 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
         + '<div class="sthumb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></div>'
         + '<div class="sinfo"><div class="sname">'+esc(p.name||'Untitled')+'</div>'
         + '<div class="smeta">'
-        + (p.published ? '<span class="sbadge live">Live</span>' : '<span class="sbadge draft">'+(p.hasBuild?'Draft':'Empty')+'</span>')
+        + (p.published
+            ? '<span class="sbadge live">Live</span>'
+            : p.needsAttention
+              // Same 'draft' status underneath, but we took this one down
+              // rather than the customer -- say so, and say why on hover.
+              ? '<span class="sbadge attention" title="'+esc(p.offlineReason||'')+'">Needs attention</span>'
+              : '<span class="sbadge draft">'+(p.hasBuild?'Draft':'Empty')+'</span>')
         + '<span>Edited '+when(p.updated_at)+'</span>'
         + (p.published && url ? '<a href="'+url+'" target="_blank" rel="noopener">'+esc(url.replace(/^https?:\/\//,''))+'</a>' : '')
         + (p.published && domainPending(p) ? '<span class="sbadge pending" title="'+esc(p.customDomain)+' isn\'t live yet — open the site to check your DNS records">domain pending</span>' : '')

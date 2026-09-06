@@ -273,7 +273,7 @@ export const POST = handler(async (request) => {
   // live site: the edit itself is never blocked, but content that
   // would fail hard-block screening takes the site offline rather
   // than staying live with it.
-  await screenLiveSite(admin, { projectId: project.id, code });
+  const unpublished = await screenLiveSite(admin, { projectId: project.id, code });
 
   // current_code and its version are now durably committed -- anything
   // from here on is best-effort bookkeeping, not a reason to tell the
@@ -321,6 +321,10 @@ export const POST = handler(async (request) => {
     plan,
     reply: reply + imageNote + undoNote + recoveryNote
       + (messagesSaved ? '' : " Saved, but the chat history didn't update — refresh to see it."),
+    // Set only when this edit took a live site offline. The builder
+    // shows it as its own message so it is not lost at the end of
+    // an ordinary "here is what I changed" reply.
+    unpublished: unpublished ? { id: unpublished.id, message: unpublished.message } : null,
     undoToVersionId,
     truncated: result.stopReason === 'max_tokens',
     chargedFrom: charged.source,

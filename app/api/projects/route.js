@@ -1,6 +1,7 @@
 // GET  /api/projects  — list the user's projects
 // POST /api/projects  — create a new (empty) project
 import { handler, requireUser, ApiError } from '@/lib/auth';
+import { offlineSummary } from '@/lib/publish';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -11,7 +12,7 @@ export const GET = handler(async (request) => {
 
   let query = admin
     .from('projects')
-    .select('id, name, preview_url, current_code, updated_at, deleted_at, sites(id, subdomain, custom_domain, status, domain_status)')
+    .select('id, name, preview_url, current_code, updated_at, deleted_at, sites(id, subdomain, custom_domain, status, domain_status, offline_reason)')
     .eq('user_id', profile.id);
 
   query = trashed ? query.not('deleted_at', 'is', null) : query.is('deleted_at', null);
@@ -33,6 +34,10 @@ export const GET = handler(async (request) => {
       subdomain: site?.subdomain || null,
       customDomain: site?.custom_domain || null,
       domainStatus: site?.domain_status || null,
+      // Set only when WE took the site offline -- the dashboard shows
+      // 'Needs attention' rather than 'Draft' when it is present.
+      needsAttention: !!site && site.status !== 'live' && !!site.offline_reason,
+      offlineReason: site?.offline_reason ? offlineSummary(site.offline_reason) : null,
     };
   });
 

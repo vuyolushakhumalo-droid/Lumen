@@ -76,12 +76,17 @@ export const POST = handler(async (request) => {
     subdomain = existing?.subdomain || (await findFreeSlug(admin, project.name || 'site'));
   }
 
+  // Clearing offline_reason is part of publishing: the screen above has
+  // just passed, so whatever we took it down for is gone, and leaving
+  // the flag set would keep "Needs attention" on a site that is live.
   const row = {
     project_id: projectId,
     user_id: profile.id,
     subdomain,
     status: 'live',
     last_deployed_at: new Date().toISOString(),
+    offline_reason: null,
+    offline_at: null,
   };
 
   let site;
@@ -116,8 +121,10 @@ export const DELETE = handler(async (request) => {
   if (!projectId) throw new ApiError(400, 'No project specified');
 
   await ownedProject(admin, profile.id, projectId);
+  // Unpublishing by hand clears the flag too: from here on this is an
+  // ordinary draft the customer chose, not a site we took down.
   await admin.from('sites')
-    .update({ status: 'draft' })
+    .update({ status: 'draft', offline_reason: null, offline_at: null })
     .eq('project_id', projectId).eq('user_id', profile.id);
 
   return Response.json({ published: false });

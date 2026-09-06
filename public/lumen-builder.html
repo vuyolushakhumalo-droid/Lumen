@@ -1032,8 +1032,24 @@
         if(meta && meta.truncated) msg += ' (It ran long, so the ending may be clipped — ask me to finish it.)';
         chats[activeId].push({ role:'ai', text: msg, built:true, plan: meta && meta.plan, model: meta && meta.model, undoToVersionId: meta && meta.undoToVersionId });
 
+        // The edit saved, but it took the live site down. Its own
+        // message, after the ordinary reply -- being told the site is
+        // offline matters more than what changed, and tacking it onto
+        // the end of a normal reply is how people miss it.
+        if(meta && meta.unpublished && meta.unpublished.message){
+          chats[activeId].push({ role:'ai', text: meta.unpublished.message });
+          // The publish panel is still showing "Your site is live" with a
+          // working address. Reset it, or the chat and the panel disagree
+          // about whether anyone can reach the site.
+          showLive({ published: false });
+        }
+
         renderAll(); paintUndo(); refreshUsage();
-        speak(editing ? 'Updated. Take a look.' : 'Done — ' + ((meta && meta.title) || 'your site') + ' is ready.');
+        if(meta && meta.unpublished){
+          speak('Heads up — I had to take your site offline. Check the chat.');
+        } else {
+          speak(editing ? 'Updated. Take a look.' : 'Done — ' + ((meta && meta.title) || 'your site') + ' is ready.');
+        }
       }
 
     }catch(e){
