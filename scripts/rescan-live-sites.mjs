@@ -10,9 +10,9 @@
 // only sets the same status and reason screenLiveSite would.
 //
 // Usage (Node 20.6+, for --env-file):
-//   node --env-file=.env.local scripts/rescan-live-sites.js
-//   node --env-file=.env.local scripts/rescan-live-sites.js --json
-//   node --env-file=.env.local scripts/rescan-live-sites.js --unpublish
+//   node --env-file=.env.local scripts/rescan-live-sites.mjs
+//   node --env-file=.env.local scripts/rescan-live-sites.mjs --json
+//   node --env-file=.env.local scripts/rescan-live-sites.mjs --unpublish
 //
 // Needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, the same two the
 // app uses. Run it from the project root so node_modules resolves.
@@ -38,7 +38,7 @@ Scan every live site for hard-block content.
 
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
   console.error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.');
-  console.error('Try: node --env-file=.env.local scripts/rescan-live-sites.js');
+  console.error('Try: node --env-file=.env.local scripts/rescan-live-sites.mjs');
   process.exit(1);
 }
 
