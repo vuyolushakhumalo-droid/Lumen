@@ -7,6 +7,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { injectForms } from '@/lib/forms';
 import { injectAnalytics } from '@/lib/analytics';
+import { injectSeo, parsePlan, extractTitle, extractDescription } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -43,11 +44,65 @@ export async function GET(request, { params }) {
   // code to revisit if multi-file project storage lands.
   const rest = (params.rest || []).filter(Boolean);
 
+  // A custom domain is the address that should rank -- but only once
+  // it's confirmed live. custom_domain is written the moment the
+  // customer types it, so pointing search engines at an unverified
+  // domain would aim them at an address that may never resolve.
+  const verifiedDomain = site.domain_status === 'verified' ? site.custom_domain : null;
+  const preferredHost = verifiedDomain || host;
+  const isCanonicalHost = !verifiedDomain || host === verifiedDomain;
+
   if (rest.length === 1 && rest[0] === 'robots.txt') {
-    return new Response(
-      `User-agent: *\nAllow: /\nSitemap: https://${host}/sitemap.xml\n`,
-      { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
-    );
+    // robots.txt has to agree with the header and the meta tag. A
+    // superseded subdomain saying "Allow: /" while serving noindex is
+    // a mixed signal, and mixed signals get resolved against you.
+    const body = isCanonicalHost
+      ? `User-agent: *\nAllow: /\nSitemap: https://${preferredHost}/sitemap.xml\n`
+      : `User-agent: *\nDisallow: /\n`;
+    return new Response(body, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
+
+  // The share card. Generated per request from the site's own name and
+  // colour -- see lib/og.js for why it isn't stored at publish time.
+  if (rest.length === 1 && rest[0] === 'og.png') {
+    const { data: proj } = await admin
+      .from('projects').select('current_code').eq('id', site.project_id).maybeSingle();
+    const code = proj?.current_code || '';
+    const plan = parsePlan(code) || {};
+    try {
+      const { renderOgImage } = await import('@/lib/og');
+      const image = await renderOgImage({
+        name: extractTitle(code),
+        tagline: extractDescription(code),
+        brandColor: plan.brandColor,
+        headingFont: plan.headingFont,
+      });
+
+      // Materialise the body here, inside the try. An ImageResponse
+      // renders lazily as it is piped, so returning it directly puts
+      // the actual rendering outside this catch -- a failure then kills
+      // the response mid-stream and the caller gets a reset connection
+      // instead of the 404 below.
+      const png = await image.arrayBuffer();
+
+      return new Response(png, {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/png',
+          // Scrapers fetch this once and cache it themselves; a long
+          // shared cache keeps re-shares off the render path entirely.
+          'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+        },
+      });
+    } catch (err) {
+      // No card is a missing image. A 500 on a scraper's fetch can get
+      // the whole page treated as broken, so fail small and quietly.
+      console.error('[og] render failed', host, err);
+      return new Response(null, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    }
   }
 
   if (rest.length === 1 && rest[0] === 'sitemap.xml') {
@@ -77,19 +132,18 @@ export async function GET(request, { params }) {
 
   if (!project?.current_code) return missing();
 
-  // A custom domain is the address that should rank -- but only once
-  // it's confirmed live. custom_domain is written the moment the
-  // customer types it, so pointing the canonical at an unverified
-  // domain would aim search engines at an address that may never
-  // resolve. Until then the subdomain remains canonical.
-  const verifiedDomain = site.domain_status === 'verified' ? site.custom_domain : null;
-  const preferredHost = verifiedDomain || host;
-  const canonicalTag = `<link rel="canonical" href="https://${preferredHost}/">`;
   let html = injectForms(project.current_code, site.id);
   html = injectAnalytics(html, site.id);
-  html = html.includes('</head>')
-    ? html.replace('</head>', `${canonicalTag}</head>`)
-    : canonicalTag + html;
+
+  // Canonical always points at the address that should rank, so a
+  // superseded subdomain still tells search engines where the real
+  // site lives rather than just vanishing from the index.
+  html = injectSeo(html, {
+    plan: parsePlan(project.current_code),
+    canonicalUrl: `https://${preferredHost}/`,
+    ogImageUrl: `https://${preferredHost}/og.png`,
+    noindex: !isCanonicalHost,
+  });
 
   // The gate the old comment here was waiting for. Now that a verified
   // flag exists, the subdomain can be de-indexed in favour of the real
@@ -100,7 +154,7 @@ export async function GET(request, { params }) {
     'Cache-Control': 'public, max-age=0, s-maxage=0, must-revalidate',
     'X-Content-Type-Options': 'nosniff',
   };
-  if (verifiedDomain && host !== verifiedDomain) headers['X-Robots-Tag'] = 'noindex';
+  if (!isCanonicalHost) headers['X-Robots-Tag'] = 'noindex, nofollow';
 
   return new Response(html, { status: 200, headers });
 }
@@ -108,6 +162,7 @@ export async function GET(request, { params }) {
 function missing() {
   return new Response(
     `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
 <title>Site not found</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
 background:#05070C;color:#96A0AD;font-family:Inter,system-ui,sans-serif;text-align:center;padding:24px}
@@ -115,7 +170,7 @@ h1{color:#F5F6F9;font-size:24px;margin:0 0 10px;font-weight:600}a{color:#5FE0FF;
 </head><body><div><h1>This site isn't here</h1>
 <p>No published site is connected to this address yet.</p>
 <p><a href="https://lintelapp.co.uk">Build one with Lintel</a></p></div></body></html>`,
-    { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' } }
   );
 }
 
@@ -125,6 +180,7 @@ h1{color:#F5F6F9;font-size:24px;margin:0 0 10px;font-weight:600}a{color:#5FE0FF;
 function pageNotFound(host) {
   return new Response(
     `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
 <title>Page not found</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
 background:#05070C;color:#96A0AD;font-family:Inter,system-ui,sans-serif;text-align:center;padding:24px}
@@ -132,6 +188,6 @@ h1{color:#F5F6F9;font-size:24px;margin:0 0 10px;font-weight:600}a{color:#5FE0FF;
 </head><body><div><h1>Page not found</h1>
 <p>This site doesn't have a page at that address.</p>
 <p><a href="https://${host}/">Back to the homepage</a></p></div></body></html>`,
-    { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' } }
   );
 }

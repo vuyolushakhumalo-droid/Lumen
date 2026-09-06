@@ -4,6 +4,7 @@
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabase';
 import { injectForms } from '@/lib/forms';
+import { injectSeo, parsePlan } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -42,7 +43,17 @@ export async function GET(request, { params }) {
 
   if (!project?.current_code) return notFound({ supabaseHost, projectId: site.project_id });
 
-  const code = injectForms(project.current_code, site.id);
+  // Legacy path: only reached when SITES_DOMAIN is unset, since the
+  // redirect above takes over once it is. Kept in step with the /d
+  // route so the two cannot drift into serving different metadata.
+  let code = injectForms(project.current_code, site.id);
+  const origin = new URL(request.url).origin;
+  code = injectSeo(code, {
+    plan: parsePlan(project.current_code),
+    canonicalUrl: origin + '/s/' + slug,
+    ogImageUrl: '',
+    noindex: false,
+  });
 
   return new Response(code, {
     status: 200,
@@ -65,6 +76,7 @@ function notFound({ supabaseHost = '', projectId = '' } = {}) {
   return new Response(
     `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
 <title>Site not found</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
 background:#05070C;color:#96A0AD;font-family:Inter,system-ui,sans-serif;text-align:center;padding:24px}
@@ -78,6 +90,7 @@ a{color:#5FE0FF;text-decoration:none}</style></head>
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         // TEMPORARY DEBUG headers: remove once the stale-content investigation is done.
+        'X-Robots-Tag': 'noindex, nofollow',
         'X-Dbg-Supabase-Host': supabaseHost,
         'X-Dbg-Project-Id': projectId,
       },
