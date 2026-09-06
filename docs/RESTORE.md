@@ -1,6 +1,6 @@
 # Restoring from a backup
 
-Every night at 03:00 UTC the site copies its database into private storage.
+Every night at 02:00 UTC the site copies its database into private storage.
 This guide walks through getting one customer's site back after it was
 deleted by mistake.
 
