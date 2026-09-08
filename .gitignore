@@ -4,3 +4,8 @@ node_modules
 .env
 .DS_Store
 scripts/_investigate-*.mjs
+
+# Raw video master. 24 MB of source that only exists to produce
+# public/video/lintel-ad.mp4 -- git history is forever, so the master
+# stays local and the 1.5 MB derivative is what ships.
+public/video/video.mp4
