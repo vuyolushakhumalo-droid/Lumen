@@ -329,6 +329,25 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 .voicehint .said{color:var(--ink);font-weight:500}
 .voice-unsupported{font-size:13px;color:var(--grey-dim)}
 
+/* ---------- hero video ---------- */
+/* 780px to line up with the showcase directly beneath it rather than
+   the 1180px hero container -- a wider video sitting on a narrower
+   browser frame reads as a mistake. Corners and shadow match .sc-frame. */
+.herovid{max-width:780px;margin:46px auto 0;padding:0 4px}
+.herovid[hidden]{display:none}
+.herovid-frame{position:relative;border:1px solid var(--line,rgba(255,255,255,.09));border-radius:14px;
+  overflow:hidden;background:var(--surface,#0B0E13);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.herovid video,.herovid .herovid-poster{display:block;width:100%;height:auto;aspect-ratio:16/9;
+  object-fit:cover;background:var(--surface,#0B0E13)}
+.herovid figcaption{font-size:13px;color:var(--grey-dim,#7C8697);text-align:center;margin:12px 0 0}
+/* Shown only when we are deliberately not autoplaying. */
+.herovid-play{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  border:0;padding:0;background:rgba(5,7,12,.32);color:#fff;cursor:pointer;transition:background .25s}
+.herovid-play:hover{background:rgba(5,7,12,.18)}
+.herovid-play svg{width:62px;height:62px;filter:drop-shadow(0 8px 26px rgba(0,0,0,.55))}
+.herovid[data-manual="1"] .herovid-play{display:flex}
+@media(max-width:560px){.herovid{margin-top:32px}}
+
 .showcase{max-width:780px;margin:56px auto 0;padding:0 4px}
 
 .sc-frame{border:1px solid var(--line,rgba(255,255,255,.09));border-radius:14px;overflow:hidden;
@@ -486,6 +505,77 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>
         </a>
       </div>
+
+      <!-- Starts hidden and reveals itself once the video (or, when we
+           are not autoplaying, the poster) has actually loaded. The
+           assets live outside git, so an empty black box on the
+           homepage is the failure worth designing against. -->
+      <figure class="herovid" id="heroVideo" hidden>
+        <div class="herovid-frame">
+          <video id="heroVideoEl" autoplay muted loop playsinline preload="metadata"
+                 poster="/video/lintel-ad-poster.jpg" aria-label="Lintel in ten seconds">
+            <source src="/video/lintel-ad.mp4" type="video/mp4">
+          </video>
+          <button class="herovid-play" id="heroVideoPlay" type="button" aria-label="Play the video">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+        </div>
+        <figcaption>Lintel in ten seconds</figcaption>
+      </figure>
+      <script>
+      /* Inline and immediately after the element on purpose: this has to
+         run before the browser acts on the autoplay attribute, so the
+         attribute is removed rather than the playback paused after the
+         fact — pausing after produces a visible flash of motion, which
+         is the exact thing prefers-reduced-motion is asking us not to do. */
+      (function(){
+        var fig = document.getElementById('heroVideo');
+        var v   = document.getElementById('heroVideoEl');
+        var btn = document.getElementById('heroVideoPlay');
+        if(!fig || !v) return;
+
+        var reduce = false, save = false;
+        try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+        try {
+          var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+          save = !!(c && c.saveData);
+        }catch(e){}
+
+        if(reduce || save){
+          v.removeAttribute('autoplay');
+          v.autoplay = false;
+          v.removeAttribute('loop');
+          // saveData means don't spend their data at all: no metadata,
+          // no first frame, just the poster until they ask for it.
+          if(save) v.preload = 'none';
+          try { v.pause(); }catch(e){}
+          fig.setAttribute('data-manual','1');
+        }
+
+        function show(){ fig.hidden = false; }
+        function hide(){ fig.hidden = true; }
+
+        if(save){
+          // preload="none" never fires a media event, so the poster
+          // loading is the only signal that the assets are there.
+          var probe = new Image();
+          probe.onload = show;
+          probe.src = v.getAttribute('poster');
+        } else {
+          v.addEventListener('loadedmetadata', show, { once:true });
+          v.addEventListener('loadeddata', show, { once:true });
+        }
+        v.addEventListener('error', hide, { once:true });
+
+        if(btn) btn.addEventListener('click', function(){
+          fig.removeAttribute('data-manual');
+          v.setAttribute('controls','');
+          v.preload = 'metadata';
+          var p = v.play();
+          if(p && p.catch) p.catch(function(){});
+        });
+      })();
+      </script>
 
       <div class="showcase" id="showcase">
         <div class="sc-frame">
