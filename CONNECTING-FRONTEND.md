@@ -68,6 +68,8 @@ const res = await fetch(`${API}/api/generate`, {
   method: 'POST', headers,
   body: JSON.stringify({ projectId, brief, model: 'sonnet' })
 });
+// Optional: style — 'auto' (default) or one of Editorial, Bold, Boutique,
+// Minimal, Warm, Cinematic. Applies to new builds only; edits ignore it.
 
 if (res.status === 429) {
   const { resetsAt } = await res.json();

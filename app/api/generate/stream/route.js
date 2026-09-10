@@ -8,7 +8,7 @@
 // ============================================================
 import { requireUser, ApiError } from '@/lib/auth';
 import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml, rollbackVersion } from '@/lib/usage';
-import { streamSite } from '@/lib/anthropic';
+import { streamSite, DESIGN_DIRECTION_NAMES } from '@/lib/anthropic';
 import { makeSlug, screenLiveSite } from '@/lib/publish';
 import { rateLimitDb } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
@@ -69,12 +69,13 @@ export async function POST(request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { projectId, brief, model = 'auto', images, clientExpectsEdit } = body;
+  const { projectId, brief, model = 'auto', images, clientExpectsEdit, style = 'auto' } = body;
 
   if (!brief || typeof brief !== 'string' || brief.trim().length < 3) {
     return fail(400, 'Tell us what you want to build.');
   }
   if (brief.length > 4000) return fail(400, 'That brief is a bit long — try trimming it.');
+  if (style !== 'auto' && !DESIGN_DIRECTION_NAMES.includes(style)) return fail(400, 'Unknown style.');
 
   let cleanImages;
   try {
@@ -199,6 +200,7 @@ export async function POST(request) {
             projectId: project.id,
             userId: profile.id,
             plan: snapshot.plan,
+            style: style === 'auto' ? null : style,
           });
         } catch (err) {
           logError('[generate/stream] failed', err);
