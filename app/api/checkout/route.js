@@ -11,33 +11,32 @@ import {
   recordTermsAudit,
   requestMeta,
 } from '@/lib/terms';
-import Stripe from 'stripe';
+import { stripeClient, isMissingResource, withStripeCustomer } from '@/lib/stripe';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
-
-// Created per-request, not at build time (env vars don't exist during build).
-let _stripe = null;
-function stripeClient() {
-  if (!_stripe) {
-    if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY is not set');
-    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-  }
-  return _stripe;
-}
-
-// Stripe returns this when an ID doesn't exist in the current mode — e.g. a
-// stripe_customer_id created under test keys, looked up after switching to
-// live keys.
-function isMissingResource(err) {
-  return err?.code === 'resource_missing';
-}
 
 const PRICE_IDS = {
   standard: { month: process.env.STRIPE_PRICE_STANDARD_MONTHLY, year: process.env.STRIPE_PRICE_STANDARD_ANNUAL },
   pro:      { month: process.env.STRIPE_PRICE_PRO_MONTHLY,      year: process.env.STRIPE_PRICE_PRO_ANNUAL },
   frontier: { month: process.env.STRIPE_PRICE_FRONTIER_MONTHLY, year: process.env.STRIPE_PRICE_FRONTIER_ANNUAL },
 };
+
+// A subscription saved under the other mode's key — a test-mode row left
+// behind after going live — doesn't exist here. Treat it as no
+// subscription, so a plan change becomes a real checkout instead of a 500.
+async function retrieveSubscription(subscriptionId, userId) {
+  if (!subscriptionId) return null;
+  try {
+    return await stripeClient().subscriptions.retrieve(subscriptionId);
+  } catch (err) {
+    if (!isMissingResource(err)) throw err;
+    console.warn('[stripe] saved subscription does not exist under the current key; starting a new checkout', {
+      userId, subscriptionId,
+    });
+    return null;
+  }
+}
 
 export const POST = handler(async (request) => {
   const { user, profile, admin } = await requireUser(request);
@@ -65,12 +64,14 @@ export const POST = handler(async (request) => {
   // Already on a plan? Update that subscription in place instead of
   // starting a second one — Stripe prorates the difference automatically.
   const existing = await getSubscription(admin, user.id);
-  if (existing && ACTIVE_STATUSES.includes(existing.status)) {
+  const stripeSub = existing && ACTIVE_STATUSES.includes(existing.status)
+    ? await retrieveSubscription(existing.stripe_subscription_id, user.id)
+    : null;
+  if (stripeSub) {
     if (existing.plan === plan && existing.billing_interval === interval) {
       throw new ApiError(400, "You're already on this plan.");
     }
 
-    const stripeSub = await stripeClient().subscriptions.retrieve(existing.stripe_subscription_id);
     const itemId = stripeSub.items.data[0]?.id;
     if (!itemId) {
       throw new ApiError(500, 'Could not find your subscription item to update.');
@@ -83,36 +84,6 @@ export const POST = handler(async (request) => {
     });
 
     return Response.json({ ok: true, updated: true });
-  }
-
-  // Reuse the Stripe customer if we already made one; if it doesn't exist
-  // in the current mode (e.g. a test-mode ID after switching to live keys),
-  // make a fresh one and save it.
-  async function freshCustomer() {
-    const customer = await stripeClient().customers.create({
-      email: user.email,
-      metadata: { supabase_user_id: user.id },
-    });
-    await admin.from('profiles').update({ stripe_customer_id: customer.id }).eq('id', user.id);
-    return customer.id;
-  }
-
-  let customerId = profile.stripe_customer_id;
-  if (!customerId) {
-    customerId = await freshCustomer();
-  }
-
-  // Trial-once: no second free trial for a customer who has ever had a
-  // subscription before, active or not. A missing customer counts as no
-  // prior subscriptions.
-  async function checkTrialEligibility(custId) {
-    try {
-      const priorSubs = await stripeClient().subscriptions.list({ customer: custId, status: 'all', limit: 1 });
-      return priorSubs.data.length === 0;
-    } catch (err) {
-      if (isMissingResource(err)) return true;
-      throw err;
-    }
   }
 
   async function createSession(custId, eligibleForTrial) {
@@ -151,15 +122,14 @@ export const POST = handler(async (request) => {
     await recordTermsAudit(admin, user.id, { ip, userAgent, source: 'checkout' });
   }
 
-  let session;
-  try {
-    session = await createSession(customerId, await checkTrialEligibility(customerId));
-  } catch (err) {
-    if (!isMissingResource(err)) throw err;
-    // Stale customer ID — recreate and retry once.
-    customerId = await freshCustomer();
-    session = await createSession(customerId, await checkTrialEligibility(customerId));
-  }
+  // Reuses the saved Stripe customer, or makes one — including when the
+  // saved one is a test-mode ID that doesn't exist under live keys.
+  // Trial-once: no second free trial for a customer who has ever had a
+  // subscription before, active or not.
+  const session = await withStripeCustomer({ admin, user, profile, route: 'checkout' }, async (custId) => {
+    const priorSubs = await stripeClient().subscriptions.list({ customer: custId, status: 'all', limit: 1 });
+    return createSession(custId, priorSubs.data.length === 0);
+  });
 
   return Response.json({ url: session.url });
 });
