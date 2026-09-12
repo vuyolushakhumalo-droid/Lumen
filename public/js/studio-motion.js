@@ -254,27 +254,86 @@
     window.addEventListener('resize', queue);
   }
 
-  // ---- Two-tile gallery: the hovered side widens (Hover Effects/1) ----
-  // Tiles rest at equal halves; the split follows the cursor across the row
-  // and eases back to 50/50 when it leaves. Touch keeps equal halves.
+  // ---- Two-tile gallery: one side widens (Hover Effects/1) -----------
+  // Tiles rest at equal halves. With a mouse, the split follows the cursor
+  // and eases back to 50/50 when it leaves. On touch, tapping a tile widens it
+  // with the same easing; after 4s without a tap the tiles slowly trade width
+  // on an 8s cycle, only while the row is on screen and never under reduced
+  // motion, where a tap switches the widths without easing.
   function scaleGallery(row) {
     var a = row.children[0], b = row.children[1];
     if (!a || !b) return;
-    var target = 50, current = 50, raf = 0, SPEED = 0.15;
+    var target = 50, current = 50, raf = 0, SPEED = 0.15, SPREAD = 12;
+    function paint() {
+      a.style.flexGrow = current.toFixed(3);
+      b.style.flexGrow = (100 - current).toFixed(3);
+    }
     function frame() {
       raf = 0;
       current += (target - current) * SPEED;
       if (Math.abs(target - current) < 0.05) current = target;
       else raf = requestAnimationFrame(frame);
-      a.style.flexGrow = current.toFixed(3);
-      b.style.flexGrow = (100 - current).toFixed(3);
+      paint();
     }
     function go(t) { target = t; if (!raf) raf = requestAnimationFrame(frame); }
-    row.addEventListener('mousemove', function (e) {
-      var r = row.getBoundingClientRect();
-      go(62 - ((e.clientX - r.left) / r.width) * 24);
-    }, { passive: true });
-    row.addEventListener('mouseleave', function () { go(50); });
+
+    if (finePointer) {
+      if (reduce) return;
+      row.addEventListener('mousemove', function (e) {
+        var r = row.getBoundingClientRect();
+        go(50 + SPREAD - ((e.clientX - r.left) / r.width) * SPREAD * 2);
+      }, { passive: true });
+      row.addEventListener('mouseleave', function () { go(50); });
+      return;
+    }
+
+    var IDLE = 4000, CYCLE = 8000;
+    var visible = false, idle = 0, cycling = false, cycleRaf = 0, cycleStart = 0, phase = 0;
+    function stopCycle() {
+      cycling = false;
+      if (cycleRaf) cancelAnimationFrame(cycleRaf);
+      cycleRaf = 0;
+    }
+    function cycle(now) {
+      cycleRaf = 0;
+      if (!cycling) return;
+      go(50 + SPREAD * Math.sin(phase + ((now - cycleStart) / CYCLE) * 2 * Math.PI));
+      cycleRaf = requestAnimationFrame(cycle);
+    }
+    function startCycle() {
+      idle = 0;
+      if (reduce || !visible || cycling) return;
+      // Pick up from wherever the tiles are, so the cycle never jumps.
+      phase = Math.asin(Math.max(-1, Math.min(1, (current - 50) / SPREAD)));
+      cycleStart = performance.now();
+      cycling = true;
+      cycleRaf = requestAnimationFrame(cycle);
+    }
+    function waitForIdle() {
+      clearTimeout(idle);
+      idle = 0;
+      if (!reduce && visible) idle = setTimeout(startCycle, IDLE);
+    }
+    [a, b].forEach(function (tile, i) {
+      tile.addEventListener('click', function () {
+        stopCycle();
+        var t = 50 + (i === 0 ? SPREAD : -SPREAD);
+        if (reduce) { target = current = t; paint(); } else go(t);
+        waitForIdle();
+      });
+    });
+    if (!('IntersectionObserver' in window)) { visible = true; return waitForIdle(); }
+    new IntersectionObserver(function (entries) {
+      visible = entries[0].isIntersecting;
+      if (visible) waitForIdle();
+      else {
+        clearTimeout(idle);
+        idle = 0;
+        stopCycle();
+        // Freeze where it is; the cycle picks up from here when it comes back.
+        if (raf) { cancelAnimationFrame(raf); raf = 0; target = current; }
+      }
+    }).observe(row);
   }
 
   // ---- Hero film band: scroll parallax on every device (motion kit) ---
@@ -357,11 +416,12 @@
     }
     document.querySelectorAll('[data-dot-grid]').forEach(dotGrid);
     document.querySelectorAll('video[data-lazy-video]').forEach(lazyVideo);
+    // The gallery handles reduced motion itself (on touch a tap still switches widths).
+    document.querySelectorAll('[data-scale-gallery]').forEach(scaleGallery);
     if (reduce) return;
     document.querySelectorAll('[data-band-parallax]').forEach(bandParallax);
     if (finePointer) {
       document.querySelectorAll('[data-cursor-layers]').forEach(cursorLayers);
-      document.querySelectorAll('[data-scale-gallery]').forEach(scaleGallery);
     } else {
       document.querySelectorAll('[data-touch-parallax]').forEach(scrollParallax);
     }

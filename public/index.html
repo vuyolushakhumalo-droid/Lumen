@@ -486,8 +486,8 @@ html:not(.js) .sc-shot[data-src]{display:none}
 .js-motion .mw > span{animation:mwRise .95s cubic-bezier(.16,1,.3,1) both; animation-delay:calc(var(--i) * 65ms + 50ms)}
 @keyframes mwRise{from{transform:translateY(105%)}to{transform:none}}
 
-/* ---------- Studio (pricing) ---------- */
-.studio{position:relative; z-index:2; margin-top:96px; background:#04060A;
+/* ---------- Studio ---------- */
+.studio{position:relative; z-index:2; margin-top:0; background:#04060A;
   border-top:1px solid var(--line); border-bottom:1px solid var(--line); overflow:hidden}
 .studio-dots{position:absolute; inset:0; pointer-events:none}
 .studio-dots canvas{display:block; width:100%; height:100%}
@@ -524,6 +524,8 @@ html:not(.js) .sc-shot[data-src]{display:none}
 .sg-media picture,.sg-media img{position:absolute; inset:0; width:100%; height:100%}
 .sg-media img{object-fit:cover}
 .sg-tile figcaption{margin-top:14px; font-size:15px; color:var(--grey); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* On touch the tiles are tapped (js/studio-motion.js). */
+@media(hover:none){.sg-tile{cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation}}
 
 @media(max-width:920px){
   .studio-inner{grid-template-columns:1fr; gap:52px; padding:92px 0}
@@ -534,7 +536,10 @@ html:not(.js) .sc-shot[data-src]{display:none}
   .studio-outline{inset:-10px 10px 10px -10px}
   .sg-row{gap:10px}
   .sg-media{height:58vw; border-radius:16px}
-  .sg-tile figcaption{font-size:13px; white-space:normal}
+  /* Three lines of height whatever the tile's width, so tiles trading width
+     never move the page below them. */
+  .sg-tile figcaption{font-size:13px; line-height:1.35; white-space:normal; height:calc(3 * 1.35em);
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical}
 }
 
 /* ---------- enquiry dialog (js/enquiry.js) ---------- */
@@ -921,20 +926,75 @@ document.documentElement.classList.add('js', 'js-motion');
     </div>
   </section>
 
+  <!-- STUDIO band and "What Studio looks like", ahead of How it works. -->
+  <section class="studio-sec">
+    <!-- STUDIO: built with the customer, by hand. Motion comes from
+         js/studio-motion.js, adapted from licensed Animmaster effects;
+         none of it is ever used in generated customer sites. -->
+    <div class="studio" id="studio" data-dot-grid data-cursor-zone>
+      <div class="studio-dots" aria-hidden="true"><canvas></canvas></div>
+      <div class="wrap">
+        <div class="studio-inner">
+          <div class="studio-copy">
+            <span class="eyebrow">Studio</span>
+            <h2 data-reveal="scroll">Built with you, by hand.</h2>
+            <ul class="studio-points">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Cinematic motion generated sites can’t do</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Your photography and footage, directed in</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Multi-page, custom sections, integrations</li>
+            </ul>
+            <a class="btn btn-primary btn-lg" href="/contact" data-enquiry="studio">Tell us about your project</a>
+          </div>
+          <div class="studio-card" data-cursor-layers>
+            <div class="studio-layer studio-glow" data-layer="0.6" aria-hidden="true"></div>
+            <div class="studio-layer studio-outline" data-layer="1.6" aria-hidden="true"></div>
+            <div class="studio-layer studio-frame" data-layer="1">
+              <div class="studio-media" data-touch-parallax data-speed="0.6">
+                <picture>
+                  <source srcset="/img/studio/studio-hero.webp" type="image/webp">
+                  <img src="/img/studio/studio-hero.jpg" alt="The Lintel builder on a monitor in a dark room, shaping a trattoria’s website" width="1376" height="768" loading="lazy" decoding="async">
+                </picture>
+                <video data-lazy-video muted loop playsinline preload="none" aria-hidden="true">
+                  <source data-src="/img/studio/studio-hero-web.mp4" type="video/mp4">
+                </video>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="studio-looks">
+        <h3 class="reveal">What Studio looks like</h3>
+        <div class="sg-row" data-scale-gallery>
+          <figure class="sg-tile">
+            <div class="sg-media"><picture><source srcset="/img/studio/jacket.webp" type="image/webp"><img src="/img/studio/jacket.jpg" alt="A dark technical shell jacket beaded with rain, floating against black" width="1376" height="768" loading="lazy" decoding="async"></picture></div>
+            <figcaption>Product launch — a technical shell jacket</figcaption>
+          </figure>
+          <figure class="sg-tile">
+            <div class="sg-media"><picture><source srcset="/img/studio/robot-arm.webp" type="image/webp"><img src="/img/studio/robot-arm.jpg" alt="A black robotic arm under a single hard beam of light" width="1376" height="768" loading="lazy" decoding="async"></picture></div>
+            <figcaption>Engineering brand — a robotic arm in one beam of light</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- PROCESS -->
   <section class="sec" id="process">
     <div class="wrap">
       <div class="center reveal">
         <span class="eyebrow">How it works</span>
-        <h2>From idea to live, effortlessly.</h2>
-        <p class="sub">Every site moves through the same calm, considered process. Watch each stage happen — and step in whenever you like.</p>
+        <h2>From a sentence to a live site.</h2>
+        <p class="sub">You do it yourself, in the builder: describe it, watch it take shape, change what you like, then put it live.</p>
       </div>
       <div class="steps reveal">
-        <div class="stp"><div class="n">01</div><h3>Brief</h3><p>Tell us what it's for and the feeling you're after. Two minutes or a full spec — both work.</p></div>
-        <div class="stp"><div class="n">02</div><h3>Blueprint</h3><p>We map the pages and design direction, and confirm it with you before anything is built.</p></div>
-        <div class="stp"><div class="n">03</div><h3>Build</h3><p>Your site is assembled section by section, refined to feel handcrafted. You watch it take shape.</p></div>
-        <div class="stp"><div class="n">04</div><h3>Launch</h3><p>One step to your own domain — hosting, security and speed wired up automatically.</p></div>
-        <div class="stp"><div class="n">05</div><h3>Evolve</h3><p>Send changes whenever. We keep it fast, secure and current for as long as you stay.</p></div>
+        <div class="stp"><div class="n">01</div><h3>Describe</h3><p>Tell it what the site is for, in a sentence. Add more detail if you like, but one sentence is enough to start.</p></div>
+        <div class="stp"><div class="n">02</div><h3>Watch it build</h3><p>Sections appear in front of you as it works. A first version takes minutes.</p></div>
+        <div class="stp"><div class="n">03</div><h3>Refine by asking</h3><p>Change anything in plain English — the words, the layout, the colours — and see it update.</p></div>
+        <div class="stp"><div class="n">04</div><h3>Publish</h3><p>Put it live on your own address. Hosting and SSL are done for you.</p></div>
+        <div class="stp"><div class="n">05</div><h3>Keep editing</h3><p>Change it whenever you like, for as long as you stay subscribed.</p></div>
       </div>
     </div>
   </section>
@@ -1051,57 +1111,6 @@ document.documentElement.classList.add('js', 'js-motion');
       <p class="center grey reveal" style="margin-top:28px; font-size:14px">7-day free trial, then billed monthly. Cancel anytime.</p>
     </div>
 
-    <!-- STUDIO: built with the customer, by hand. Motion comes from
-         js/studio-motion.js, adapted from licensed Animmaster effects;
-         none of it is ever used in generated customer sites. -->
-    <div class="studio" id="studio" data-dot-grid data-cursor-zone>
-      <div class="studio-dots" aria-hidden="true"><canvas></canvas></div>
-      <div class="wrap">
-        <div class="studio-inner">
-          <div class="studio-copy">
-            <span class="eyebrow">Studio</span>
-            <h2 data-reveal="scroll">Built with you, by hand.</h2>
-            <ul class="studio-points">
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Cinematic motion generated sites can’t do</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Your photography and footage, directed in</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Multi-page, custom sections, integrations</li>
-            </ul>
-            <a class="btn btn-primary btn-lg" href="/contact" data-enquiry="studio">Tell us about your project</a>
-          </div>
-          <div class="studio-card" data-cursor-layers>
-            <div class="studio-layer studio-glow" data-layer="0.6" aria-hidden="true"></div>
-            <div class="studio-layer studio-outline" data-layer="1.6" aria-hidden="true"></div>
-            <div class="studio-layer studio-frame" data-layer="1">
-              <div class="studio-media" data-touch-parallax data-speed="0.6">
-                <picture>
-                  <source srcset="/img/studio/studio-hero.webp" type="image/webp">
-                  <img src="/img/studio/studio-hero.jpg" alt="The Lintel builder on a monitor in a dark room, shaping a trattoria’s website" width="1376" height="768" loading="lazy" decoding="async">
-                </picture>
-                <video data-lazy-video muted loop playsinline preload="none" aria-hidden="true">
-                  <source data-src="/img/studio/studio-hero-web.mp4" type="video/mp4">
-                </video>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="wrap">
-      <div class="studio-looks">
-        <h3 class="reveal">What Studio looks like</h3>
-        <div class="sg-row" data-scale-gallery>
-          <figure class="sg-tile">
-            <div class="sg-media"><picture><source srcset="/img/studio/jacket.webp" type="image/webp"><img src="/img/studio/jacket.jpg" alt="A dark technical shell jacket beaded with rain, floating against black" width="1376" height="768" loading="lazy" decoding="async"></picture></div>
-            <figcaption>Product launch — a technical shell jacket</figcaption>
-          </figure>
-          <figure class="sg-tile">
-            <div class="sg-media"><picture><source srcset="/img/studio/robot-arm.webp" type="image/webp"><img src="/img/studio/robot-arm.jpg" alt="A black robotic arm under a single hard beam of light" width="1376" height="768" loading="lazy" decoding="async"></picture></div>
-            <figcaption>Engineering brand — a robotic arm in one beam of light</figcaption>
-          </figure>
-        </div>
-      </div>
-    </div>
   </section>
 
   <!-- CLOSING -->
