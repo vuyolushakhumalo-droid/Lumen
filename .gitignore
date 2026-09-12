@@ -15,6 +15,7 @@ vendor/animmaster/
 public/video/*
 !public/video/lintel-ad.mp4
 !public/video/lintel-ad-poster.jpg
+!public/video/lintel-ad-poster-*.webp
 
 # Studio source masters, same reasoning: only the compressed files ship.
 public/img/studio/*

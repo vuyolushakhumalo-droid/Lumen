@@ -1,7 +1,7 @@
 /* ============================================================
    Lumen — shared browser helpers
    Loaded by every page. Handles:
-     - connecting to Supabase (auth)
+     - connecting to Supabase (auth), fetched only when needed
      - knowing who is signed in
      - calling your API with the right token
    ============================================================ */
@@ -9,6 +9,13 @@
   const Lumen = {};
   let supabase = null;
   let readyPromise = null;
+  let configPromise = null;
+  let libraryPromise = null;
+
+  // supabase-js is ~55 KB from a CDN. It used to be a render-blocking tag on
+  // every page; now it is fetched the first time a page actually needs auth,
+  // so signed-out visitors to marketing pages never download it.
+  const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 
   // ---------- error monitoring ----------
   // Loaded from Sentry's CDN rather than bundled: these pages have no
@@ -52,30 +59,76 @@
   }
 
   // ---------- setup ----------
+  // Our own pages are plain HTML in /public, not part of the Next build, so
+  // @sentry/nextjs's client instrumentation never sees them. The browser SDK
+  // starts here instead, off the same config call auth needs.
+  function loadConfig() {
+    if (!configPromise) {
+      configPromise = fetch('/api/config')
+        .then((res) => res.json())
+        .then((cfg) => { startErrorMonitoring(cfg.sentryDsn); return cfg; });
+    }
+    return configPromise;
+  }
+
+  function loadSupabaseLibrary() {
+    if (window.supabase && window.supabase.createClient) return Promise.resolve();
+    if (!libraryPromise) {
+      libraryPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = SUPABASE_JS;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => {
+          libraryPromise = null;
+          reject(new Error('Could not load sign-in — check your connection and try again.'));
+        };
+        document.head.appendChild(s);
+      });
+    }
+    return libraryPromise;
+  }
+
+  // Runs a task once the page has loaded and the browser is idle.
+  function whenIdle(fn) {
+    const run = () => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 4000 }) : setTimeout(fn, 1500));
+    if (document.readyState === 'complete') run();
+    else window.addEventListener('load', run, { once: true });
+  }
+
   Lumen.init = function () {
     if (readyPromise) return readyPromise;
 
     readyPromise = (async () => {
-      const res = await fetch('/api/config');
-      const cfg = await res.json();
-
-      // Our own pages are plain HTML in /public, not part of the Next
-      // build, so @sentry/nextjs's client instrumentation never sees
-      // them. The browser SDK is loaded here instead, off the same
-      // config call the page already makes.
-      startErrorMonitoring(cfg.sentryDsn);
-
+      // Config and library in parallel: on pages that need auth, this is
+      // the only wait between the page and knowing who is signed in.
+      const [cfg] = await Promise.all([loadConfig(), loadSupabaseLibrary()]);
       if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
         console.error('[lumen] Supabase config missing — check environment variables');
         return null;
       }
-      // supabase-js is loaded from a <script> tag on the page
       supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
       Lumen.supabase = supabase;
       return supabase;
     })();
 
     return readyPromise;
+  };
+
+  // Supabase keeps a session in localStorage under sb-<project>-auth-token
+  // (plus a code verifier during an OAuth round trip). With neither, and no
+  // auth tokens in the URL, nobody is signed in on this browser, so pages can
+  // skip loading auth entirely. A false positive only means we check properly.
+  Lumen.mightBeSignedIn = function () {
+    try {
+      if (/access_token=|[?&]code=/.test(window.location.hash + window.location.search)) return true;
+      for (let i = 0; i < localStorage.length; i++) {
+        if (/^sb-.+-auth-token/.test(localStorage.key(i) || '')) return true;
+      }
+      return false;
+    } catch (e) {
+      return true; // storage unavailable: ask Supabase rather than guess
+    }
   };
 
   // ---------- who's signed in ----------
@@ -161,7 +214,13 @@
   // Reflects the real signed-in state across every page.
   Lumen.paintNav = async function () {
     let s = null;
-    try { s = await Lumen.session(); } catch (e) { /* offline etc. */ }
+    if (Lumen.mightBeSignedIn()) {
+      try { s = await Lumen.session(); } catch (e) { /* offline etc. */ }
+    } else {
+      // Signed out: there is nothing to look up. Error monitoring still
+      // starts, just off the critical path.
+      whenIdle(() => { loadConfig().catch(() => {}); });
+    }
 
     document.querySelectorAll('.signin').forEach((el) => {
       if (s) {
@@ -181,7 +240,10 @@
       el.dataset.gateBound = '1';
       el.addEventListener('click', async (ev) => {
         ev.preventDefault();
-        const live = await Lumen.session();
+        let live = null;
+        if (Lumen.mightBeSignedIn()) {
+          try { live = await Lumen.session(); } catch (e) { /* treat as signed out */ }
+        }
         window.location.href = live ? '/builder' : '/start';
       });
     });

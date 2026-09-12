@@ -14,10 +14,21 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Self-hosted Inter, variable: this one file carries every weight the page
+     uses, regular through bold, so a single preload covers them all. -->
+<link rel="preload" href="/fonts/inter/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<!-- The hero poster is the LCP image: start it before the parser reaches it. -->
+<link rel="preload" as="image" type="image/webp" fetchpriority="high"
+      imagesrcset="/video/lintel-ad-poster-640.webp 640w, /video/lintel-ad-poster-960.webp 960w, /video/lintel-ad-poster-1280.webp 1280w"
+      imagesizes="(max-width: 820px) calc(100vw - 40px), 772px">
 <style>
+/* Inter 5.3 variable (SIL OFL 1.1, public/fonts/inter/OFL.txt), from @fontsource-variable/inter. */
+@font-face{font-family:'Inter'; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url(/fonts/inter/inter-latin-wght-normal.woff2) format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Inter'; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url(/fonts/inter/inter-latin-ext-wght-normal.woff2) format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 :root{
   --bg:#05070C;
   --bg-2:#090C13;
@@ -337,8 +348,12 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 .herovid[hidden]{display:none}
 .herovid-frame{position:relative;border:1px solid var(--line,rgba(255,255,255,.09));border-radius:14px;
   overflow:hidden;background:var(--surface,#0B0E13);box-shadow:0 30px 80px rgba(0,0,0,.45)}
-.herovid video,.herovid .herovid-poster{display:block;width:100%;height:auto;aspect-ratio:16/9;
+.herovid picture,.herovid .herovid-poster{display:block;width:100%;height:auto;aspect-ratio:16/9;
   object-fit:cover;background:var(--surface,#0B0E13)}
+/* The film sits over the poster and only fades in once it is actually playing. */
+.herovid video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .5s ease}
+.herovid.is-playing video,.herovid video[controls]{opacity:1}
 .herovid figcaption{font-size:13px;color:var(--grey-dim,#7C8697);text-align:center;margin:12px 0 0}
 /* Shown only when we are deliberately not autoplaying. */
 .herovid-play{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
@@ -539,9 +554,10 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 .enquiry-done .ok-ring svg{width:30px; height:30px; color:var(--cyan)}
 .enquiry-done p{color:var(--grey); margin:10px auto 24px; max-width:360px; line-height:1.55}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/lumen-app.js"></script>
-<script src="/voice.js"></script>
+<!-- Nothing here blocks rendering. The Supabase client is not loaded by the
+     page at all: lumen-app.js fetches it only when someone may be signed in. -->
+<script defer src="/lumen-app.js"></script>
+<script defer src="/voice.js"></script>
 <script defer src="/_vercel/insights/script.js"></script>
 <script defer src="/js/gsap/gsap.min.js"></script>
 <script defer src="/js/gsap/SplitText.min.js"></script>
@@ -596,16 +612,19 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
         </a>
       </div>
 
-      <!-- Starts hidden and reveals itself once the video (or, when we
-           are not autoplaying, the poster) has actually loaded. The
-           assets live outside git, so an empty black box on the
-           homepage is the failure worth designing against. -->
-      <figure class="herovid" id="heroVideo" hidden>
+      <!-- The poster is the LCP element: a small WebP, visible from the first
+           paint, fetched at high priority with explicit dimensions. The film
+           is attached only after the page has loaded (or on first
+           interaction), and never on Save-Data or 3G-and-slower connections. -->
+      <figure class="herovid" id="heroVideo">
         <div class="herovid-frame">
-          <video id="heroVideoEl" autoplay muted loop playsinline preload="metadata"
-                 poster="/video/lintel-ad-poster.jpg" aria-label="Lintel in ten seconds">
-            <source src="/video/lintel-ad.mp4" type="video/mp4">
-          </video>
+          <picture>
+            <source type="image/webp"
+                    srcset="/video/lintel-ad-poster-640.webp 640w, /video/lintel-ad-poster-960.webp 960w, /video/lintel-ad-poster-1280.webp 1280w"
+                    sizes="(max-width: 820px) calc(100vw - 40px), 772px">
+            <img class="herovid-poster" src="/video/lintel-ad-poster.jpg" width="1280" height="720" alt="" fetchpriority="high">
+          </picture>
+          <video id="heroVideoEl" muted playsinline preload="none" aria-label="Lintel in ten seconds"></video>
           <button class="herovid-play" id="heroVideoPlay" type="button" aria-label="Play the video">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
           </button>
@@ -613,57 +632,61 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
         <figcaption>Lintel in ten seconds</figcaption>
       </figure>
       <script>
-      /* Inline and immediately after the element on purpose: this has to
-         run before the browser acts on the autoplay attribute, so the
-         attribute is removed rather than the playback paused after the
-         fact — pausing after produces a visible flash of motion, which
-         is the exact thing prefers-reduced-motion is asking us not to do. */
       (function(){
         var fig = document.getElementById('heroVideo');
         var v   = document.getElementById('heroVideoEl');
         var btn = document.getElementById('heroVideoPlay');
         if(!fig || !v) return;
 
-        var reduce = false, save = false;
+        var reduce = false, slow = false;
         try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
         try {
           var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-          save = !!(c && c.saveData);
+          slow = !!(c && (c.saveData || /^(slow-2g|2g|3g)$/.test(c.effectiveType || '')));
         }catch(e){}
 
-        if(reduce || save){
-          v.removeAttribute('autoplay');
-          v.autoplay = false;
-          v.removeAttribute('loop');
-          // saveData means don't spend their data at all: no metadata,
-          // no first frame, just the poster until they ask for it.
-          if(save) v.preload = 'none';
-          try { v.pause(); }catch(e){}
-          fig.setAttribute('data-manual','1');
+        // Save-Data, or 3G and slower: the poster is the whole experience.
+        // The video element goes, so nothing can ever fetch the film.
+        if(slow){ v.remove(); if(btn) btn.remove(); return; }
+
+        function attach(){
+          if(v.getAttribute('data-attached')) return;
+          v.setAttribute('data-attached', '1');
+          v.muted = true;
+          var s = document.createElement('source');
+          s.src = '/video/lintel-ad.mp4';
+          s.type = 'video/mp4';
+          v.appendChild(s);
+          // The poster stays on screen until the film is actually playing.
+          v.addEventListener('playing', function(){ fig.classList.add('is-playing'); }, { once:true });
+          v.load();
+        }
+        function play(){ var p = v.play(); if(p && p.catch) p.catch(function(){}); }
+
+        // Reduced motion: it never plays by itself; the button attaches and plays on request.
+        if(reduce){
+          fig.setAttribute('data-manual', '1');
+          if(btn) btn.addEventListener('click', function(){
+            fig.removeAttribute('data-manual');
+            attach();
+            v.setAttribute('controls', '');
+            play();
+          });
+          return;
         }
 
-        function show(){ fig.hidden = false; }
-        function hide(){ fig.hidden = true; }
-
-        if(save){
-          // preload="none" never fires a media event, so the poster
-          // loading is the only signal that the assets are there.
-          var probe = new Image();
-          probe.onload = show;
-          probe.src = v.getAttribute('poster');
-        } else {
-          v.addEventListener('loadedmetadata', show, { once:true });
-          v.addEventListener('loadeddata', show, { once:true });
+        var started = false, events = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+        function start(){
+          if(started) return;
+          started = true;
+          events.forEach(function(e){ window.removeEventListener(e, start); });
+          attach();
+          v.loop = true;
+          play();
         }
-        v.addEventListener('error', hide, { once:true });
-
-        if(btn) btn.addEventListener('click', function(){
-          fig.removeAttribute('data-manual');
-          v.setAttribute('controls','');
-          v.preload = 'metadata';
-          var p = v.play();
-          if(p && p.catch) p.catch(function(){});
-        });
+        events.forEach(function(e){ window.addEventListener(e, start, { passive:true }); });
+        if(document.readyState === 'complete') setTimeout(start, 0);
+        else window.addEventListener('load', function(){ setTimeout(start, 0); }, { once:true });
       })();
       </script>
 
@@ -1108,13 +1131,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
   }
   monthlyBtn&&monthlyBtn.addEventListener('click',function(){setMode(false);});
   annualBtn&&annualBtn.addEventListener('click',function(){setMode(true);});
-
-  document.querySelectorAll('[data-gate="build"]').forEach(function(a){
-    a.addEventListener('click', function(e){
-      e.preventDefault();
-      window.location.href = sess() ? '/builder' : '/start';
-    });
-  });
+  // "Start building" routing by auth state lives in lumen-app.js (paintNav).
 })();
 </script>
 <div id="ckb" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:900;width:calc(100% - 36px);max-width:660px;border:1px solid rgba(255,255,255,0.13);border-radius:18px;background:rgba(12,17,25,0.94);backdrop-filter:blur(16px);box-shadow:0 30px 70px -30px rgba(0,0,0,.85);padding:20px 22px;font-family:'Inter',sans-serif">
@@ -1134,12 +1151,15 @@ document.getElementById('ckDecline').addEventListener('click',function(){set('es
 b.addEventListener('click',function(e){e.stopPropagation();m.classList.toggle('show');});
 document.addEventListener('click',function(e){if(m.classList.contains('show')&&!m.contains(e.target)&&e.target!==b)m.classList.remove('show');});
 m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){m.classList.remove('show');});});})();</script>
-<script>
+<!-- type="module" defers this until the deferred lumen-app.js has run. -->
+<script type="module">
 (function(){
   var PLAN_ORDER = ['standard','pro','frontier'];
   var LABEL = { standard:'Standard', pro:'Pro', frontier:'Frontier' };
 
   (async function(){
+    // No stored session: nothing to personalise, so don't load auth at all.
+    if (!Lumen.mightBeSignedIn()) return;
     var s = await Lumen.session();
 
     // Signed in: swap the hero CTA for "continue building"
@@ -1188,8 +1208,9 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
   })();
 })();
 </script>
-<script src="/ray.js"></script>
-<script>
+<script defer src="/ray.js"></script>
+<!-- type="module" defers this until the deferred voice.js has defined LumenVoice. -->
+<script type="module">
 (function(){
   var reactor = document.querySelector('.reactor');
   var label = document.getElementById('listenText');
