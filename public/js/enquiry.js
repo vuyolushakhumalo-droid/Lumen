@@ -1,7 +1,9 @@
-// Enquiry form for Lintel's own services (Studio, Done for you).
-// Any [data-enquiry="studio"] link opens the dialog pre-set to that value
-// and posts to /api/enquiry. The links point at /contact, so without this
-// script (or without <dialog> support) they still go somewhere useful.
+// Enquiry form for Lintel's own services (Studio).
+// A [data-enquiry="studio"] link opens the dialog with that interest fixed:
+// the "What's it for?" field is hidden and the value is sent as-is. A bare
+// [data-enquiry] link shows the field instead. Posts to /api/enquiry. The
+// links point at /contact, so without this script (or without <dialog>
+// support) they still go somewhere useful.
 (function () {
   var dialog = document.getElementById('enquiry');
   if (!dialog || typeof dialog.showModal !== 'function') return;
@@ -18,7 +20,15 @@
     e.preventDefault();
     opener = trigger;
     var interest = form.elements.interest;
-    if (interest) interest.value = trigger.getAttribute('data-enquiry') || 'studio';
+    if (interest) {
+      // A preset that matches an option is fixed: the field is hidden, so
+      // what the visitor clicked is what gets sent.
+      var preset = trigger.getAttribute('data-enquiry');
+      var fixed = !!preset && [].some.call(interest.options, function (o) { return o.value === preset; });
+      interest.value = fixed ? preset : 'studio';
+      var field = form.querySelector('[data-enquiry-interest]');
+      if (field) field.hidden = fixed;
+    }
     form.hidden = false;
     done.hidden = true;
     status.textContent = '';

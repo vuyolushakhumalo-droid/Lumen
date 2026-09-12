@@ -205,9 +205,6 @@ main > section:not(.hero), footer{content-visibility:auto; contain-intrinsic-siz
   .billtoggle{display:inline-flex;align-items:center;gap:4px;padding:5px;border-radius:980px;border:1px solid var(--line-2);background:rgba(255,255,255,.02);margin-bottom:10px}
   .billtoggle button{font-family:var(--font);font-size:14px;font-weight:500;color:var(--grey);background:transparent;border:none;border-radius:980px;padding:9px 20px;cursor:pointer;transition:.25s}
   .billtoggle button.on{color:#04141B;background:var(--cyan)}
-  .plan.soon{opacity:.72}
-  .plan.soon .price .amt{color:var(--grey)}
-  .soonpill{position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:12.5px;letter-spacing:.03em;background:rgba(255,255,255,.09);color:var(--ink-2);padding:6px 16px;border-radius:980px;font-weight:600;white-space:nowrap;border:1px solid var(--line-2)}
   .trialpill{display:inline-block;font-size:13.5px;color:var(--cyan);background:rgba(95,224,255,.07);border:1px solid rgba(95,224,255,.22);padding:9px 20px;border-radius:980px}
   .savepill{display:inline-block;font-size:12.5px;color:var(--cyan);background:rgba(95,224,255,.08);border:1px solid rgba(95,224,255,.2);padding:5px 13px;border-radius:980px;margin-left:10px}
   .peryr{font-size:13px;color:var(--grey-dim);margin-top:-24px;margin-bottom:24px;min-height:18px}
@@ -532,7 +529,6 @@ html:not(.js) .sc-preview img[data-src]{display:none}
 .sg-media picture,.sg-media img{position:absolute; inset:0; width:100%; height:100%}
 .sg-media img{object-fit:cover}
 .sg-tile figcaption{margin-top:14px; font-size:15px; color:var(--grey); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.prices.one{grid-template-columns:minmax(0,420px); justify-content:center}
 
 @media(max-width:920px){
   .studio-inner{grid-template-columns:1fr; gap:52px; padding:92px 0}
@@ -867,20 +863,20 @@ document.documentElement.classList.add('js', 'js-motion');
       <div class="center reveal" style="margin-bottom:6px">
         <span class="eyebrow">Two ways to build</span>
         <h2>Your site, your way.</h2>
-        <p class="sub">Have a team handle everything, or steer an intelligence that builds while you watch. Either way, the result is a fast, beautiful site you own.</p>
+        <p class="sub">Have our team build it with you, or steer an intelligence that builds while you watch. Either way, the result is a fast, beautiful site you own.</p>
       </div>
       <div class="paths">
         <div class="path reveal">
           <div class="path-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 4 6v6c0 5 3.4 7.7 8 10 4.6-2.3 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
           </div>
-          <div class="tag">Done for you &middot; coming soon</div>
-          <h3>We build it and run it.</h3>
-          <p class="desc">A dedicated builder takes your brief and delivers a finished site — design, copy, launch, and everything after. Send changes by message; we ship them.</p>
+          <div class="tag">Studio &middot; by enquiry</div>
+          <h3>We build it with you, by hand.</h3>
+          <p class="desc">For projects that need more than a generated site, our team designs and builds it with you. Tell us about it and we’ll reply by email.</p>
           <ul>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Custom design built to your brand, never a template</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Hosting, domain, SSL and updates all handled</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Unlimited changes, same-day on most edits</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Cinematic motion generated sites can’t do</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Your photography and footage, directed in</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Multi-page, custom sections, integrations</li>
           </ul>
         </div>
         <div class="path reveal">
@@ -893,7 +889,7 @@ document.documentElement.classList.add('js', 'js-motion');
           <ul>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>From idea to live site in minutes</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Edit by conversation — say it, see it</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Hand any project to our team to finish or run</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Hand any project to our team to finish</li>
           </ul>
         </div>
       </div>
@@ -1080,24 +1076,6 @@ document.documentElement.classList.add('js', 'js-motion');
           </figure>
         </div>
       </div>
-
-      <div class="prices one" style="margin-top:96px">
-        <div class="plan soon reveal">
-          <span class="soonpill">Coming soon</span>
-          <div class="pn">Done for you</div>
-          <div class="pd">We design, build, launch and run your site. You just send changes.</div>
-          <div class="price"><span class="amt" data-m="149" data-plan="done-for-you">£149</span><span class="per">/ month</span></div>
-          <ul>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Dedicated builder + custom design</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Managed site, up to 10 pages</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Change requests shipped within 2 business days</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Hosting, domain, SSL and updates handled</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Support within 1 business day</li>
-          </ul>
-          <a class="btn btn-ghost" href="/contact">Join the waitlist</a>
-        </div>
-      </div>
-      <p class="center grey reveal" style="margin-top:22px; font-size:14px">Done for you launches soon &mdash; join the waitlist and we&rsquo;ll tell you first.</p>
     </div>
   </section>
 
@@ -1130,7 +1108,7 @@ document.documentElement.classList.add('js', 'js-motion');
       </div>
       <div class="foot-col">
         <h5>Build</h5>
-        <a href="#build">Done for you</a>
+        <a href="#studio">Studio</a>
         <a href="#build">Built by AI</a>
         <a href="#process">How it works</a>
         <a href="#pricing">Pricing</a>
@@ -1404,8 +1382,9 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
 })();
 </script>
 
-<!-- Enquiry form for Studio / Done for you. Opened by js/enquiry.js from
-     any [data-enquiry] link, pre-set to that link's value. -->
+<!-- Enquiry form for Studio. Opened by js/enquiry.js from any [data-enquiry]
+     link. A link with a value (data-enquiry="studio") fixes the interest and
+     hides the "What's it for?" field. -->
 <dialog class="enquiry" id="enquiry" aria-labelledby="enquiryTitle">
   <div class="enquiry-body">
     <button class="enquiry-close" type="button" data-enquiry-close aria-label="Close">
@@ -1416,10 +1395,9 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
       <p class="intro">A few lines is plenty — what you’re making, and roughly when. We’ll reply by email.</p>
       <div class="field"><label for="enqName">Name</label><input id="enqName" name="name" type="text" autocomplete="name" required maxlength="120"></div>
       <div class="field"><label for="enqEmail">Email</label><input id="enqEmail" name="email" type="email" autocomplete="email" required maxlength="200"></div>
-      <div class="field"><label for="enqInterest">What’s it for?</label>
+      <div class="field" data-enquiry-interest><label for="enqInterest">What’s it for?</label>
         <select id="enqInterest" name="interest">
           <option value="studio">Studio — built with you, by hand</option>
-          <option value="done_for_you">Done for you</option>
           <option value="other">Something else</option>
         </select>
       </div>
