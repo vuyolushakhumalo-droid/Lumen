@@ -585,7 +585,7 @@ html:not(.js) .sc-preview img[data-src]{display:none}
 document.documentElement.classList.add('js', 'js-motion');
 // Nothing below the hero loads before the page has painted: Studio motion
 // and the enquiry form load as the Studio section approaches the viewport, and
-// Ray once the page has loaded and the browser is idle. Until enquiry.js
+// Ray on the first interaction (or 6s after load). Until enquiry.js
 // arrives the Studio button is a plain link to /contact.
 (function () {
   function add(srcs) {
@@ -597,6 +597,14 @@ document.documentElement.classList.add('js', 'js-motion');
     });
   }
   function idle(fn) { if (window.requestIdleCallback) requestIdleCallback(fn, { timeout: 3000 }); else setTimeout(fn, 1500); }
+  // Ray waits for the visitor's first interaction, or six seconds after load,
+  // so it never lands inside the window where LCP is measured.
+  function later(fn) {
+    var done = false, events = ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'scroll', 'keydown'];
+    function run() { if (done) return; done = true; events.forEach(function (e) { window.removeEventListener(e, run); }); fn(); }
+    events.forEach(function (e) { window.addEventListener(e, run, { passive: true }); });
+    setTimeout(run, 6000);
+  }
   var studioLoaded = false;
   function loadStudio() {
     if (studioLoaded) return;
@@ -604,7 +612,7 @@ document.documentElement.classList.add('js', 'js-motion');
     add(['/js/gsap/gsap.min.js', '/js/gsap/SplitText.min.js', '/js/studio-motion.js', '/js/enquiry.js']);
   }
   window.addEventListener('load', function () {
-    idle(function () { add(['/ray.js']); });
+    later(function () { add(['/ray.js']); });
     var studio = document.getElementById('studio');
     if (!studio || !('IntersectionObserver' in window)) return idle(loadStudio);
     var io = new IntersectionObserver(function (entries) {

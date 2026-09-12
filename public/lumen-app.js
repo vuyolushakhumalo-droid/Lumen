@@ -89,11 +89,24 @@
     return libraryPromise;
   }
 
-  // Runs a task once the page has loaded and the browser is idle.
-  function whenIdle(fn) {
-    const run = () => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 4000 }) : setTimeout(fn, 1500));
-    if (document.readyState === 'complete') run();
-    else window.addEventListener('load', run, { once: true });
+  // Runs a task on the visitor's first interaction, or a few seconds after the
+  // page has loaded, whichever comes first. Keeps non-essential work out of the
+  // window where the page's loading speed (LCP) is measured.
+  function afterInteractionOrDelay(fn, delay = 6000) {
+    let done = false;
+    const events = ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'scroll', 'keydown'];
+    const run = () => {
+      if (done) return;
+      done = true;
+      events.forEach((e) => window.removeEventListener(e, run));
+      fn();
+    };
+    const arm = () => {
+      events.forEach((e) => window.addEventListener(e, run, { passive: true }));
+      setTimeout(run, delay);
+    };
+    if (document.readyState === 'complete') arm();
+    else window.addEventListener('load', arm, { once: true });
   }
 
   Lumen.init = function () {
@@ -218,8 +231,8 @@
       try { s = await Lumen.session(); } catch (e) { /* offline etc. */ }
     } else {
       // Signed out: there is nothing to look up. Error monitoring still
-      // starts, just off the critical path.
-      whenIdle(() => { loadConfig().catch(() => {}); });
+      // starts, just after the page has finished loading and been used.
+      afterInteractionOrDelay(() => { loadConfig().catch(() => {}); });
     }
 
     document.querySelectorAll('.signin').forEach((el) => {
