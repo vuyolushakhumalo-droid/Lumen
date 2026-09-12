@@ -17,10 +17,15 @@
 <!-- Self-hosted Inter, variable: this one file carries every weight the page
      uses, regular through bold, so a single preload covers them all. -->
 <link rel="preload" href="/fonts/inter/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-<!-- The hero poster is the LCP image: start it before the parser reaches it. -->
-<link rel="preload" as="image" type="image/webp" fetchpriority="high"
+<!-- The hero poster is the LCP image: start it before the parser reaches it.
+     Phones get the full 16:9 frame, wider screens the 21:9 crop. The media
+     queries match the hero's <source>s, so only one of these is fetched. -->
+<link rel="preload" as="image" type="image/webp" fetchpriority="high" media="(max-width: 820px)"
       imagesrcset="/video/lintel-ad-poster-640.webp 640w, /video/lintel-ad-poster-960.webp 960w, /video/lintel-ad-poster-1280.webp 1280w"
-      imagesizes="(max-width: 820px) calc(100vw - 40px), 772px">
+      imagesizes="100vw">
+<link rel="preload" as="image" type="image/webp" fetchpriority="high" media="(min-width: 821px)"
+      imagesrcset="/video/lintel-ad-poster-wide-640.webp 640w, /video/lintel-ad-poster-wide-960.webp 960w, /video/lintel-ad-poster-wide-1280.webp 1280w, /video/lintel-ad-poster-wide-1920.webp 1920w"
+      imagesizes="100vw">
 <style>
 /* Inter 5.3 variable (SIL OFL 1.1, public/fonts/inter/OFL.txt), from @fontsource-variable/inter. */
 @font-face{font-family:'Inter'; font-style:normal; font-weight:100 900; font-display:swap;
@@ -346,133 +351,123 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 .voicehint .said{color:var(--ink);font-weight:500}
 .voice-unsupported{font-size:13px;color:var(--grey-dim)}
 
-/* ---------- hero video ---------- */
-/* 780px to line up with the showcase directly beneath it rather than
-   the 1180px hero container -- a wider video sitting on a narrower
-   browser frame reads as a mistake. Corners and shadow match .sc-frame. */
-.herovid{max-width:780px;margin:46px auto 0;padding:0 4px}
+/* ---------- hero film: cinematic band ---------- */
+/* Edge to edge, no card border: the band fades into the page at the top and
+   bottom. Wider screens crop the 16:9 film to 21:9 with object-fit; the wide
+   posters are cut from the same frame at the same position (50% 15%), so the
+   film fades in exactly over the still. Phones keep the full 16:9 frame. */
+.herovid{position:relative; z-index:2; margin:64px 0 0; padding:0}
 .herovid[hidden]{display:none}
-.herovid-frame{position:relative;border:1px solid var(--line,rgba(255,255,255,.09));border-radius:14px;
-  overflow:hidden;background:var(--surface,#0B0E13);box-shadow:0 30px 80px rgba(0,0,0,.45)}
-.herovid picture,.herovid .herovid-poster{display:block;width:100%;height:auto;aspect-ratio:16/9;
-  object-fit:cover;background:var(--surface,#0B0E13)}
+.herovid-frame{position:relative; overflow:hidden; aspect-ratio:21/9; background:var(--bg)}
+/* The layer the cursor lean moves (js/studio-motion.js). */
+.herovid-media{position:absolute; inset:0}
+.herovid picture{position:absolute; inset:0; display:block}
+/* 2% overscan is the room the lean moves in. */
+.herovid .herovid-poster,.herovid video{position:absolute; inset:0; display:block; width:100%; height:100%;
+  object-fit:cover; object-position:50% 15%; transform:scale(1.02); background:var(--bg)}
 /* The film sits over the poster and only fades in once it is actually playing. */
-.herovid video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;
-  opacity:0;transition:opacity .5s ease}
+.herovid video{opacity:0; transition:opacity .5s ease}
 .herovid.is-playing video,.herovid video[controls]{opacity:1}
-.herovid figcaption{font-size:13px;color:var(--grey-dim,#7C8697);text-align:center;margin:12px 0 0}
+.herovid-frame::before,.herovid-frame::after{content:''; position:absolute; left:0; right:0; z-index:1; pointer-events:none}
+.herovid-frame::before{top:0; height:24%; background:linear-gradient(to bottom, var(--bg), rgba(5,7,12,0))}
+.herovid-frame::after{bottom:0; height:36%; background:linear-gradient(to top, var(--bg), rgba(5,7,12,.6) 40%, rgba(5,7,12,0))}
+.herovid figcaption{position:absolute; left:clamp(20px,4vw,56px); bottom:clamp(14px,2.2vw,30px); z-index:2;
+  margin:0; font-size:12.5px; font-weight:500; letter-spacing:.02em; line-height:1.3; color:rgba(234,237,242,.66); text-align:left}
 /* Shown only when we are deliberately not autoplaying. */
-.herovid-play{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
-  border:0;padding:0;background:rgba(5,7,12,.32);color:#fff;cursor:pointer;transition:background .25s}
+.herovid-play{position:absolute; inset:0; z-index:3; display:none; align-items:center; justify-content:center;
+  border:0; padding:0; background:rgba(5,7,12,.32); color:#fff; cursor:pointer; transition:background .25s}
 .herovid-play:hover{background:rgba(5,7,12,.18)}
-.herovid-play svg{width:62px;height:62px;filter:drop-shadow(0 8px 26px rgba(0,0,0,.55))}
+.herovid-play svg{width:62px; height:62px; filter:drop-shadow(0 8px 26px rgba(0,0,0,.55))}
 .herovid[data-manual="1"] .herovid-play{display:flex}
-@media(max-width:560px){.herovid{margin-top:32px}}
+@media(max-width:820px){
+  .herovid{margin-top:44px}
+  .herovid-frame{aspect-ratio:16/9}
+  .herovid .herovid-poster,.herovid video{object-position:50% 50%; transform:none}
+  .herovid-frame::before{height:16%}
+  .herovid-frame::after{height:30%}
+}
 
-.showcase{max-width:780px;margin:56px auto 0;padding:0 4px}
+/* ---------- showcase: billboard ---------- */
+/* Full width to 1600px: 21:9 on wider screens, 4:5 on phones. Each slide is a
+   screenshot with a slow 8s Ken Burns drift, the headline (its words rise
+   from a mask on every slide once js/studio-motion.js has loaded) and the
+   Workshop chat card, which rises 12px and fades in 200ms after the headline.
+   The incoming slide fades in over the outgoing one, which stays opaque
+   underneath until the fade is done. */
+.showcase{position:relative; z-index:3; max-width:1600px; margin:104px auto 0}
+.sc-stage{position:relative; aspect-ratio:21/9; overflow:hidden; background:var(--surface)}
+.sc-slide{position:absolute; inset:0; opacity:0; z-index:0; text-align:left}
+.sc-slide.is-on{opacity:1; z-index:2; transition:opacity 1.2s ease}
+.sc-slide.is-leaving{opacity:1; z-index:1}
+.sc-shot{position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:cover; object-position:50% 30%;
+  transform:scale(1.04); transform-origin:var(--kb-origin, 30% 30%)}
+html:not(.js) .sc-shot[data-src]{display:none}
+.sc-slide.is-on .sc-shot,.sc-slide.is-leaving .sc-shot{animation:scKen 8s cubic-bezier(.35,0,.65,1) both}
+@keyframes scKen{from{transform:scale(1.04)}to{transform:scale(1.13) translate3d(var(--kb-x, -1.6%), var(--kb-y, -1.2%), 0)}}
+.showcase.is-paused .sc-shot{animation-play-state:paused}
+/* Restarts a slide's CSS animations when it comes in again. */
+.sc-reset .sc-shot,.sc-reset .sc-chat,.sc-reset .sc-prog::after{animation:none !important}
+.sc-slide::before{content:''; position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:linear-gradient(90deg, rgba(5,7,12,.97) 0%, rgba(5,7,12,.94) 32%, rgba(5,7,12,.62) 48%, rgba(5,7,12,.12) 64%, rgba(5,7,12,0) 74%),
+    linear-gradient(to bottom, rgba(5,7,12,.55), rgba(5,7,12,0) 22%),
+    linear-gradient(to top, rgba(5,7,12,.55), rgba(5,7,12,0) 28%)}
+/* The screenshot's Ken Burns drift puts it on its own compositing layer, and
+   where the stage edge falls between device pixels (phones at 1.75x) that
+   layer's top row showed as a bright line above the scrim. Fading each slide's
+   top 3px out, in the slide's own frame, hides the row however it rounds. */
+.sc-slide{-webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 3px); mask-image:linear-gradient(to bottom, transparent 0, #000 3px)}
+.sc-copy{position:absolute; top:0; bottom:0; left:0; z-index:2; width:min(50%, 700px);
+  display:flex; flex-direction:column; justify-content:center; align-items:flex-start;
+  gap:clamp(20px,2.4vw,34px); padding:0 clamp(24px,5.5vw,96px)}
+.sc-head{margin:0; font-size:clamp(30px,3.9vw,60px); font-weight:600; line-height:1.04; letter-spacing:-0.042em; color:var(--ink)}
+.sc-head b{color:var(--hero-accent); font-weight:600}
 
-.sc-frame{border:1px solid var(--line,rgba(255,255,255,.09));border-radius:14px;overflow:hidden;
-  background:var(--surface,#0B0E13);box-shadow:0 30px 80px rgba(0,0,0,.45)}
-
-.sc-chrome{display:flex;align-items:center;gap:7px;padding:10px 14px;
-  border-bottom:1px solid var(--line,rgba(255,255,255,.09));background:rgba(255,255,255,.02)}
-.sc-dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.14);flex:none}
-.sc-url{flex:1;text-align:center;font-size:12.5px;color:var(--grey-dim,#7C8697);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-.sc-stage{position:relative;aspect-ratio:1200/750;background:var(--surface,#0B0E13)}
-.sc-panel{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  opacity:0;transition:opacity .8s ease;pointer-events:none}
-.sc-panel.is-on{opacity:1;pointer-events:auto}
-
-/* intro panel */
-.sc-intro{display:flex;align-items:center;justify-content:center;
-  object-fit:unset;padding:clamp(14px,2.6vw,30px);overflow:hidden}
-.sc-intro::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(70% 70% at 30% 40%,var(--hero-glow,rgba(95,224,255,.14)),transparent 72%)}
-
-.sc-grid{position:relative;z-index:1;width:100%;height:100%;
-  display:grid;grid-template-columns:0.85fr 1.15fr;gap:clamp(12px,2.4vw,26px);align-items:center}
-
-/* ---- left ---- */
-.sc-left{text-align:left}
-.sc-head{margin:0 0 clamp(12px,2vw,20px);font-size:clamp(16px,2.5vw,27px);
-  font-weight:600;line-height:1.22;letter-spacing:-.02em;color:var(--ink,#F5F6F9)}
-.sc-head b{color:var(--hero-accent,#5FE0FF);font-weight:600}
-
-.sc-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
-  gap:clamp(6px,1.1vw,11px)}
-.sc-steps li{display:flex;align-items:center;gap:9px;
-  font-size:clamp(11px,1.25vw,13.5px);color:var(--grey,#96A0AD);line-height:1.3}
-.sc-steps b{color:var(--ink,#F5F6F9);font-weight:600}
-.sc-sico{width:clamp(22px,2.4vw,28px);height:clamp(22px,2.4vw,28px);flex:none;
-  display:flex;align-items:center;justify-content:center;border-radius:8px;
-  color:var(--hero-accent,#5FE0FF);background:rgba(95,224,255,.09);
-  border:1px solid rgba(95,224,255,.16)}
-.sc-sico svg{width:55%;height:55%}
-
-/* ---- right: layered mock ---- */
-.sc-right{position:relative;height:100%;display:flex;align-items:center}
-.sc-mock{position:relative;width:100%;padding-bottom:14%}
-
-.sc-preview{border:1px solid var(--line,rgba(255,255,255,.12));border-radius:12px;
-  overflow:hidden;background:#0B0E13;box-shadow:0 24px 60px rgba(0,0,0,.55)}
-.sc-ptop{display:flex;align-items:center;gap:5px;padding:6px 10px;
-  border-bottom:1px solid var(--line,rgba(255,255,255,.09));background:rgba(255,255,255,.02)}
-.sc-ptop i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.16)}
-.sc-ptop span{flex:1;text-align:center;font-size:clamp(8px,.85vw,10px);color:var(--grey-dim,#7C8697)}
-.sc-preview img{display:block;width:100%;height:auto;aspect-ratio:1200/750}
-html:not(.js) .sc-preview img[data-src]{display:none}
-
-.sc-chat{position:absolute;left:-6%;bottom:-4%;z-index:2;width:min(74%,330px);
-  padding:clamp(9px,1.3vw,14px);border-radius:13px;
-  border:1px solid rgba(95,224,255,.20);background:rgba(11,14,19,.92);
-  backdrop-filter:blur(8px);box-shadow:0 20px 50px rgba(0,0,0,.6)}
-.sc-chat-top{display:flex;align-items:center;gap:7px;margin-bottom:8px}
-.sc-chat-top img{height:clamp(11px,1.2vw,14px);width:auto}
-.sc-chat-top span{font-size:clamp(9.5px,1vw,12px);font-weight:600;color:var(--ink,#F5F6F9)}
-
-.sc-ask{margin:0 0 7px;font-size:clamp(9px,.95vw,11px);color:var(--grey-dim,#7C8697)}
-.sc-bubble{padding:7px 10px;border-radius:9px 9px 9px 3px;
-  background:rgba(255,255,255,.06);border:1px solid var(--line,rgba(255,255,255,.09));
-  font-size:clamp(9.5px,1vw,12px);color:var(--ink,#F5F6F9);line-height:1.4}
-.sc-reply{margin-top:8px;padding:8px 10px;border-radius:9px;
-  background:rgba(95,224,255,.08);border:1px solid rgba(95,224,255,.18)}
-.sc-reply span:first-child{display:block;font-size:clamp(9.5px,1vw,12px);color:var(--ink,#F5F6F9)}
-.sc-prog{display:block;height:3px;margin-top:7px;border-radius:3px;
-  background:rgba(255,255,255,.12);overflow:hidden;position:relative}
-.sc-prog::after{content:"";position:absolute;inset:0;border-radius:3px;
-  background:var(--hero-accent,#5FE0FF);transform:translateX(-100%)}
-.sc-intro.is-on .sc-prog::after{animation:scSweep 2.4s ease .8s forwards}
+.sc-chat{width:min(100%,380px); padding:14px 16px 16px; border-radius:16px;
+  border:1px solid rgba(95,224,255,.22); background:rgba(9,12,18,.9); box-shadow:0 30px 70px -24px rgba(0,0,0,.85)}
+.sc-slide.is-on .sc-chat{animation:scCard .8s cubic-bezier(.16,1,.3,1) .2s both}
+@keyframes scCard{from{opacity:0; transform:translateY(12px)}to{opacity:1; transform:none}}
+.sc-chat-top{display:flex; align-items:center; gap:8px; margin-bottom:10px}
+.sc-chat-top img{height:14px; width:auto}
+.sc-chat-top span{font-size:12.5px; font-weight:600; color:var(--ink)}
+.sc-ask{margin:0 0 8px; font-size:12px; color:var(--grey-dim)}
+.sc-bubble{padding:9px 12px; border-radius:11px 11px 11px 3px; background:rgba(255,255,255,.06);
+  border:1px solid var(--line); font-size:13.5px; color:var(--ink); line-height:1.45}
+.sc-reply{margin-top:9px; padding:9px 12px; border-radius:11px; background:rgba(95,224,255,.08); border:1px solid rgba(95,224,255,.18)}
+.sc-reply span:first-child{display:block; font-size:13px; color:var(--ink)}
+.sc-prog{display:block; position:relative; height:3px; margin-top:8px; border-radius:3px; background:rgba(255,255,255,.12); overflow:hidden}
+.sc-prog::after{content:''; position:absolute; inset:0; border-radius:3px; background:var(--hero-accent); transform:translateX(-100%)}
+.sc-slide.is-on .sc-prog::after{animation:scSweep 2.4s ease 1s forwards}
+.sc-slide.is-leaving .sc-prog::after{transform:translateX(-6%)}
 @keyframes scSweep{to{transform:translateX(-6%)}}
 
-/* entrance */
-.sc-left,.sc-right{opacity:0;transform:translateY(8px)}
-.sc-intro.is-on .sc-left{animation:scRise .8s ease forwards}
-.sc-intro.is-on .sc-right{animation:scRise .8s ease .18s forwards}
-@keyframes scRise{to{opacity:1;transform:none}}
-
-.sc-bar{display:flex;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap;min-height:24px}
-.sc-label{font-size:13px;color:var(--grey,#96A0AD);letter-spacing:.02em}
-.sc-dots{display:flex;gap:8px;margin:0 auto}
-.sc-pip{width:7px;height:7px;border-radius:50%;border:0;padding:0;cursor:pointer;
-  background:rgba(255,255,255,.18);transition:.3s}
-.sc-pip[aria-selected="true"]{background:var(--hero-accent,#5FE0FF);
-  box-shadow:0 0 10px var(--hero-glow,rgba(95,224,255,.5))}
-.sc-visit{font-size:13.5px;color:var(--hero-accent,#5FE0FF);text-decoration:none}
+.sc-bar{display:flex; align-items:center; gap:16px; flex-wrap:wrap; min-height:24px; margin-top:16px; padding:0 clamp(20px,5.5vw,96px)}
+.sc-label{font-size:13px; color:var(--grey); letter-spacing:.02em}
+.sc-dots{display:flex; gap:2px; margin:0 auto}
+/* 24px targets around a 7px dot. */
+.sc-pip{position:relative; width:24px; height:24px; border:0; padding:0; background:none; cursor:pointer; border-radius:50%}
+.sc-pip::after{content:''; position:absolute; left:50%; top:50%; width:7px; height:7px; margin:-3.5px 0 0 -3.5px;
+  border-radius:50%; background:rgba(255,255,255,.22); transition:background .3s, box-shadow .3s}
+.sc-pip:hover::after{background:rgba(255,255,255,.45)}
+.sc-pip[aria-selected="true"]::after{background:var(--hero-accent); box-shadow:0 0 10px var(--hero-glow)}
+.sc-visit{font-size:13.5px; color:var(--hero-accent); text-decoration:none}
 .sc-visit:hover{text-decoration:underline}
 .sc-visit[hidden]{display:none}
 
-@media(max-width:720px){
-  .showcase{margin-top:38px}
+@media(min-width:1640px){.sc-stage{border-radius:24px}}
+@media(max-width:820px){
+  .showcase{margin-top:72px}
+  .sc-stage{aspect-ratio:4/5}
+  .sc-shot{object-position:88% 30%; transform-origin:70% 40%}
+  .sc-slide::before{background:linear-gradient(to bottom, rgba(5,7,12,.96) 0%, rgba(5,7,12,.86) 30%, rgba(5,7,12,.2) 46%, rgba(5,7,12,.2) 58%, rgba(5,7,12,.88) 74%, rgba(5,7,12,.97) 100%)}
+  .sc-copy{right:0; width:auto; justify-content:space-between; padding:28px 20px 20px}
+  .sc-head{font-size:clamp(28px,8.4vw,40px)}
+  .sc-chat{width:100%}
   .sc-bar{justify-content:center}
   .sc-dots{margin:0}
-  .sc-logo{height:42px}
 }
-
 @media(prefers-reduced-motion:reduce){
-  .sc-panel{transition:none}
-  .sc-logo,.sc-line{opacity:1;transform:none;animation:none}
+  .sc-slide.is-on{transition:none}
+  .sc-prog::after{animation:none !important; transform:translateX(-6%)}
 }
 
 /* ---------- masked word reveal (js/studio-motion.js) ---------- */
@@ -579,10 +574,12 @@ html:not(.js) .sc-preview img[data-src]{display:none}
 <script>
 // Switches on the hero headline's CSS reveal (without JS it stays static text).
 document.documentElement.classList.add('js', 'js-motion');
-// Nothing below the hero loads before the page has painted: Studio motion
-// and the enquiry form load as the Studio section approaches the viewport, and
-// Ray on the first interaction (or 6s after load). Until enquiry.js
-// arrives the Studio button is a plain link to /contact.
+// Nothing below the hero loads before the page has painted. The motion
+// scripts (gsap, SplitText, studio-motion) and the enquiry form load on the
+// visitor's first interaction or as the Studio section approaches the
+// viewport, whichever comes first; Ray on the first interaction (or 6s after
+// load). Until enquiry.js arrives the Studio button is a plain link to
+// /contact.
 (function () {
   function add(srcs) {
     srcs.forEach(function (src) {
@@ -593,13 +590,18 @@ document.documentElement.classList.add('js', 'js-motion');
     });
   }
   function idle(fn) { if (window.requestIdleCallback) requestIdleCallback(fn, { timeout: 3000 }); else setTimeout(fn, 1500); }
+  function firstInteraction(fn) {
+    var events = ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'scroll', 'keydown'];
+    function run() { events.forEach(function (e) { window.removeEventListener(e, run); }); fn(); }
+    events.forEach(function (e) { window.addEventListener(e, run, { passive: true }); });
+  }
   // Ray waits for the visitor's first interaction, or six seconds after load,
   // so it never lands inside the window where LCP is measured.
   function later(fn) {
-    var done = false, events = ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'scroll', 'keydown'];
-    function run() { if (done) return; done = true; events.forEach(function (e) { window.removeEventListener(e, run); }); fn(); }
-    events.forEach(function (e) { window.addEventListener(e, run, { passive: true }); });
-    setTimeout(run, 6000);
+    var done = false;
+    function once() { if (!done) { done = true; fn(); } }
+    firstInteraction(once);
+    setTimeout(once, 6000);
   }
   var studioLoaded = false;
   function loadStudio() {
@@ -609,6 +611,12 @@ document.documentElement.classList.add('js', 'js-motion');
   }
   window.addEventListener('load', function () {
     later(function () { add(['/ray.js']); });
+    // The hero band's cursor lean and parallax and the showcase headline reveal
+    // are in studio-motion.js too. The hero is on screen from the start, so
+    // "near the viewport" would put these scripts inside the LCP window; they
+    // come on the first interaction instead, which each of those effects needs
+    // anyway (a pointer to lean toward, a scroll to reach the showcase).
+    firstInteraction(loadStudio);
     var studio = document.getElementById('studio');
     if (!studio || !('IntersectionObserver' in window)) return idle(loadStudio);
     var io = new IntersectionObserver(function (entries) {
@@ -669,25 +677,35 @@ document.documentElement.classList.add('js', 'js-motion');
         </a>
       </div>
 
-      <!-- The poster is the LCP element: a small WebP, visible from the first
-           paint, fetched at high priority with explicit dimensions. The film
-           is attached on the visitor's first interaction, and never on
-           Save-Data or 3G-and-slower connections. -->
-      <figure class="herovid" id="heroVideo">
-        <div class="herovid-frame">
+    </div>
+
+    <!-- HERO FILM: a cinematic band, edge to edge. The poster is the LCP
+         element: a small WebP visible from the first paint, fetched at high
+         priority with explicit dimensions; wider screens get a 21:9 crop of
+         the same frame, phones the full 16:9. The film is attached on the
+         visitor's first interaction, and never on Save-Data or 3G-and-slower
+         connections. The lean toward the cursor (desktop) and the scroll
+         parallax come from js/studio-motion.js, loaded on first interaction. -->
+    <figure class="herovid" id="heroVideo" data-cursor-zone data-band-parallax data-speed="0.4">
+      <div class="herovid-frame" data-cursor-layers>
+        <div class="herovid-media" data-layer="0.12">
           <picture>
-            <source type="image/webp"
+            <source media="(min-width: 821px)" type="image/webp" width="1920" height="823"
+                    srcset="/video/lintel-ad-poster-wide-640.webp 640w, /video/lintel-ad-poster-wide-960.webp 960w, /video/lintel-ad-poster-wide-1280.webp 1280w, /video/lintel-ad-poster-wide-1920.webp 1920w"
+                    sizes="100vw">
+            <source type="image/webp" width="1280" height="720"
                     srcset="/video/lintel-ad-poster-640.webp 640w, /video/lintel-ad-poster-960.webp 960w, /video/lintel-ad-poster-1280.webp 1280w"
-                    sizes="(max-width: 820px) calc(100vw - 40px), 772px">
+                    sizes="100vw">
             <img class="herovid-poster" src="/video/lintel-ad-poster.jpg" width="1280" height="720" alt="" fetchpriority="high">
           </picture>
           <video id="heroVideoEl" muted playsinline preload="none" aria-label="Lintel in ten seconds"></video>
-          <button class="herovid-play" id="heroVideoPlay" type="button" aria-label="Play the video">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-          </button>
         </div>
-        <figcaption>Lintel in ten seconds</figcaption>
-      </figure>
+        <button class="herovid-play" id="heroVideoPlay" type="button" aria-label="Play the video">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      </div>
+      <figcaption>Lintel in ten seconds</figcaption>
+    </figure>
       <script>
       (function(){
         var fig = document.getElementById('heroVideo');
@@ -745,88 +763,95 @@ document.documentElement.classList.add('js', 'js-motion');
         // 1.45 MB download and its decode inside the window where LCP is
         // measured, and in production that pushed LCP past the poster.
         events.forEach(function(e){ window.addEventListener(e, start, { passive:true }); });
+
+        // Off screen, the film pauses: decoding it takes CPU the billboard
+        // below needs. It picks up again when the band comes back into view.
+        if('IntersectionObserver' in window){
+          new IntersectionObserver(function(entries){
+            if(!started) return;
+            if(entries[0].isIntersecting) play(); else v.pause();
+          }).observe(fig);
+        }
       })();
       </script>
 
-      <div class="showcase" id="showcase">
-        <div class="sc-frame">
-          <div class="sc-chrome">
-            <span class="sc-dot"></span><span class="sc-dot"></span><span class="sc-dot"></span>
-            <div class="sc-url"><span id="scUrl">lintelapp.co.uk</span></div>
-          </div>
-
-          <div class="sc-stage">
-
-            <!-- intro: logo fades in, then the line -->
-            <div class="sc-panel sc-intro is-on" data-url="lintelapp.co.uk" data-label="">
-              <div class="sc-grid">
-
-                <!-- left: the pitch -->
-                <div class="sc-left">
-                  <p class="sc-head">Describe it.<br><b>Lintel builds it.</b><br>You launch it.</p>
-
-                  <ol class="sc-steps">
-                    <li><span class="sc-sico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.7-.8L3 21l1.9-5.2A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg></span><b>Describe</b> your idea</li>
-                    <li><span class="sc-sico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/></svg></span><b>Lintel</b> builds it</li>
-                    <li><span class="sc-sico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span><b>Refine</b> by talking</li>
-                    <li><span class="sc-sico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18Z"/></svg></span><b>Go live</b> in a click</li>
-                  </ol>
-                </div>
-
-                <!-- right: layered mock -->
-                <div class="sc-right">
-                  <div class="sc-mock">
-
-                    <div class="sc-chat">
-                      <div class="sc-chat-top">
-                        <img src="/mark-white.png" alt="" width="106" height="96">
-                        <span>Lintel Workshop</span>
-                      </div>
-                      <p class="sc-ask">What would you like to build?</p>
-                      <div class="sc-bubble">A calm site for my garden centre, with opening hours and a visit page.</div>
-                      <div class="sc-reply">
-                        <span>Got it — building your site now…</span>
-                        <span class="sc-prog"></span>
-                      </div>
-                    </div>
-
-                    <div class="sc-preview">
-                      <div class="sc-ptop"><i></i><i></i><i></i><span>fern-field.lintelsites.com</span></div>
-                      <img data-src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel"
-                           width="1200" height="750">
-                      <noscript><img src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel" width="1200" height="750" loading="lazy"></noscript>
-                    </div>
-
-                  </div>
-                </div>
-
-              </div>
+    <!-- SHOWCASE: a billboard, full width to 1600px. Screenshots load only as
+         the section comes on screen (the current slide and the next). The
+         carousel script is at the end of the page; the headline reveal is in
+         js/studio-motion.js. -->
+    <div class="showcase" id="showcase" data-showcase role="region" aria-roledescription="carousel" aria-label="Sites built with Lintel">
+      <div class="sc-stage">
+        <div class="sc-slide is-on" id="scSlide0" role="tabpanel" aria-roledescription="slide"
+             data-label="An independent nursery" data-href="https://fern-field.lintelsites.com">
+          <img class="sc-shot" decoding="async" data-src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel" width="1200" height="750">
+          <noscript><img class="sc-shot" src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel" width="1200" height="750" loading="lazy"></noscript>
+          <div class="sc-copy">
+            <p class="sc-head">Describe it.<br><b>Lintel builds it.</b><br>You launch it.</p>
+            <div class="sc-chat">
+              <div class="sc-chat-top"><img src="/mark-white.png" alt="" width="106" height="96"><span>Lintel Workshop</span></div>
+              <p class="sc-ask">What would you like to build?</p>
+              <div class="sc-bubble">A calm site for my garden centre, with opening hours and a visit page.</div>
+              <div class="sc-reply"><span>Got it — building your site now…</span><span class="sc-prog"></span></div>
             </div>
-
-            <img class="sc-panel" data-src="/img/demo-fico.jpg" alt="A restaurant website built with Lintel"
-                 width="1200" height="750" data-url="fico.lintelsites.com"
-                 data-href="https://fico.lintelsites.com" data-label="A neighbourhood restaurant">
-            <img class="sc-panel" data-src="/img/demo-redwell.jpg" alt="A plumbing website built with Lintel"
-                 width="1200" height="750" data-url="redwell-plumbing-heating.lintelsites.com"
-                 data-href="https://redwell-plumbing-heating.lintelsites.com" data-label="A local plumber">
-            <img class="sc-panel" data-src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel"
-                 width="1200" height="750" data-url="fern-field.lintelsites.com"
-                 data-href="https://fern-field.lintelsites.com" data-label="An independent nursery">
-
-            <img class="sc-panel" data-src="/img/shot-builder.jpg" alt="The Lintel builder, editing a site by chat"
-                 width="1200" height="750" data-url="lintelapp.co.uk/builder"
-                 data-label="Describe a change — watch it happen">
-            <img class="sc-panel" data-src="/img/shot-dashboard.jpg" alt="The Lintel dashboard listing published sites"
-                 width="1200" height="750" data-url="lintelapp.co.uk/dashboard"
-                 data-label="Every site, live or draft, in one place">
           </div>
         </div>
-
-        <div class="sc-bar">
-          <span class="sc-label" id="scLabel"></span>
-          <div class="sc-dots" id="scDots" role="tablist" aria-label="Choose a slide"></div>
-          <a class="sc-visit" id="scVisit" href="#" target="_blank" rel="noopener" hidden>View live site ↗</a>
+        <div class="sc-slide" id="scSlide1" role="tabpanel" aria-roledescription="slide" aria-hidden="true"
+             data-label="A neighbourhood restaurant" data-href="https://fico.lintelsites.com" style="--kb-origin:70% 20%; --kb-x:1.6%">
+          <img class="sc-shot" decoding="async" data-src="/img/demo-fico.jpg" alt="A restaurant website built with Lintel" width="1200" height="750">
+          <div class="sc-copy">
+            <p class="sc-head">Describe it.<br><b>Lintel builds it.</b><br>You launch it.</p>
+            <div class="sc-chat">
+              <div class="sc-chat-top"><img src="/mark-white.png" alt="" width="106" height="96"><span>Lintel Workshop</span></div>
+              <p class="sc-ask">What would you like to build?</p>
+              <div class="sc-bubble">A site for my neighbourhood trattoria, with the menu, our story and table booking.</div>
+              <div class="sc-reply"><span>Got it — building your site now…</span><span class="sc-prog"></span></div>
+            </div>
+          </div>
         </div>
+        <div class="sc-slide" id="scSlide2" role="tabpanel" aria-roledescription="slide" aria-hidden="true"
+             data-label="A local plumber" data-href="https://redwell-plumbing-heating.lintelsites.com">
+          <img class="sc-shot" decoding="async" data-src="/img/demo-redwell.jpg" alt="A plumbing website built with Lintel" width="1200" height="750">
+          <div class="sc-copy">
+            <p class="sc-head">Describe it.<br><b>Lintel builds it.</b><br>You launch it.</p>
+            <div class="sc-chat">
+              <div class="sc-chat-top"><img src="/mark-white.png" alt="" width="106" height="96"><span>Lintel Workshop</span></div>
+              <p class="sc-ask">What would you like to build?</p>
+              <div class="sc-bubble">A site for my plumbing business, with our services, the areas we cover and call-outs.</div>
+              <div class="sc-reply"><span>Got it — building your site now…</span><span class="sc-prog"></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="sc-slide" id="scSlide3" role="tabpanel" aria-roledescription="slide" aria-hidden="true"
+             data-label="Describe a change — watch it happen" style="--kb-origin:70% 20%; --kb-x:1.6%">
+          <img class="sc-shot" decoding="async" data-src="/img/shot-builder.jpg" alt="The Lintel builder, editing a site by chat" width="1200" height="750">
+          <div class="sc-copy">
+            <p class="sc-head">Describe it.<br><b>Lintel builds it.</b><br>You launch it.</p>
+            <div class="sc-chat">
+              <div class="sc-chat-top"><img src="/mark-white.png" alt="" width="106" height="96"><span>Lintel Workshop</span></div>
+              <p class="sc-ask">What would you like to change?</p>
+              <div class="sc-bubble">Make the header calmer and add a booking button.</div>
+              <div class="sc-reply"><span>Updating your site now…</span><span class="sc-prog"></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="sc-slide" id="scSlide4" role="tabpanel" aria-roledescription="slide" aria-hidden="true"
+             data-label="Every site, live or draft, in one place">
+          <img class="sc-shot" decoding="async" data-src="/img/shot-dashboard.jpg" alt="The Lintel dashboard listing published sites" width="1200" height="750">
+          <div class="sc-copy">
+            <p class="sc-head">Describe it.<br><b>Lintel builds it.</b><br>You launch it.</p>
+            <div class="sc-chat">
+              <div class="sc-chat-top"><img src="/mark-white.png" alt="" width="106" height="96"><span>Lintel Workshop</span></div>
+              <p class="sc-ask">What would you like to build?</p>
+              <div class="sc-bubble">A site for my bakery, with the menu, our story and wholesale enquiries.</div>
+              <div class="sc-reply"><span>Got it — building your site now…</span><span class="sc-prog"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-bar">
+        <span class="sc-label" id="scLabel">An independent nursery</span>
+        <div class="sc-dots" id="scDots" role="tablist" aria-label="Choose a slide"></div>
+        <a class="sc-visit" id="scVisit" href="https://fern-field.lintelsites.com" target="_blank" rel="noopener">View live site ↗</a>
       </div>
     </div>
     <div class="reactor-stage">
@@ -1306,79 +1331,125 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
 })();
 </script>
 <script>
+// Showcase billboard. A slide fades in every 8s (no autoplay under reduced
+// motion), paused on mouse hover, while keyboard focus is inside, while less
+// than 40% is on screen, and while the tab is hidden; the time left carries
+// over. The Ken Burns drift, the chat card and the progress sweep are CSS,
+// restarted whenever a slide comes in; js/studio-motion.js listens for
+// "showcase:change" to raise the headline's words. The dots are a tablist:
+// arrow keys, Home and End move between slides.
 (function(){
   var wrap = document.getElementById('showcase');
   if(!wrap) return;
 
-  var panels = [].slice.call(wrap.querySelectorAll('.sc-panel'));
+  var slides = [].slice.call(wrap.querySelectorAll('.sc-slide'));
   var dots   = document.getElementById('scDots');
-  var urlEl  = document.getElementById('scUrl');
   var lblEl  = document.getElementById('scLabel');
   var visit  = document.getElementById('scVisit');
-  if(panels.length < 2 || !dots) return;
+  if(slides.length < 2 || !dots) return;
 
-  var i = 0, timer = null;
-  var INTRO = 5600, DWELL = 4200;
+  var DWELL = 8000, FADE = 1200;
   var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var i = 0, timer = null, due = 0, left = DWELL, leaveTimer = null;
+  var hovered = false, focused = false, visible = false, seen = false, onScreen = false;
 
-  // Screenshots load on demand: the preview once the showcase is on screen,
-  // and each panel as the carousel reaches it (current and next). loading=lazy
-  // alone wasn't enough: on a phone the showcase sits inside Chrome's
-  // eager-load distance, so ~600 KB of screenshots competed with the hero
-  // poster for the network before LCP.
-  var onScreen = false;
+  // Screenshots load on demand: the current slide and the next, once the
+  // showcase is on screen. loading=lazy alone wasn't enough: on a phone the
+  // showcase sits inside Chrome's eager-load distance, so the screenshots
+  // competed with the hero poster for the network before LCP.
   function hydrate(img){ if(img && img.getAttribute('data-src') && !img.getAttribute('src')) img.setAttribute('src', img.getAttribute('data-src')); }
-  function hydrateAround(n){ hydrate(panels[n]); hydrate(panels[(n + 1) % panels.length]); }
+  function hydrateAround(n){ hydrate(slides[n].querySelector('.sc-shot')); hydrate(slides[(n + 1) % slides.length].querySelector('.sc-shot')); }
 
-  panels.forEach(function(p, n){
+  slides.forEach(function(s, n){
     var b = document.createElement('button');
-    b.className = 'sc-pip'; b.type = 'button';
-    b.setAttribute('role','tab');
-    b.setAttribute('aria-selected', n === 0 ? 'true' : 'false');
-    b.setAttribute('aria-label', p.getAttribute('data-label') || 'Intro');
-    b.addEventListener('click', function(){ show(n); restart(); });
+    b.className = 'sc-pip'; b.type = 'button'; b.id = 'scTab' + n;
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-controls', s.id);
+    b.setAttribute('aria-label', (n + 1) + ' of ' + slides.length + ': ' + (s.getAttribute('data-label') || ''));
+    b.addEventListener('click', function(){ go(n); });
     dots.appendChild(b);
+    s.setAttribute('aria-labelledby', b.id);
   });
   var pips = [].slice.call(dots.children);
+  dots.addEventListener('keydown', function(e){
+    var n = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? i + 1
+          : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? i - 1
+          : e.key === 'Home' ? 0 : e.key === 'End' ? slides.length - 1 : null;
+    if(n === null) return;
+    e.preventDefault();
+    go(n);
+    pips[i].focus();
+  });
 
-  function show(n){
-    i = (n + panels.length) % panels.length;
-    if(onScreen) hydrateAround(i);
-    panels.forEach(function(p, k){ p.classList.toggle('is-on', k === i); });
-    pips.forEach(function(p, k){ p.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
-
-    var cur = panels[i];
-    urlEl.textContent = cur.getAttribute('data-url') || '';
+  function paint(){
+    slides.forEach(function(s, k){ s.setAttribute('aria-hidden', k === i ? 'false' : 'true'); });
+    pips.forEach(function(p, k){ p.setAttribute('aria-selected', k === i ? 'true' : 'false'); p.tabIndex = k === i ? 0 : -1; });
+    var cur = slides[i], href = cur.getAttribute('data-href');
     lblEl.textContent = cur.getAttribute('data-label') || '';
-    var href = cur.getAttribute('data-href');
     if(href){ visit.href = href; visit.hidden = false; } else { visit.hidden = true; }
   }
 
-  function delay(){ return i === 0 ? INTRO : DWELL; }
-  function tick(){ show(i + 1); schedule(); }
-  function schedule(){ stop(); if(!still) timer = setTimeout(tick, delay()); }
-  function stop(){ clearTimeout(timer); timer = null; }
-  function restart(){ schedule(); }
-
-  wrap.addEventListener('mouseenter', stop);
-  wrap.addEventListener('mouseleave', schedule);
-  wrap.addEventListener('focusin', stop);
-  wrap.addEventListener('focusout', schedule);
-  document.addEventListener('visibilitychange', function(){ document.hidden ? stop() : schedule(); });
-
-  function wake(){
-    if(onScreen) return;
-    onScreen = true;
-    [].forEach.call(wrap.querySelectorAll('.sc-preview img'), hydrate);
-    hydrateAround(i);
+  // Brings slide n in on top. The outgoing slide stays opaque underneath
+  // until the fade has finished, so the cross-fade never dips towards black.
+  function activate(n){
+    var prev = slides[i];
+    i = (n + slides.length) % slides.length;
+    var next = slides[i];
+    if(onScreen) hydrateAround(i);
+    clearTimeout(leaveTimer);
+    slides.forEach(function(s){ if(s !== prev && s !== next) s.classList.remove('is-on', 'is-leaving'); });
+    next.classList.add('sc-reset');
+    void next.offsetWidth;
+    next.classList.remove('sc-reset', 'is-leaving');
+    if(prev !== next){
+      prev.classList.remove('is-on');
+      prev.classList.add('is-leaving');
+      leaveTimer = setTimeout(function(){ prev.classList.remove('is-leaving'); }, FADE + 60);
+    }
+    next.classList.add('is-on');
+    paint();
+    wrap.dispatchEvent(new CustomEvent('showcase:change', { detail: { index: i } }));
   }
-  if('IntersectionObserver' in window){
-    new IntersectionObserver(function(e){ if(e[0].isIntersecting) wake(); }).observe(wrap);
-    new IntersectionObserver(function(e){ e[0].isIntersecting ? schedule() : stop(); },
-      { threshold: 0.25 }).observe(wrap);
-  } else { wake(); schedule(); }
 
-  show(0);
+  function running(){ return !still && visible && !hovered && !focused && !document.hidden; }
+  function sync(){
+    var run = running();
+    wrap.classList.toggle('is-paused', !run);
+    if(run && !timer){ due = Date.now() + left; timer = setTimeout(advance, left); }
+    else if(!run && timer){ clearTimeout(timer); timer = null; left = Math.max(0, due - Date.now()); }
+  }
+  function advance(){ timer = null; left = DWELL; activate(i + 1); sync(); }
+  function go(n){
+    if(((n % slides.length) + slides.length) % slides.length === i) return;
+    if(timer){ clearTimeout(timer); timer = null; }
+    left = DWELL;
+    activate(n);
+    sync();
+  }
+
+  wrap.addEventListener('pointerenter', function(e){ if(e.pointerType === 'mouse'){ hovered = true; sync(); } });
+  wrap.addEventListener('pointerleave', function(e){ if(e.pointerType === 'mouse'){ hovered = false; sync(); } });
+  // Keyboard focus pauses; a mouse click on a dot doesn't leave it paused.
+  wrap.addEventListener('focusin', function(e){
+    var kb = true;
+    try { kb = e.target.matches(':focus-visible'); } catch(err){}
+    if(kb){ focused = true; sync(); }
+  });
+  wrap.addEventListener('focusout', function(e){ if(!wrap.contains(e.relatedTarget)){ focused = false; sync(); } });
+  document.addEventListener('visibilitychange', sync);
+
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(function(e){ if(e[0].isIntersecting && !onScreen){ onScreen = true; hydrateAround(i); } }).observe(wrap);
+    new IntersectionObserver(function(e){
+      visible = e[0].isIntersecting;
+      // The first slide's entrance plays when it is first actually watched.
+      if(visible && !seen){ seen = true; activate(i); }
+      sync();
+    }, { threshold: 0.4 }).observe(wrap);
+  } else { onScreen = visible = seen = true; hydrateAround(i); }
+
+  paint();
+  sync();
 })();
 </script>
 

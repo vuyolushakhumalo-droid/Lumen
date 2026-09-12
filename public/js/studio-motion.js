@@ -1,4 +1,5 @@
-// Homepage motion: the hero headline reveal and the Studio section.
+// Homepage motion: the hero film band, the showcase billboard's headlines
+// and the Studio section.
 //
 // Adapted from licensed Animmaster components — Text Animations/14 (masked
 // word reveal), Background Animations/10 (dot grid), Mouse Effects/18
@@ -276,6 +277,52 @@
     row.addEventListener('mouseleave', function () { go(50); });
   }
 
+  // ---- Hero film band: scroll parallax on every device (motion kit) ---
+  // The kit's lk-parallax formula (drift = distance scrolled x (1 - speed) x
+  // 80px per viewport), anchored at the top of the page. This script arrives
+  // on the first interaction, and the plain formula already offsets a band
+  // that starts on screen, which would make it jump when it loads. The drift
+  // stops growing after 60% of a viewport, so the band never reaches the
+  // billboard below it.
+  function bandParallax(el) {
+    var s = Number(el.getAttribute('data-speed')) || 0.5;
+    var ticking = false, listening = false;
+    function run() {
+      ticking = false;
+      var vh = window.innerHeight || 1, y = Math.min(Math.max(0, window.scrollY), vh * 0.6);
+      el.style.transform = y ? 'translate3d(0,' + ((y / vh) * (1 - s) * 80).toFixed(2) + 'px,0)' : '';
+    }
+    function queue() { if (!ticking) { ticking = true; requestAnimationFrame(run); } }
+    function listen(on) {
+      if (on === listening) return;
+      listening = on;
+      window[on ? 'addEventListener' : 'removeEventListener']('scroll', queue, { passive: true });
+      if (on) queue();
+    }
+    window.addEventListener('resize', queue);
+    if (!('IntersectionObserver' in window)) return listen(true);
+    new IntersectionObserver(function (entries) { listen(entries[0].isIntersecting); }, { rootMargin: '25% 0px' })
+      .observe(el);
+  }
+
+  // ---- Showcase billboard: headline words rise on every slide ----------
+  // The carousel (cross-fade, timing, dots, Ken Burns, chat card) is CSS and
+  // the inline script in index.html, so it runs before this has loaded; this
+  // adds Text Animations/14 each time a slide comes in. The splits stay in
+  // place so the rise can replay.
+  function showcaseHeadlines(wrap) {
+    var splits = [].map.call(wrap.querySelectorAll('.sc-slide'), function (slide) {
+      var h = slide.querySelector('.sc-head');
+      return h ? SplitText.create(h, { type: 'words', mask: 'words', wordsClass: 'sw' }) : null;
+    });
+    wrap.addEventListener('showcase:change', function (e) {
+      var split = splits[e.detail && e.detail.index];
+      if (!split) return;
+      gsap.killTweensOf(split.words);
+      gsap.fromTo(split.words, { yPercent: 105 }, { yPercent: 0, duration: 0.95, ease: 'expo.out', stagger: 0.065 });
+    });
+  }
+
   // ---- Studio card video ----------------------------------------------
   // Downloads and plays only once the card is near the viewport, and never
   // under reduced motion or Save-Data: the poster image stays instead.
@@ -306,10 +353,12 @@
     if (hasSplit && !reduce) {
       document.querySelectorAll('[data-reveal="load"]').forEach(revealOnLoad);
       document.querySelectorAll('[data-reveal="scroll"]').forEach(revealOnScroll);
+      document.querySelectorAll('[data-showcase]').forEach(showcaseHeadlines);
     }
     document.querySelectorAll('[data-dot-grid]').forEach(dotGrid);
     document.querySelectorAll('video[data-lazy-video]').forEach(lazyVideo);
     if (reduce) return;
+    document.querySelectorAll('[data-band-parallax]').forEach(bandParallax);
     if (finePointer) {
       document.querySelectorAll('[data-cursor-layers]').forEach(cursorLayers);
       document.querySelectorAll('[data-scale-gallery]').forEach(scaleGallery);
