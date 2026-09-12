@@ -32,6 +32,8 @@ module.exports = {
       { source: '/ownership',  destination: '/ownership.html' },
       { source: '/acceptable-use',  destination: '/acceptable-use.html' },
       { source: '/cookies',  destination: '/cookies.html' },
+      // Internal reference for the motion kit builds use. Not in the nav or sitemap.
+      { source: '/kit',      destination: '/kit/lintel-motion-kit.html' },
     ];
   },
 

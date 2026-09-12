@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Lintel Motion Kit — v0.1</title>
+<style>
+/* ==== MOTION KIT CSS: generated from lib/motion-kit.js by scripts/build-kit-demo.mjs — edit there, not here ==== */
+/* Lintel Motion Kit v0.1 — CSS. All motion is off under prefers-reduced-motion. */
+:root{--lk-dur:600ms;--lk-ease:cubic-bezier(.2,.7,.2,1);--lk-accent:#4fd1e6}
+
+/* 1) REVEAL — fade + rise once on entering the viewport. Hidden only once the kit script has run. */
+.lk-js .lk-reveal{opacity:0;transform:translateY(16px);transition:opacity var(--lk-dur) var(--lk-ease),transform var(--lk-dur) var(--lk-ease)}
+.lk-js .lk-reveal.is-in{opacity:1;transform:none}
+
+/* 2) HERO DRIFT — zoom-settle on load, then a slow endless drift. Pair the image with lk-parallax. */
+.lk-hero{position:relative;overflow:hidden;aspect-ratio:16/8;border-radius:16px;background:#111}
+.lk-hero-img{position:absolute;inset:-6%;width:112%;height:112%;object-fit:cover;transform-origin:center;animation:lk-settle 1.6s var(--lk-ease) both,lk-drift 24s ease-in-out 1.6s infinite alternate;will-change:transform}
+@keyframes lk-settle{from{scale:1.08}to{scale:1}}
+@keyframes lk-drift{from{translate:0 0}to{translate:-1.5% 1%}}
+.lk-hero-copy{position:absolute;left:6%;bottom:8%;color:#fff;max-width:26ch;text-shadow:0 2px 24px rgba(0,0,0,.5)}
+
+/* 3) TILT — leans toward the cursor on desktop; static on touch. */
+.lk-tilt{transform:perspective(900px) rotateX(var(--lk-rx,0deg)) rotateY(var(--lk-ry,0deg));transition:transform 300ms var(--lk-ease);will-change:transform}
+.lk-tilt:hover{transition-duration:80ms}
+
+/* 4) MARQUEE — seamless loop, pauses on hover. Items are written twice inside .lk-track. */
+.lk-marquee{overflow:hidden;-webkit-mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.lk-track{display:flex;width:max-content;animation:lk-scroll 28s linear infinite}
+.lk-track>*{flex:none;white-space:nowrap;margin-right:40px}
+.lk-marquee:hover .lk-track{animation-play-state:paused}
+@keyframes lk-scroll{to{transform:translateX(-50%)}}
+
+/* 5) BENTO — six-column grid, first tile featured, hover lift; one column on phones. */
+.lk-bento{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+.lk-bento>*{background:color-mix(in srgb,currentColor 5%,transparent);border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:14px;padding:22px;min-height:150px;transition:transform 260ms var(--lk-ease),box-shadow 260ms var(--lk-ease)}
+.lk-bento>*:hover{transform:translateY(-6px);box-shadow:0 24px 40px -24px rgba(0,0,0,.45)}
+.lk-bento>*:nth-child(1){grid-column:span 4;grid-row:span 2;background:color-mix(in srgb,currentColor 12%,transparent)}
+.lk-bento>*:nth-child(n+2){grid-column:span 2}
+@media (max-width:720px){.lk-bento>*{grid-column:span 6!important;grid-row:auto!important}}
+
+/* 6) COUNT-UP — counts from 0 when seen. The real number stays in the markup. */
+.lk-count{font-variant-numeric:tabular-nums}
+
+/* 7) COMPARE — before/after slider on a native range input, so it works by keyboard and touch. */
+.lk-compare{position:relative;aspect-ratio:16/9;overflow:hidden;border-radius:14px}
+.lk-compare img,.lk-compare .before,.lk-compare .after{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.lk-compare .after{clip-path:inset(0 0 0 var(--lk-cut,50%))}
+.lk-compare input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+.lk-compare .bar{position:absolute;top:0;bottom:0;left:var(--lk-cut,50%);width:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.2);pointer-events:none}
+.lk-compare .bar::after{content:"◀ ▶";position:absolute;top:50%;left:50%;translate:-50% -50%;background:#fff;color:#0f1318;font-size:11px;padding:6px 8px;border-radius:999px}
+.lk-compare:has(input:focus-visible) .bar::after{outline:2px solid var(--lk-accent);outline-offset:2px}
+.lk-compare .lbl{position:absolute;top:12px;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;pointer-events:none}
+
+/* 8) ACCORDION — native details/summary; opens smoothly where the browser supports it. */
+.lk-acc details{border-top:1px solid color-mix(in srgb,currentColor 18%,transparent)}
+.lk-acc details:last-child{border-bottom:1px solid color-mix(in srgb,currentColor 18%,transparent)}
+.lk-acc summary{cursor:pointer;list-style:none;padding:18px 0;font-weight:600;display:flex;justify-content:space-between;gap:16px}
+.lk-acc summary::-webkit-details-marker{display:none}
+.lk-acc summary::after{content:"+";transition:transform 300ms var(--lk-ease)}
+.lk-acc details[open] summary::after{transform:rotate(45deg)}
+.lk-acc .body{display:grid;grid-template-rows:0fr;transition:grid-template-rows 300ms var(--lk-ease)}
+.lk-acc details[open] .body{grid-template-rows:1fr}
+.lk-acc .body>div{overflow:hidden;padding-bottom:0;transition:padding 300ms}
+.lk-acc details[open] .body>div{padding-bottom:18px}
+
+/* Reduced motion: everything becomes static. */
+@media (prefers-reduced-motion:reduce){
+.lk-js .lk-reveal{opacity:1;transform:none;transition:none}
+.lk-hero-img{animation:none;inset:0;width:100%;height:100%}
+.lk-tilt{transform:none!important}
+.lk-track{animation:none}
+.lk-bento>*,.lk-acc .body,.lk-acc .body>div,.lk-acc summary::after{transition:none}
+}
+/* ==== END MOTION KIT CSS ==== */
+
+/* Demo page styles only — not part of the kit. After the kit, the same
+   order builds use, so page rules can restyle kit elements. */
+:root{ --ink:#0f1318; --paper:#fff; --muted:#5b6470; --line:#e6eaee; --wash:#f4f7f9; }
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--paper);line-height:1.5}
+h1,h2{letter-spacing:-.02em;line-height:1.1} h1{font-size:clamp(32px,5vw,56px)} h2{font-size:clamp(22px,3vw,30px);margin:0 0 8px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+section{padding:72px 0;border-top:1px solid var(--line)} section p.note{color:var(--muted);margin:0 0 24px;max-width:60ch}
+.img-tile{background-size:cover;background-position:center;color:#fff;text-shadow:0 1px 12px rgba(0,0,0,.6);display:flex;align-items:flex-end;min-height:200px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.card p{margin:0;padding:12px 14px;font-size:14px}
+.lk-compare img.before{filter:grayscale(1) brightness(.55) contrast(.85)}
+.lk-track span{font-size:22px;color:var(--muted)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:13px;background:var(--wash);padding:2px 6px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<header class="wrap" style="padding:56px 24px 24px">
+  <h1>Lintel Motion Kit <span style="color:var(--muted);font-weight:400">v0.1</span></h1>
+  <p class="note">Eight original motion patterns for single-file sites. No libraries. Every new Lintel build includes this kit verbatim — the CSS and JS on this page are generated from <code>lib/motion-kit.js</code>.</p>
+</header>
+
+<section><div class="wrap">
+  <h2>1 · Reveal on scroll</h2><p class="note">Add <code>lk-reveal</code> to any element. Fires once. Stagger with <code>data-delay</code>.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+    <div class="card lk-reveal"><img src="https://redwell-plumbing-heating.lintelsites.com/og.png" alt=""><p>Each card fades and rises as it enters view</p></div>
+    <div class="card lk-reveal" data-delay="120"><img src="https://fern-field.lintelsites.com/og.png" alt=""><p>…120ms after the one before it</p></div>
+    <div class="card lk-reveal" data-delay="240"><img src="https://www.lintelapp.co.uk/img/shot-builder.jpg" alt=""><p>…so a row reads left to right</p></div>
+    <div class="card lk-reveal" data-delay="360"><img src="https://www.lintelapp.co.uk/img/shot-dashboard.jpg" alt=""><p>Scroll back up and down: it only plays once</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>2 · Hero drift + parallax</h2><p class="note">Settles from a slight zoom on load, drifts slowly forever, and moves at 0.6× scroll speed.</p>
+  <div class="lk-hero"><img class="lk-hero-img lk-parallax" data-speed="0.6" src="https://www.lintelapp.co.uk/video/lintel-ad-poster.jpg" alt=""><div class="lk-hero-copy"><h2>Far from home. Never far from the club.</h2><p style="margin:6px 0 0;opacity:.85">Watch the photo: it settles from a zoom, then keeps drifting. Scroll and it lags behind the text.</p></div></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>3 · Tilt toward the cursor</h2><p class="note">Desktop only; touch devices get a static card.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px">
+    <div class="card lk-tilt"><img src="https://redwell-plumbing-heating.lintelsites.com/og.png" alt=""><p>Move the mouse across me — I lean toward it</p></div>
+    <div class="card lk-tilt"><img src="https://fern-field.lintelsites.com/og.png" alt=""><p>Heavy feel: 300ms ease, snaps back on leave</p></div>
+    <div class="card lk-tilt"><img src="https://www.lintelapp.co.uk/video/lintel-ad-poster.jpg" alt=""><p>Max 6° each way; static on touch screens</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>4 · Marquee</h2><p class="note">Write the items twice, with <code>aria-hidden="true"</code> on the repeats, so the loop is seamless. Pauses on hover.</p>
+  <div class="lk-marquee"><div class="lk-track">
+    <span>Plumbers</span><span>Cafés</span><span>Salons</span><span>Landscapers</span><span>Photographers</span><span>Barbers</span><span>Florists</span>
+    <span aria-hidden="true">Plumbers</span><span aria-hidden="true">Cafés</span><span aria-hidden="true">Salons</span><span aria-hidden="true">Landscapers</span><span aria-hidden="true">Photographers</span><span aria-hidden="true">Barbers</span><span aria-hidden="true">Florists</span>
+  </div></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>5 · Count-up</h2><p class="note">Counts when it scrolls into view. Good for "since 1926", "1,200 members", "98% five-star". The real number stays in the markup; add <code>data-plain</code> for years.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:48px;font-size:44px;font-weight:700"><span><b class="lk-count" data-to="1926" data-plain>1926</b></span><span><b class="lk-count" data-to="1200">1,200</b>+</span><span><b class="lk-count" data-to="4.9">4.9</b>★</span></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>6 · Before / after</h2><p class="note">Drag the handle. Uses a native range input, so it's accessible and works on touch.</p>
+  <div class="lk-compare">
+    <img class="before" src="https://www.lintelapp.co.uk/video/lintel-ad-poster.jpg" alt="Before">
+    <img class="after" src="https://www.lintelapp.co.uk/video/lintel-ad-poster.jpg" alt="After">
+    <span class="lbl" style="left:12px">Before</span><span class="lbl" style="right:12px">After</span>
+    <div class="bar"></div><input type="range" min="0" max="100" value="50" aria-label="Compare before and after">
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>7 · Accordion</h2><p class="note">Native details/summary with a smooth height animation.</p>
+  <div class="lk-acc">
+    <details><summary>How long does a build take?</summary><div class="body"><div>Usually two to four minutes for a complete site.</div></div></details>
+    <details><summary>Can I use my own photos?</summary><div class="body"><div>Yes — send them in the builder chat and ask where they should go.</div></div></details>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>8 · Bento grid</h2><p class="note">Six-column grid, first tile featured and double height; hover lifts a tile 6px. Collapses to one column on phones.</p>
+  <div class="lk-bento">
+    <div class="img-tile" style="background-image:url(https://www.lintelapp.co.uk/video/lintel-ad-poster.jpg)"><b>Featured — spans 4 columns, 2 rows</b></div>
+    <div class="img-tile" style="background-image:url(https://redwell-plumbing-heating.lintelsites.com/og.png)"><b>Redwell</b></div>
+    <div class="img-tile" style="background-image:url(https://fern-field.lintelsites.com/og.png)"><b>Fern &amp; Field</b></div>
+    <div class="img-tile" style="background-image:url(https://www.lintelapp.co.uk/img/shot-builder.jpg)"><b>Builder</b></div>
+    <div class="img-tile" style="background-image:url(https://www.lintelapp.co.uk/img/shot-dashboard.jpg)"><b>Dashboard</b></div>
+    <div><b>Text tile</b><br><span style="color:var(--muted)">Tiles can be text, image, or a stat.</span></div>
+  </div>
+</div></section>
+
+<script>
+/* ==== MOTION KIT JS: generated from lib/motion-kit.js by scripts/build-kit-demo.mjs — edit there, not here ==== */
+/* Lintel Motion Kit v0.1 — JS. Every pattern checks prefers-reduced-motion first. */
+/* ---- Reveal ---- */
+(()=>{ if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window)) return;
+  document.documentElement.classList.add('lk-js');
+  const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ const d=+e.target.dataset.delay||0; setTimeout(()=>e.target.classList.add('is-in'),d); io.unobserve(e.target);} }),{threshold:.15});
+  document.querySelectorAll('.lk-reveal').forEach(el=>io.observe(el)); })();
+
+/* ---- Parallax (transform only, rAF-throttled) ---- */
+(()=>{ if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const els=[...document.querySelectorAll('.lk-parallax')]; if(!els.length) return; let t=false;
+  const run=()=>{ t=false; const vh=innerHeight; els.forEach(el=>{ const r=el.parentElement.getBoundingClientRect(); if(!r.height) return; const p=(r.top+r.height/2-vh/2)/vh; const s=+el.dataset.speed||0.6; el.style.transform='translateY('+(p*(1-s)*-80)+'px)'; }); };
+  const queue=()=>{ if(!t){t=true;requestAnimationFrame(run);} };
+  addEventListener('scroll',queue,{passive:true}); addEventListener('resize',queue); run(); })();
+
+/* ---- Tilt ---- */
+(()=>{ if(matchMedia('(prefers-reduced-motion: reduce)').matches||!matchMedia('(hover:hover)').matches) return;
+  document.querySelectorAll('.lk-tilt').forEach(el=>{ el.addEventListener('pointermove',e=>{ const r=el.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5; el.style.setProperty('--lk-ry',(x*12)+'deg'); el.style.setProperty('--lk-rx',(-y*12)+'deg'); });
+    el.addEventListener('pointerleave',()=>{ el.style.setProperty('--lk-rx','0deg'); el.style.setProperty('--lk-ry','0deg'); }); }); })();
+
+/* ---- Count-up (years: add data-plain; decimals follow data-to) ---- */
+(()=>{ const els=document.querySelectorAll('.lk-count'); if(!els.length||matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window)) return;
+  const fmt=(el,v,dp)=>el.hasAttribute('data-plain')?v.toFixed(dp):v.toLocaleString(undefined,{minimumFractionDigits:dp,maximumFractionDigits:dp});
+  const io=new IntersectionObserver(es=>es.forEach(e=>{ if(!e.isIntersecting) return; const el=e.target, to=+el.dataset.to, dp=(el.dataset.to.split('.')[1]||'').length; io.unobserve(el);
+    const t0=performance.now(), d=1400; const step=n=>{ const k=Math.max(0,Math.min(1,(n-t0)/d)), v=to*(1-Math.pow(1-k,3)); el.textContent=fmt(el,k<1?+v.toFixed(dp):to,dp); if(k<1) requestAnimationFrame(step); }; requestAnimationFrame(step); }),{threshold:.6});
+  els.forEach(el=>{ if(!el.dataset.to||!isFinite(+el.dataset.to)) return; el.textContent=fmt(el,0,(el.dataset.to.split('.')[1]||'').length); io.observe(el); }); })();
+
+/* ---- Compare ---- */
+document.querySelectorAll('.lk-compare input').forEach(r=>{ const set=()=>r.parentElement.style.setProperty('--lk-cut',r.value+'%'); r.addEventListener('input',set); set(); });
+/* ==== END MOTION KIT JS ==== */
+</script>
+</body>
+</html>
