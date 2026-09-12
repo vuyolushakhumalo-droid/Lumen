@@ -29,6 +29,10 @@
 @font-face{font-family:'Inter'; font-style:normal; font-weight:100 900; font-display:swap;
   src:url(/fonts/inter/inter-latin-ext-wght-normal.woff2) format('woff2');
   unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+/* Arial resized to Inter's metrics (measured from the two font files), so the
+   swap when Inter arrives doesn't push the hero around. */
+@font-face{font-family:'Inter Fallback'; src:local('Arial'); size-adjust:107.83%;
+  ascent-override:89.84%; descent-override:22.37%; line-gap-override:0%}
 :root{
   --bg:#05070C;
   --bg-2:#090C13;
@@ -49,7 +53,7 @@
   --hero-glow:rgba(95,224,255,0.5);
   --radius:16px;
   --maxw:1180px;
-  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font:'Inter','Inter Fallback',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -139,6 +143,11 @@ header .btn-primary:hover{box-shadow:0 0 55px -8px var(--hero-glow)}
 
 /* ---------- generic section ---------- */
 section{position:relative; z-index:2}
+/* Sections below the hero aren't rendered until they approach the viewport.
+   On this long page that halves the layout and paint work before first paint
+   (the hero poster is the LCP). "auto" remembers each section's real height
+   once it has been seen. */
+main > section:not(.hero), footer{content-visibility:auto; contain-intrinsic-size:auto 900px}
 .sec{padding:132px 0}
 .center{text-align:center}
 .sec h2{font-size:clamp(34px,4.6vw,58px); font-weight:600; margin-bottom:22px; letter-spacing:-0.038em}
@@ -473,6 +482,17 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
    descenders from being cut off while the words rise. */
 .sw-mask{padding-bottom:.12em; margin-bottom:-.12em}
 
+/* ---------- hero headline: masked word rise, CSS only ---------- */
+/* The same rise as the Studio headline, without the library: each word sits
+   in a clipping mask. The animation applies only once the inline head script
+   has added .js-motion, so without JavaScript the headline is plain visible
+   text, and nothing here waits on the network. Reduced motion turns every
+   animation off globally. */
+.mw{display:inline-block; overflow:hidden; vertical-align:bottom; padding-bottom:.12em; margin-bottom:-.12em}
+.mw > span{display:inline-block}
+.js-motion .mw > span{animation:mwRise .95s cubic-bezier(.16,1,.3,1) both; animation-delay:calc(var(--i) * 65ms + 50ms)}
+@keyframes mwRise{from{transform:translateY(105%)}to{transform:none}}
+
 /* ---------- Studio (pricing) ---------- */
 .studio{position:relative; z-index:2; margin-top:96px; background:#04060A;
   border-top:1px solid var(--line); border-bottom:1px solid var(--line); overflow:hidden}
@@ -559,10 +579,42 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 <script defer src="/lumen-app.js"></script>
 <script defer src="/voice.js"></script>
 <script defer src="/_vercel/insights/script.js"></script>
-<script defer src="/js/gsap/gsap.min.js"></script>
-<script defer src="/js/gsap/SplitText.min.js"></script>
-<script defer src="/js/studio-motion.js"></script>
-<script defer src="/js/enquiry.js"></script>
+<script>
+// Switches on the hero headline's CSS reveal (without JS it stays static text).
+document.documentElement.classList.add('js-motion');
+// Nothing below the hero loads before the page has painted: Studio motion
+// and the enquiry form load as the Studio section approaches the viewport, and
+// Ray once the page has loaded and the browser is idle. Until enquiry.js
+// arrives the Studio button is a plain link to /contact.
+(function () {
+  function add(srcs) {
+    srcs.forEach(function (src) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = false; // download in parallel, run in this order
+      document.body.appendChild(s);
+    });
+  }
+  function idle(fn) { if (window.requestIdleCallback) requestIdleCallback(fn, { timeout: 3000 }); else setTimeout(fn, 1500); }
+  var studioLoaded = false;
+  function loadStudio() {
+    if (studioLoaded) return;
+    studioLoaded = true;
+    add(['/js/gsap/gsap.min.js', '/js/gsap/SplitText.min.js', '/js/studio-motion.js', '/js/enquiry.js']);
+  }
+  window.addEventListener('load', function () {
+    idle(function () { add(['/ray.js']); });
+    var studio = document.getElementById('studio');
+    if (!studio || !('IntersectionObserver' in window)) return idle(loadStudio);
+    var io = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) return;
+      io.disconnect();
+      loadStudio();
+    }, { rootMargin: '150% 0px' });
+    io.observe(studio);
+  });
+})();
+</script>
 </head>
 <body>
 <div class="amb"></div>
@@ -597,7 +649,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
   <section class="hero">
     <div class="wrap">
       <span class="eyebrow">The website workshop</span>
-      <h1 data-reveal="load">Effortless websites,<br><span class="accent">intelligently built.</span></h1>
+      <h1><span class="mw" style="--i:0"><span>Effortless</span></span> <span class="mw" style="--i:1"><span>websites,</span></span><br><span class="accent"><span class="mw" style="--i:2"><span>intelligently</span></span> <span class="mw" style="--i:3"><span>built.</span></span></span></h1>
       <p class="lead">Describe what you want. A calm intelligence designs, builds, and runs your site — polished to the last pixel, on one simple subscription.</p>
       <div class="welcomeback" id="welcomeBack">
         <a class="btn btn-primary btn-lg" href="/builder">Continue building</a>
@@ -1208,7 +1260,6 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
   })();
 })();
 </script>
-<script defer src="/ray.js"></script>
 <!-- type="module" defers this until the deferred voice.js has defined LumenVoice. -->
 <script type="module">
 (function(){
