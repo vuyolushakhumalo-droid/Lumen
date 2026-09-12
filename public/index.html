@@ -424,7 +424,8 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
   border-bottom:1px solid var(--line,rgba(255,255,255,.09));background:rgba(255,255,255,.02)}
 .sc-ptop i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.16)}
 .sc-ptop span{flex:1;text-align:center;font-size:clamp(8px,.85vw,10px);color:var(--grey-dim,#7C8697)}
-.sc-preview img{display:block;width:100%;height:auto}
+.sc-preview img{display:block;width:100%;height:auto;aspect-ratio:1200/750}
+html:not(.js) .sc-preview img[data-src]{display:none}
 
 .sc-chat{position:absolute;left:-6%;bottom:-4%;z-index:2;width:min(74%,330px);
   padding:clamp(9px,1.3vw,14px);border-radius:13px;
@@ -581,7 +582,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
 <script defer src="/_vercel/insights/script.js"></script>
 <script>
 // Switches on the hero headline's CSS reveal (without JS it stays static text).
-document.documentElement.classList.add('js-motion');
+document.documentElement.classList.add('js', 'js-motion');
 // Nothing below the hero loads before the page has painted: Studio motion
 // and the enquiry form load as the Studio section approaches the viewport, and
 // Ray once the page has loaded and the browser is idle. Until enquiry.js
@@ -666,8 +667,8 @@ document.documentElement.classList.add('js-motion');
 
       <!-- The poster is the LCP element: a small WebP, visible from the first
            paint, fetched at high priority with explicit dimensions. The film
-           is attached only after the page has loaded (or on first
-           interaction), and never on Save-Data or 3G-and-slower connections. -->
+           is attached on the visitor's first interaction, and never on
+           Save-Data or 3G-and-slower connections. -->
       <figure class="herovid" id="heroVideo">
         <div class="herovid-frame">
           <picture>
@@ -727,7 +728,7 @@ document.documentElement.classList.add('js-motion');
           return;
         }
 
-        var started = false, events = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+        var started = false, events = ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'scroll', 'keydown'];
         function start(){
           if(started) return;
           started = true;
@@ -736,9 +737,10 @@ document.documentElement.classList.add('js-motion');
           v.loop = true;
           play();
         }
+        // First interaction only. Starting by itself after load put the film's
+        // 1.45 MB download and its decode inside the window where LCP is
+        // measured, and in production that pushed LCP past the poster.
         events.forEach(function(e){ window.addEventListener(e, start, { passive:true }); });
-        if(document.readyState === 'complete') setTimeout(start, 0);
-        else window.addEventListener('load', function(){ setTimeout(start, 0); }, { once:true });
       })();
       </script>
 
@@ -786,8 +788,9 @@ document.documentElement.classList.add('js-motion');
 
                     <div class="sc-preview">
                       <div class="sc-ptop"><i></i><i></i><i></i><span>fern-field.lintelsites.com</span></div>
-                      <img src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel"
-                           width="1200" height="750" loading="lazy">
+                      <img data-src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel"
+                           width="1200" height="750">
+                      <noscript><img src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel" width="1200" height="750" loading="lazy"></noscript>
                     </div>
 
                   </div>
@@ -796,21 +799,21 @@ document.documentElement.classList.add('js-motion');
               </div>
             </div>
 
-            <img class="sc-panel" src="/img/demo-fico.jpg" alt="A restaurant website built with Lintel"
-                 width="1200" height="750" loading="lazy" data-url="fico.lintelsites.com"
+            <img class="sc-panel" data-src="/img/demo-fico.jpg" alt="A restaurant website built with Lintel"
+                 width="1200" height="750" data-url="fico.lintelsites.com"
                  data-href="https://fico.lintelsites.com" data-label="A neighbourhood restaurant">
-            <img class="sc-panel" src="/img/demo-redwell.jpg" alt="A plumbing website built with Lintel"
-                 width="1200" height="750" loading="lazy" data-url="redwell-plumbing-heating.lintelsites.com"
+            <img class="sc-panel" data-src="/img/demo-redwell.jpg" alt="A plumbing website built with Lintel"
+                 width="1200" height="750" data-url="redwell-plumbing-heating.lintelsites.com"
                  data-href="https://redwell-plumbing-heating.lintelsites.com" data-label="A local plumber">
-            <img class="sc-panel" src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel"
-                 width="1200" height="750" loading="lazy" data-url="fern-field.lintelsites.com"
+            <img class="sc-panel" data-src="/img/demo-fern-field.jpg" alt="A garden centre website built with Lintel"
+                 width="1200" height="750" data-url="fern-field.lintelsites.com"
                  data-href="https://fern-field.lintelsites.com" data-label="An independent nursery">
 
-            <img class="sc-panel" src="/img/shot-builder.jpg" alt="The Lintel builder, editing a site by chat"
-                 width="1200" height="750" loading="lazy" data-url="lintelapp.co.uk/builder"
+            <img class="sc-panel" data-src="/img/shot-builder.jpg" alt="The Lintel builder, editing a site by chat"
+                 width="1200" height="750" data-url="lintelapp.co.uk/builder"
                  data-label="Describe a change — watch it happen">
-            <img class="sc-panel" src="/img/shot-dashboard.jpg" alt="The Lintel dashboard listing published sites"
-                 width="1200" height="750" loading="lazy" data-url="lintelapp.co.uk/dashboard"
+            <img class="sc-panel" data-src="/img/shot-dashboard.jpg" alt="The Lintel dashboard listing published sites"
+                 width="1200" height="750" data-url="lintelapp.co.uk/dashboard"
                  data-label="Every site, live or draft, in one place">
           </div>
         </div>
@@ -1332,6 +1335,15 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
   var INTRO = 5600, DWELL = 4200;
   var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Screenshots load on demand: the preview once the showcase is on screen,
+  // and each panel as the carousel reaches it (current and next). loading=lazy
+  // alone wasn't enough: on a phone the showcase sits inside Chrome's
+  // eager-load distance, so ~600 KB of screenshots competed with the hero
+  // poster for the network before LCP.
+  var onScreen = false;
+  function hydrate(img){ if(img && img.getAttribute('data-src') && !img.getAttribute('src')) img.setAttribute('src', img.getAttribute('data-src')); }
+  function hydrateAround(n){ hydrate(panels[n]); hydrate(panels[(n + 1) % panels.length]); }
+
   panels.forEach(function(p, n){
     var b = document.createElement('button');
     b.className = 'sc-pip'; b.type = 'button';
@@ -1345,6 +1357,7 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
 
   function show(n){
     i = (n + panels.length) % panels.length;
+    if(onScreen) hydrateAround(i);
     panels.forEach(function(p, k){ p.classList.toggle('is-on', k === i); });
     pips.forEach(function(p, k){ p.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
 
@@ -1367,10 +1380,17 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
   wrap.addEventListener('focusout', schedule);
   document.addEventListener('visibilitychange', function(){ document.hidden ? stop() : schedule(); });
 
+  function wake(){
+    if(onScreen) return;
+    onScreen = true;
+    [].forEach.call(wrap.querySelectorAll('.sc-preview img'), hydrate);
+    hydrateAround(i);
+  }
   if('IntersectionObserver' in window){
+    new IntersectionObserver(function(e){ if(e[0].isIntersecting) wake(); }).observe(wrap);
     new IntersectionObserver(function(e){ e[0].isIntersecting ? schedule() : stop(); },
       { threshold: 0.25 }).observe(wrap);
-  } else { schedule(); }
+  } else { wake(); schedule(); }
 
   show(0);
 })();
