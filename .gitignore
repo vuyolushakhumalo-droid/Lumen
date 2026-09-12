@@ -5,6 +5,10 @@ node_modules
 .DS_Store
 scripts/_investigate-*.mjs
 
+# Licensed Animmaster component pack: a local reference only. Its code is
+# adapted into public/ by hand; the pack itself must never be committed.
+vendor/animmaster/
+
 # Raw video masters. They exist only to produce the two files below,
 # and git history is permanent -- a superseded 24 MB master would be
 # in every clone forever. Ignore everything here except what ships.
