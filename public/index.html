@@ -452,11 +452,101 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
   .sc-panel{transition:none}
   .sc-logo,.sc-line{opacity:1;transform:none;animation:none}
 }
+
+/* ---------- masked word reveal (js/studio-motion.js) ---------- */
+/* SplitText wraps each word in a clipping mask; the padding keeps
+   descenders from being cut off while the words rise. */
+.sw-mask{padding-bottom:.12em; margin-bottom:-.12em}
+
+/* ---------- Studio (pricing) ---------- */
+.studio{position:relative; z-index:2; margin-top:96px; background:#04060A;
+  border-top:1px solid var(--line); border-bottom:1px solid var(--line); overflow:hidden}
+.studio-dots{position:absolute; inset:0; pointer-events:none}
+.studio-dots canvas{display:block; width:100%; height:100%}
+.studio::after{content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(70% 90% at 25% 50%, rgba(4,6,10,.72), rgba(4,6,10,.15) 70%)}
+.studio .wrap{z-index:3}
+.studio-inner{display:grid; grid-template-columns:0.85fr 1.15fr; gap:64px; align-items:center; padding:128px 0}
+.studio-copy{text-align:left}
+.studio-copy h2{font-size:clamp(40px,5.4vw,70px); font-weight:600; letter-spacing:-0.042em; line-height:1.03; margin-bottom:30px}
+.studio-points{list-style:none; display:flex; flex-direction:column; gap:14px; margin-bottom:42px}
+.studio-points li{display:flex; gap:12px; align-items:flex-start; font-size:17px; color:var(--ink-2); line-height:1.45}
+.studio-points svg{width:18px; height:18px; flex:none; margin-top:3px; color:var(--cyan)}
+/* Landscape to match the 1376x768 footage, so nothing important is cropped. */
+.studio-card{position:relative; width:100%; aspect-ratio:16/10}
+.studio-layer{position:absolute; inset:0; will-change:transform}
+.studio-glow{inset:8% 4% -4% 10%; border-radius:32px;
+  background:radial-gradient(60% 55% at 50% 55%, rgba(95,224,255,.26), rgba(95,224,255,.05) 55%, transparent 75%); filter:blur(18px)}
+.studio-outline{inset:-14px 14px 14px -14px; border:1px solid rgba(95,224,255,.22); border-radius:26px}
+.studio-frame{border-radius:24px; overflow:hidden; background:var(--surface);
+  border:1px solid var(--line-2); box-shadow:0 50px 110px -40px rgba(0,0,0,.9)}
+/* 8% overscan top and bottom is the room the touch scroll parallax moves in. */
+.studio-media{position:absolute; left:0; right:0; top:-8%; height:116%}
+.studio-media picture,.studio-media img,.studio-media video{position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:cover}
+/* The still stays visible until the video is actually playing frames. */
+.studio-media video{opacity:0; transition:opacity .6s ease}
+.studio-media video.is-playing{opacity:1}
+
+.studio-looks{padding:112px 0 12px}
+.studio-looks h3{font-size:clamp(28px,3.4vw,42px); letter-spacing:-0.036em; margin-bottom:34px}
+.sg-row{display:flex; gap:18px}
+.sg-tile{flex:50 1 0; min-width:0; margin:0}
+.sg-media{position:relative; height:clamp(240px,38vw,520px); border-radius:22px; overflow:hidden;
+  border:1px solid var(--line); background:#05070B}
+.sg-media picture,.sg-media img{position:absolute; inset:0; width:100%; height:100%}
+.sg-media img{object-fit:cover}
+.sg-tile figcaption{margin-top:14px; font-size:15px; color:var(--grey); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.prices.one{grid-template-columns:minmax(0,420px); justify-content:center}
+
+@media(max-width:920px){
+  .studio-inner{grid-template-columns:1fr; gap:52px; padding:92px 0}
+  .studio-card{max-width:520px; margin:0 auto}
+}
+@media(max-width:560px){
+  .studio-copy h2{margin-bottom:24px}
+  .studio-outline{inset:-10px 10px 10px -10px}
+  .sg-row{gap:10px}
+  .sg-media{height:58vw; border-radius:16px}
+  .sg-tile figcaption{font-size:13px; white-space:normal}
+}
+
+/* ---------- enquiry dialog (js/enquiry.js) ---------- */
+.enquiry{border:1px solid var(--line-2); border-radius:24px; padding:0; margin:auto;
+  width:min(520px, calc(100% - 32px)); max-height:calc(100dvh - 32px); color:var(--ink);
+  background:linear-gradient(180deg,var(--surface),var(--bg-2)); box-shadow:0 40px 100px -30px rgba(0,0,0,.9)}
+.enquiry::backdrop{background:rgba(3,5,9,.72); backdrop-filter:blur(6px)}
+.enquiry [hidden]{display:none !important}
+.enquiry-body{position:relative; padding:36px 32px 28px}
+.enquiry h3{font-size:26px; letter-spacing:-0.03em; margin-bottom:8px}
+.enquiry .intro{font-size:15px; color:var(--grey); line-height:1.5; margin-bottom:26px}
+.enquiry-close{position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:none;
+  background:rgba(255,255,255,.05); color:var(--grey); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.25s}
+.enquiry-close:hover{color:var(--ink); background:rgba(255,255,255,.1)}
+.enquiry-close svg{width:16px; height:16px}
+.field select{width:100%; font-family:var(--font); font-size:16px; color:var(--ink); appearance:none; -webkit-appearance:none;
+  background:rgba(255,255,255,0.03) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2396A0AD' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center / 16px;
+  border:1px solid var(--line-2); border-radius:12px; padding:14px 42px 14px 16px; outline:none; transition:border-color .25s}
+.field select:focus{border-color:var(--cyan)}
+.field select option{background:var(--surface); color:var(--ink)}
+.enquiry .btn{width:100%; justify-content:center}
+.enquiry-status{min-height:22px; margin-top:12px; font-size:14px; color:var(--grey); text-align:center}
+.enquiry-note{font-size:13px; color:var(--grey-dim); text-align:center; margin-top:4px}
+.enquiry-note a{color:var(--cyan); text-decoration:none}
+.enquiry-trap{position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden}
+.enquiry-done{text-align:center; padding:18px 0 6px}
+.enquiry-done .ok-ring{width:64px; height:64px; margin:0 auto 22px; border-radius:50%; border:1px solid rgba(95,224,255,0.3);
+  background:rgba(95,224,255,0.06); display:flex; align-items:center; justify-content:center}
+.enquiry-done .ok-ring svg{width:30px; height:30px; color:var(--cyan)}
+.enquiry-done p{color:var(--grey); margin:10px auto 24px; max-width:360px; line-height:1.55}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/lumen-app.js"></script>
 <script src="/voice.js"></script>
 <script defer src="/_vercel/insights/script.js"></script>
+<script defer src="/js/gsap/gsap.min.js"></script>
+<script defer src="/js/gsap/SplitText.min.js"></script>
+<script defer src="/js/studio-motion.js"></script>
+<script defer src="/js/enquiry.js"></script>
 </head>
 <body>
 <div class="amb"></div>
@@ -491,7 +581,7 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
   <section class="hero">
     <div class="wrap">
       <span class="eyebrow">The website workshop</span>
-      <h1>Effortless websites,<br><span class="accent">intelligently built.</span></h1>
+      <h1 data-reveal="load">Effortless websites,<br><span class="accent">intelligently built.</span></h1>
       <p class="lead">Describe what you want. A calm intelligence designs, builds, and runs your site — polished to the last pixel, on one simple subscription.</p>
       <div class="welcomeback" id="welcomeBack">
         <a class="btn btn-primary btn-lg" href="/builder">Continue building</a>
@@ -851,8 +941,61 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
         </div>
       </div>
 
-      <div class="center reveal" style="margin-top:64px"><span class="tier-group-label">Have us build it &middot; coming soon</span></div>
-      <div class="prices two">
+      <p class="center grey reveal" style="margin-top:28px; font-size:14px">7-day free trial, then billed monthly. Cancel anytime.</p>
+    </div>
+
+    <!-- STUDIO: built with the customer, by hand. Motion comes from
+         js/studio-motion.js, adapted from licensed Animmaster effects;
+         none of it is ever used in generated customer sites. -->
+    <div class="studio" id="studio" data-dot-grid data-cursor-zone>
+      <div class="studio-dots" aria-hidden="true"><canvas></canvas></div>
+      <div class="wrap">
+        <div class="studio-inner">
+          <div class="studio-copy">
+            <span class="eyebrow">Studio</span>
+            <h2 data-reveal="scroll">Built with you, by hand.</h2>
+            <ul class="studio-points">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Cinematic motion generated sites can’t do</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Your photography and footage, directed in</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Multi-page, custom sections, integrations</li>
+            </ul>
+            <a class="btn btn-primary btn-lg" href="/contact" data-enquiry="studio">Tell us about your project</a>
+          </div>
+          <div class="studio-card" data-cursor-layers>
+            <div class="studio-layer studio-glow" data-layer="0.6" aria-hidden="true"></div>
+            <div class="studio-layer studio-outline" data-layer="1.6" aria-hidden="true"></div>
+            <div class="studio-layer studio-frame" data-layer="1">
+              <div class="studio-media" data-touch-parallax data-speed="0.6">
+                <picture>
+                  <source srcset="/img/studio/studio-hero.webp" type="image/webp">
+                  <img src="/img/studio/studio-hero.jpg" alt="The Lintel builder on a monitor in a dark room, shaping a trattoria’s website" width="1376" height="768" loading="lazy" decoding="async">
+                </picture>
+                <video data-lazy-video muted loop playsinline preload="none" aria-hidden="true">
+                  <source data-src="/img/studio/studio-hero-web.mp4" type="video/mp4">
+                </video>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="studio-looks">
+        <h3 class="reveal">What Studio looks like</h3>
+        <div class="sg-row" data-scale-gallery>
+          <figure class="sg-tile">
+            <div class="sg-media"><picture><source srcset="/img/studio/jacket.webp" type="image/webp"><img src="/img/studio/jacket.jpg" alt="A dark technical shell jacket beaded with rain, floating against black" width="1376" height="768" loading="lazy" decoding="async"></picture></div>
+            <figcaption>Product launch — a technical shell jacket</figcaption>
+          </figure>
+          <figure class="sg-tile">
+            <div class="sg-media"><picture><source srcset="/img/studio/robot-arm.webp" type="image/webp"><img src="/img/studio/robot-arm.jpg" alt="A black robotic arm under a single hard beam of light" width="1376" height="768" loading="lazy" decoding="async"></picture></div>
+            <figcaption>Engineering brand — a robotic arm in one beam of light</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="prices one" style="margin-top:96px">
         <div class="plan soon reveal">
           <span class="soonpill">Coming soon</span>
           <div class="pn">Done for you</div>
@@ -867,21 +1010,8 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
           </ul>
           <a class="btn btn-ghost" href="/contact">Join the waitlist</a>
         </div>
-        <div class="plan soon reveal">
-          <span class="soonpill">Coming soon</span>
-          <div class="pn">Studio</div>
-          <div class="pd">Multiple sites, teams and bespoke work at scale.</div>
-          <div class="price"><span class="amt">Let's talk</span></div>
-          <ul>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Unlimited managed sites and team seats</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Dedicated account manager</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Same-day priority support</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>Custom integrations and onboarding</li>
-          </ul>
-          <a class="btn btn-ghost" href="/contact">Register interest</a>
-        </div>
       </div>
-      <p class="center grey reveal" style="margin-top:28px; font-size:14px">7-day free trial, then billed monthly. Cancel anytime.<br>Done-for-you and Studio launch soon &mdash; join the waitlist and we&rsquo;ll tell you first.</p>
+      <p class="center grey reveal" style="margin-top:22px; font-size:14px">Done for you launches soon &mdash; join the waitlist and we&rsquo;ll tell you first.</p>
     </div>
   </section>
 
@@ -1173,5 +1303,39 @@ m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(
   show(0);
 })();
 </script>
+
+<!-- Enquiry form for Studio / Done for you. Opened by js/enquiry.js from
+     any [data-enquiry] link, pre-set to that link's value. -->
+<dialog class="enquiry" id="enquiry" aria-labelledby="enquiryTitle">
+  <div class="enquiry-body">
+    <button class="enquiry-close" type="button" data-enquiry-close aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <form>
+      <h3 id="enquiryTitle">Tell us about your project</h3>
+      <p class="intro">A few lines is plenty — what you’re making, and roughly when. We’ll reply by email.</p>
+      <div class="field"><label for="enqName">Name</label><input id="enqName" name="name" type="text" autocomplete="name" required maxlength="120"></div>
+      <div class="field"><label for="enqEmail">Email</label><input id="enqEmail" name="email" type="email" autocomplete="email" required maxlength="200"></div>
+      <div class="field"><label for="enqInterest">What’s it for?</label>
+        <select id="enqInterest" name="interest">
+          <option value="studio">Studio — built with you, by hand</option>
+          <option value="done_for_you">Done for you</option>
+          <option value="other">Something else</option>
+        </select>
+      </div>
+      <div class="field"><label for="enqMessage">About the project</label><textarea id="enqMessage" name="message" required minlength="10" maxlength="4000" placeholder="What it’s for, any links or references, and your timing."></textarea></div>
+      <div class="enquiry-trap" aria-hidden="true"><label for="enqWebsite">Company website</label><input id="enqWebsite" name="company_website" type="text" tabindex="-1" autocomplete="off"></div>
+      <button class="btn btn-primary btn-lg" type="submit">Send enquiry</button>
+      <p class="enquiry-status" data-enquiry-status role="status" aria-live="polite"></p>
+      <p class="enquiry-note">We only use your details to reply. <a href="/privacy">Privacy policy</a></p>
+    </form>
+    <div class="enquiry-done" data-enquiry-done hidden>
+      <div class="ok-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></div>
+      <h3>Thanks — it’s with us.</h3>
+      <p>We’ll read it properly and reply by email.</p>
+      <button class="btn btn-ghost" type="button" data-enquiry-close>Close</button>
+    </div>
+  </div>
+</dialog>
 </body>
 </html>

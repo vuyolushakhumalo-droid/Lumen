@@ -5,12 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "copy:gsap": "node scripts/copy-gsap.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
     "@sentry/nextjs": "^10.73.0",
     "@supabase/supabase-js": "^2.45.4",
+    "gsap": "^3.15.0",
     "next": "^14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

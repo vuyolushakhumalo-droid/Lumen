@@ -221,6 +221,23 @@ create table if not exists audit_log (
 );
 create index if not exists idx_audit_created on audit_log(created_at desc);
 
+-- ---------- enquiries to Lintel (Studio, Done for you) ----------
+-- From the marketing site's enquiry form via /api/enquiry. Ours, not a
+-- customer's: never shown in a dashboard, service role only.
+create table if not exists enquiries (
+  id          uuid primary key default gen_random_uuid(),
+  interest    text not null default 'studio'
+              check (interest in ('studio', 'done_for_you', 'other')),
+  name        text not null,
+  email       text not null,
+  message     text not null,
+  ip_hash     text,
+  user_agent  text,
+  notified_at timestamptz,
+  created_at  timestamptz not null default now()
+);
+create index if not exists enquiries_created_idx on enquiries(created_at desc);
+
 -- ============================================================
 -- Row Level Security
 -- Users may only ever touch their own rows. The server uses the
@@ -237,6 +254,7 @@ alter table submissions   enable row level security;
 alter table rate_limits   enable row level security;
 alter table site_events   enable row level security;
 alter table site_daily    enable row level security;
+alter table enquiries     enable row level security;
 
 drop policy if exists "own profile" on profiles;
 create policy "own profile" on profiles
@@ -400,3 +418,29 @@ end;
 $$;
 
 revoke all on function sweep_rate_limits() from public, anon, authenticated;
+
+-- ============================================================
+-- Helper: drop enquiries older than 2 years (the privacy policy's
+-- period for support messages). Called from the purge cron.
+-- enquiries has no RLS policies at all: service role only.
+-- ============================================================
+create or replace function purge_enquiries(p_days integer default 730)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_deleted integer;
+begin
+  if p_days is null or p_days < 1 then
+    p_days := 730;
+  end if;
+  delete from enquiries
+  where created_at < now() - make_interval(days => p_days);
+  get diagnostics v_deleted = row_count;
+  return v_deleted;
+end;
+$$;
+
+revoke all on function purge_enquiries(integer) from public, anon, authenticated;

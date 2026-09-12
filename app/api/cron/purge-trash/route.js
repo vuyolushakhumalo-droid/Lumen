@@ -26,6 +26,7 @@ export async function GET(request) {
   const rateLimitsSwept = await sweepRateLimits(admin);
   const versionsPruned = await pruneVersions(admin);
   const submissionsPurged = await purgeSubmissions(admin);
+  const enquiriesPurged = await purgeEnquiries(admin);
   const domainsVerified = await sweepPendingDomains(admin);
   const domainsRemoved = await sweepUnverifiedDomains(admin);
   const { rolled: analyticsRolled, purged: eventsPurged } = await sweepAnalytics(admin);
@@ -41,12 +42,12 @@ export async function GET(request) {
   if (findError) {
     logError('[cron/purge-trash] lookup failed', findError);
     await flushMonitoring();
-    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
   await flushMonitoring();
-  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
@@ -54,11 +55,11 @@ export async function GET(request) {
   if (deleteError) {
     logError('[cron/purge-trash] delete failed', deleteError);
     await flushMonitoring();
-    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
   }
 
   await flushMonitoring();
-  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
+  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
 }
 
 // On this runtime, a client disconnect kills the streaming function
@@ -136,6 +137,19 @@ async function purgeSubmissions(admin) {
   const { data, error } = await admin.rpc('purge_submissions', { p_days: 365 });
   if (error) {
     logError('[cron/purge-trash] submission purge failed', error);
+    return 0;
+  }
+  return data || 0;
+}
+
+// enquiries (Studio / Done-for-you enquiries sent to Lintel itself) are
+// kept for 2 years, the privacy policy's period for support messages --
+// purge_enquiries() drops anything older (see
+// supabase/migrations/0010_enquiries.sql).
+async function purgeEnquiries(admin) {
+  const { data, error } = await admin.rpc('purge_enquiries', { p_days: 730 });
+  if (error) {
+    logError('[cron/purge-trash] enquiry purge failed', error);
     return 0;
   }
   return data || 0;
