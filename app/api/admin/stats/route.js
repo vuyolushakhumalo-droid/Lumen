@@ -7,18 +7,28 @@ export const fetchCache = 'force-no-store';
 
 const MONTHLY_PRICE = { standard: 29, pro: 59, frontier: 99, done_for_you: 149, studio: 0 };
 
+const round2 = (n) => Math.round(n * 100) / 100;
+
+// Annual plans are billed at 12x the monthly rate with no discount (see the
+// homepage's billing toggle), so every subscription counts at its monthly rate.
+const monthlyValue = (list) => list.reduce((sum, s) => sum + (MONTHLY_PRICE[s.plan] || 0), 0);
+
 export const GET = handler(async (request) => {
   const { admin } = await requireAdmin(request);
   const { data: subs } = await admin
     .from('subscriptions')
-    .select('plan, status, billing_interval, current_period_end, created_at, user_id');
+    .select('plan, status, billing_interval, current_period_end, trial_end, cancel_at_period_end, created_at, user_id');
 
-  const active = (subs || []).filter((s) => ['active', 'trialing'].includes(s.status));
-  const trialing = active.filter((s) => s.status === 'trialing');
+  // MRR counts paying subscribers only: status 'active'. One who has cancelled
+  // but is still inside a paid period is still paying, so still counts; 'past_due'
+  // (a failed payment) does not.
+  const paying = (subs || []).filter((s) => s.status === 'active');
 
-  // Annual plans are billed at 12x the monthly rate with no discount (see the
-  // homepage's billing toggle), so they count at the monthly rate.
-  const mrr = active.reduce((sum, s) => sum + (MONTHLY_PRICE[s.plan] || 0), 0);
+  // Trials pay nothing yet. They're shown on their own, with the MRR they'd add
+  // if they convert; a trial already set to cancel won't convert, so it's left
+  // out of that figure and counted separately.
+  const inTrial = (subs || []).filter((s) => s.status === 'trialing');
+  const trialsConverting = inTrial.filter((s) => !s.cancel_at_period_end);
 
   // Builds today (UTC): one usage_events row is written per successful build or
   // edit, just before it's charged, including builds paid with top-up credits.
@@ -46,9 +56,13 @@ export const GET = handler(async (request) => {
     .limit(10);
 
   return Response.json({
-    activeSubscribers: active.length,
-    trialing: trialing.length,
-    mrr: Math.round(mrr * 100) / 100,
+    payingSubscribers: paying.length,
+    mrr: round2(monthlyValue(paying)),
+    inTrial: {
+      count: inTrial.length,
+      mrrIfTheyConvert: round2(monthlyValue(trialsConverting)),
+      setToCancel: inTrial.length - trialsConverting.length,
+    },
     buildsToday,
     // No flat per-build estimate: spend depends on the model, whether it was
     // a new build or an edit, retries and images.
