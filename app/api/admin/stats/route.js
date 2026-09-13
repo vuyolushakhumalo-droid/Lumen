@@ -9,8 +9,6 @@ const MONTHLY_PRICE = { standard: 29, pro: 59, frontier: 99, done_for_you: 149, 
 
 export const GET = handler(async (request) => {
   const { admin } = await requireAdmin(request);
-  const today = new Date().toISOString().slice(0, 10);
-
   const { data: subs } = await admin
     .from('subscriptions')
     .select('plan, status, billing_interval, current_period_end, created_at, user_id');
@@ -18,14 +16,25 @@ export const GET = handler(async (request) => {
   const active = (subs || []).filter((s) => ['active', 'trialing'].includes(s.status));
   const trialing = active.filter((s) => s.status === 'trialing');
 
-  const mrr = active.reduce((sum, s) => {
-    const base = MONTHLY_PRICE[s.plan] || 0;
-    return sum + (s.billing_interval === 'year' ? (base * 11) / 12 : base);
-  }, 0);
+  // Annual plans are billed at 12x the monthly rate with no discount (see the
+  // homepage's billing toggle), so they count at the monthly rate.
+  const mrr = active.reduce((sum, s) => sum + (MONTHLY_PRICE[s.plan] || 0), 0);
 
-  const { data: usageToday } = await admin
-    .from('usage_daily').select('builds_used').eq('date', today);
-  const buildsToday = (usageToday || []).reduce((n, u) => n + u.builds_used, 0);
+  // Builds today (UTC): one usage_events row is written per successful build or
+  // edit, just before it's charged, including builds paid with top-up credits.
+  // 'preview' rows are the Haiku edit previews, not builds. usage_daily stopped
+  // being written when usage moved to 5-hour windows, and usage_windows can't
+  // give a calendar-day count: its windows cross midnight and top-up builds
+  // never reach it. (If saving the chat messages fails after a build commits,
+  // the build is charged but not logged, so this can very rarely undercount.)
+  const dayStart = new Date();
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const { count: buildsCount } = await admin
+    .from('usage_events')
+    .select('id', { count: 'exact', head: true })
+    .in('kind', ['build', 'edit'])
+    .gte('created_at', dayStart.toISOString());
+  const buildsToday = buildsCount || 0;
 
   const { count: projectCount } = await admin
     .from('projects').select('id', { count: 'exact', head: true });
