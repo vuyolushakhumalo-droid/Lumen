@@ -5,7 +5,7 @@ import { handler, requireAdmin } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-const MONTHLY_PRICE = { standard: 29, pro: 49, frontier: 90, done_for_you: 149, studio: 0 };
+const MONTHLY_PRICE = { standard: 29, pro: 59, frontier: 99, done_for_you: 149, studio: 0 };
 
 export const GET = handler(async (request) => {
   const { admin } = await requireAdmin(request);
@@ -41,7 +41,9 @@ export const GET = handler(async (request) => {
     trialing: trialing.length,
     mrr: Math.round(mrr * 100) / 100,
     buildsToday,
-    estimatedAiCostToday: Math.round(buildsToday * 0.09 * 100) / 100,
+    // No flat per-build estimate: spend depends on the model, whether it was
+    // a new build or an edit, retries and images.
+    aiCostNote: 'Real AI cost comes from usage_events (input and output tokens per build, by model) and image_generations, priced at current model rates.',
     totalProjects: projectCount || 0,
     recentSubscribers: recent || [],
   });

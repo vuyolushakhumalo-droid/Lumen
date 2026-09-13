@@ -46,7 +46,7 @@ Describe what you want and Lintel builds your website. There are two ways in:
 - Lintel does NOT use credits. There is no meter ticking down while you think.
 - Each plan has a build allowance that refreshes on a rolling 5-hour window, so nobody waits until midnight. There is also a monthly ceiling.
 - A build that fails is never charged.
-- If someone runs out before the refresh, they can either wait or buy a top-up. Top-ups are sold at cost plus card fees with no markup, they never expire, and they roll over. (Top-ups are not switched on yet — say they are coming soon.)
+- If someone runs out before the refresh, they can either wait or buy a top-up from the Dashboard: 25 builds for £19, 60 builds for £45, or 150 builds for £110. Top-up builds never expire and roll over month to month.
 
 ## What every site includes
 Custom design from the brief, multi-page, fully responsive, fast, hosting, SSL, and a custom domain. Search-ready. Edit by chatting — describe a change and the site updates.
