@@ -128,6 +128,19 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .tu:hover{border-color:var(--cyan);background:rgba(95,224,255,.05)}
 .tu .n{font-size:20px;font-weight:600;color:var(--ink)}.tu .l{font-size:12px;color:var(--grey-dim);margin-top:2px}.tu .p{font-size:13.5px;color:var(--cyan);margin-top:8px}
 @media(max-width:760px){.grid2{grid-template-columns:1fr}.topups{grid-template-columns:1fr}}
+.addons{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+.addon{border:1px solid var(--line-2);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px;transition:border-color .25s,background .25s}
+.addon.on{border-color:rgba(95,224,255,.35);background:rgba(95,224,255,.04)}
+.addon-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.addon h4{font-size:15.5px;font-weight:600;color:var(--ink)}
+.addon-price{font-size:13.5px;color:var(--cyan);white-space:nowrap}
+.mini .addon p{font-size:13.5px;margin-bottom:0}
+.mini .addon .addon-use{color:var(--ink);white-space:pre-line}
+.addon-act{margin-top:auto;padding-top:6px;display:flex;align-items:center;min-height:36px}
+.addon-inc{font-size:13px;color:var(--grey-dim)}
+.addon .sbtn:disabled{opacity:.5;cursor:default}
+.addon [hidden],#addonsNeedPlan[hidden]{display:none!important}
+@media(max-width:760px){.addons{grid-template-columns:1fr}}
 .errbox{display:none;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.3);color:#FF9B9B;font-size:14px;padding:12px 15px;border-radius:12px;margin-bottom:18px;line-height:1.5}
 .errbox.show{display:block}
 .okbox{display:none;background:rgba(95,224,255,.07);border:1px solid rgba(95,224,255,.25);color:var(--cyan);font-size:14px;padding:12px 15px;border-radius:12px;margin-bottom:18px;line-height:1.5}
@@ -314,6 +327,34 @@ select option{background:var(--surface);color:var(--ink-2)}
   <a class="btn btn-ghost" id="portal" href="#">Manage billing</a>
 </div>
 
+<div class="mini reveal" id="addons" style="margin-top:22px">
+  <h3>Add-ons</h3>
+  <p>Extras that join your plan and bill on the same invoice.</p>
+  <div class="errbox" id="addonsErr"></div>
+  <p id="addonsNeedPlan" hidden>Add-ons join a plan. <a href="/#pricing" style="color:var(--cyan);text-decoration:none">Choose a plan</a> to add them.</p>
+  <div class="addons" id="addonsList">
+    <div class="addon" data-addon="motion">
+      <div class="addon-head"><h4>Motion</h4><span class="addon-price" data-price></span></div>
+      <p>6 clips a month.</p>
+      <p class="addon-use" data-use hidden></p>
+      <div class="addon-act"><button class="sbtn" type="button" data-act="add" disabled>Add</button><span class="addon-inc" data-included hidden>Included in Lintel Plus</span></div>
+    </div>
+    <div class="addon" data-addon="languages">
+      <div class="addon-head"><h4>Languages</h4><span class="addon-price" data-price></span></div>
+      <p>3 languages per site. Re-translations count as builds.</p>
+      <p class="addon-use" data-use hidden></p>
+      <div class="addon-act"><button class="sbtn" type="button" data-act="add" disabled>Add</button><span class="addon-inc" data-included hidden>Included in Lintel Plus</span></div>
+    </div>
+    <div class="addon" data-addon="plus">
+      <div class="addon-head"><h4>Lintel Plus</h4><span class="addon-price" data-price></span></div>
+      <p>Motion and Languages together.</p>
+      <p class="addon-use" data-use hidden></p>
+      <div class="addon-act"><button class="sbtn" type="button" data-act="add" disabled>Add</button><span class="addon-inc" data-included hidden></span></div>
+    </div>
+  </div>
+  <p class="grey" style="font-size:13px;margin-top:16px;margin-bottom:0">Removing an add-on stops it straight away, with no refund for the rest of the month.</p>
+</div>
+
 <div class="mini reveal" id="topup" style="margin-top:22px">
   <h3>Need more today?</h3>
   <p>Don't want to wait for the refresh? Add more builds and carry on straight away.</p>
@@ -362,6 +403,16 @@ select option{background:var(--surface);color:var(--ink-2)}
     <div class="confirm-row">
       <button class="sbtn" id="confirmNo" type="button">Cancel</button>
       <button class="sbtn danger" id="confirmYes" type="button">Move to Trash</button>
+    </div>
+  </div>
+</div>
+<div class="confirm" id="packConfirm">
+  <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="packConfirmTitle">
+    <h3 id="packConfirmTitle">Add this add-on?</h3>
+    <p id="packConfirmText"></p>
+    <div class="confirm-row">
+      <button class="sbtn" id="packConfirmNo" type="button">Cancel</button>
+      <button class="sbtn" id="packConfirmYes" type="button">Add</button>
     </div>
   </div>
 </div>
@@ -467,7 +518,134 @@ document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
         }
       });
     });
+
+    initAddons();
   })();
+
+  // Add-ons: extra items on the plan's Stripe subscription (see /api/packs).
+  function initAddons(){
+    var list = document.getElementById('addonsList');
+    if(!list) return;
+    var errBox = document.getElementById('addonsErr');
+    var needPlan = document.getElementById('addonsNeedPlan');
+    var wrap = document.getElementById('packConfirm');
+    var yes = document.getElementById('packConfirmYes');
+    var state = null, pending = null;
+
+    function money(p){
+      if(!p || p.amount == null) return '';
+      var cur = String(p.currency || 'gbp').toUpperCase(), s;
+      try { s = new Intl.NumberFormat('en-GB', { style:'currency', currency:cur, minimumFractionDigits: p.amount % 100 ? 2 : 0 }).format(p.amount / 100); }
+      catch(e){ s = (p.amount / 100).toFixed(2) + ' ' + cur; }
+      return s + (p.interval === 'year' ? ' a year' : ' a month');
+    }
+    function shortDate(iso){
+      var d = new Date(iso);
+      return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+    }
+    function motionLine(m){
+      if(!m || !m.has) return '';
+      return m.used + ' of ' + m.allowance + ' clips used this period' + (m.periodEnd ? ' · resets ' + shortDate(m.periodEnd) : '');
+    }
+    function languagesLine(l){
+      return l && l.has ? 'Up to ' + l.allowance + ' languages on each site' : '';
+    }
+    function showError(msg){
+      errBox.textContent = msg || '';
+      errBox.classList.toggle('show', !!msg);
+    }
+
+    function render(){
+      var packs = state.packs, sub = state.subscription;
+      list.querySelectorAll('[data-addon]').forEach(function(card){
+        var name = card.getAttribute('data-addon'), p = packs[name];
+        if(!p) return;
+        var btn = card.querySelector('.sbtn'), inc = card.querySelector('[data-included]'), use = card.querySelector('[data-use]');
+        card.querySelector('[data-price]').textContent = p.onSale ? money(p.price) : '';
+        card.classList.toggle('on', !!p.has);
+
+        var lines = name === 'motion' ? [motionLine(packs.motion)]
+          : name === 'languages' ? [languagesLine(packs.languages)]
+          : (p.has ? [motionLine(packs.motion), languagesLine(packs.languages)] : []);
+        use.textContent = lines.filter(Boolean).join('\n');
+        use.hidden = !use.textContent;
+
+        if(name !== 'plus' && p.viaPlus && !p.own){
+          btn.hidden = true;
+          inc.hidden = false;
+          return;
+        }
+        inc.hidden = true;
+        btn.hidden = false;
+        var remove = !!p.own;
+        btn.setAttribute('data-act', remove ? 'remove' : 'add');
+        btn.textContent = remove ? 'Remove' : (p.onSale || !sub.active ? 'Add' : 'Not available yet');
+        btn.classList.toggle('danger', remove);
+        btn.disabled = !remove && (!sub.active || !p.onSale);
+      });
+      needPlan.hidden = !!sub.active;
+    }
+
+    function close(){
+      wrap.classList.remove('show');
+      pending = null;
+    }
+
+    list.addEventListener('click', function(e){
+      var btn = e.target.closest('.sbtn');
+      if(!btn || btn.disabled || btn.hidden || !state) return;
+      var name = btn.closest('[data-addon]').getAttribute('data-addon');
+      var action = btn.getAttribute('data-act');
+      var p = state.packs[name], title, text;
+      if(action === 'add'){
+        title = 'Add ' + p.label + (p.onSale ? ' for ' + money(p.price) + '?' : '?');
+        text = state.subscription.status === 'trialing'
+          ? "It's free until your trial ends, then it bills with your plan on the same invoice."
+          : "It bills with your plan on the same invoice. You'll pay for the rest of this billing month on your next invoice, and the allowance is yours straight away.";
+        if(name === 'plus'){
+          var replaced = ['motion','languages'].filter(function(n){ return state.packs[n] && state.packs[n].own; })
+            .map(function(n){ return state.packs[n].label; });
+          if(replaced.length) text += ' It replaces ' + replaced.join(' and ') + ": the unused part comes off your next invoice, and anything you've used of this month's allowance carries over.";
+        }
+      } else {
+        title = 'Remove ' + p.label + '?';
+        text = "It stops straight away, along with any allowance left this period. There's no refund for the rest of the month, and it won't be charged again.";
+      }
+      pending = { pack: name, action: action };
+      document.getElementById('packConfirmTitle').textContent = title;
+      document.getElementById('packConfirmText').textContent = text;
+      yes.textContent = action === 'add' ? 'Add ' + p.label : 'Remove';
+      yes.classList.toggle('danger', action === 'remove');
+      wrap.classList.add('show');
+    });
+
+    document.getElementById('packConfirmNo').addEventListener('click', close);
+    wrap.addEventListener('click', function(e){ if(e.target === wrap) close(); });
+
+    yes.addEventListener('click', async function(){
+      if(!pending || yes.disabled) return;
+      var req = pending, label = yes.textContent;
+      yes.disabled = true;
+      yes.textContent = req.action === 'add' ? 'Adding…' : 'Removing…';
+      showError('');
+      try {
+        state = await Lumen.api('/api/packs', { method:'POST', body: JSON.stringify(req) });
+        render();
+      } catch(e){
+        showError(e.message || "That didn't go through. Please try again.");
+      }
+      close();
+      yes.disabled = false;
+      yes.textContent = label;
+    });
+
+    Lumen.api('/api/packs').then(function(s){
+      state = s;
+      render();
+    }).catch(function(e){
+      showError(e.message || "Add-ons couldn't be loaded.");
+    });
+  }
 })();
 </script>
 <div id="ckb" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:900;width:calc(100% - 36px);max-width:660px;border:1px solid rgba(255,255,255,0.13);border-radius:18px;background:rgba(12,17,25,0.94);backdrop-filter:blur(16px);box-shadow:0 30px 70px -30px rgba(0,0,0,.85);padding:20px 22px;font-family:'Inter',sans-serif">

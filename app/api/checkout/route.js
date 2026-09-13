@@ -12,6 +12,7 @@ import {
   requestMeta,
 } from '@/lib/terms';
 import { stripeClient, isMissingResource, withStripeCustomer } from '@/lib/stripe';
+import { packForPrice } from '@/lib/packs';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -72,9 +73,20 @@ export const POST = handler(async (request) => {
       throw new ApiError(400, "You're already on this plan.");
     }
 
-    const itemId = stripeSub.items.data[0]?.id;
+    // Add-ons are extra items on the same subscription: change the plan's
+    // item, never whichever happens to come first.
+    const planItem = stripeSub.items.data.find((i) => !packForPrice(i.price?.id));
+    const itemId = planItem?.id;
     if (!itemId) {
       throw new ApiError(500, 'Could not find your subscription item to update.');
+    }
+    // Stripe bills a subscription's items together, so they must share a
+    // billing period; add-ons are monthly.
+    const addOns = stripeSub.items.data.filter((i) => packForPrice(i.price?.id));
+    if (addOns.some((i) => i.price?.recurring?.interval !== interval)) {
+      throw new ApiError(400, interval === 'year'
+        ? 'Your add-ons are billed monthly, so remove them in Billing before switching to annual billing.'
+        : 'Your add-ons are billed on a different schedule, so remove them in Billing before switching.');
     }
 
     await stripeClient().subscriptions.update(existing.stripe_subscription_id, {

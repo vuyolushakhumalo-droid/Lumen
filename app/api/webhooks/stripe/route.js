@@ -8,6 +8,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import Stripe from 'stripe';
 import { logError } from '@/lib/monitor';
+import { packForPrice, syncPacksFromSubscription } from '@/lib/packs';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,12 @@ async function upsertSubscription(admin, subscription) {
     return;
   }
 
-  const item = subscription.items?.data?.[0];
+  // Add-ons are extra items on the same subscription, so the plan is the
+  // item that isn't one, not simply the first.
+  const items = subscription.items?.data || [];
+  const item = items.find((i) => planFromPriceId(i.price?.id))
+    || items.find((i) => !packForPrice(i.price?.id))
+    || items[0];
   const plan = planFromPriceId(item?.price?.id) || subscription.metadata?.plan || 'standard';
 
   const row = {
@@ -78,6 +84,22 @@ async function upsertSubscription(admin, subscription) {
     action: `subscription.${subscription.status}`,
     meta: { plan, subscription: subscription.id },
   });
+
+  // Add-on items -> packs rows. Throws on failure so Stripe retries.
+  await syncPacksFromSubscription(admin, subscription, userId);
+}
+
+// The subscription as it is now, with every item. Stripe doesn't promise to
+// deliver events in order, so syncing from the event's own copy could let an
+// older event bring back an add-on that has since been removed.
+async function currentSubscription(subscriptionId) {
+  const sub = await stripeClient().subscriptions.retrieve(subscriptionId);
+  if (sub.items?.has_more) {
+    sub.items.data = await stripeClient().subscriptionItems
+      .list({ subscription: sub.id, limit: 100 })
+      .autoPagingToArray({ limit: 1000 });
+  }
+  return sub;
 }
 
 export async function POST(request) {
@@ -105,7 +127,7 @@ export async function POST(request) {
             await admin.from('profiles')
               .update({ stripe_customer_id: session.customer }).eq('id', userId);
           }
-          const sub = await stripeClient().subscriptions.retrieve(session.subscription);
+          const sub = await currentSubscription(session.subscription);
           await upsertSubscription(admin, sub);
         }
 
@@ -130,7 +152,7 @@ export async function POST(request) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
-        await upsertSubscription(admin, event.data.object);
+        await upsertSubscription(admin, await currentSubscription(event.data.object.id));
         break;
 
       case 'invoice.payment_failed': {

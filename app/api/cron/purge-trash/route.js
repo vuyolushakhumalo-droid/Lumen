@@ -7,6 +7,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { deleteProjectImages } from '@/lib/images';
 import { refreshDomainStatus, vercelConfigured, removeDomainFromVercel } from '@/lib/domains';
 import { logError, flushMonitoring } from '@/lib/monitor';
+import { resetPeriods as resetPackPeriods } from '@/lib/packs';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,7 @@ export async function GET(request) {
   const domainsVerified = await sweepPendingDomains(admin);
   const domainsRemoved = await sweepUnverifiedDomains(admin);
   const { rolled: analyticsRolled, purged: eventsPurged } = await sweepAnalytics(admin);
+  const packPeriodsReset = await resetPacks();
 
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -42,12 +44,12 @@ export async function GET(request) {
   if (findError) {
     logError('[cron/purge-trash] lookup failed', findError);
     await flushMonitoring();
-    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
+    return Response.json({ error: 'Lookup failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged, packPeriodsReset }, { status: 500 });
   }
 
   const ids = (expired || []).map((p) => p.id);
   await flushMonitoring();
-  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
+  if (!ids.length) return Response.json({ purged: 0, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged, packPeriodsReset });
 
   await Promise.all(ids.map((id) => deleteProjectImages(id)));
 
@@ -55,11 +57,11 @@ export async function GET(request) {
   if (deleteError) {
     logError('[cron/purge-trash] delete failed', deleteError);
     await flushMonitoring();
-    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged }, { status: 500 });
+    return Response.json({ error: 'Delete failed', staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged, packPeriodsReset }, { status: 500 });
   }
 
   await flushMonitoring();
-  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged });
+  return Response.json({ purged: ids.length, staleAttemptsSwept, oldAttemptsPurged, rateLimitsSwept, versionsPruned, submissionsPurged, enquiriesPurged, domainsVerified, domainsRemoved, analyticsRolled, eventsPurged, packPeriodsReset });
 }
 
 // On this runtime, a client disconnect kills the streaming function
@@ -268,6 +270,18 @@ async function sweepUnverifiedDomains(admin) {
     }
   }
   return removed;
+}
+
+// Add-on allowances are monthly. The pack functions already treat a month
+// that has ended as reset, so this only writes the reset down (see
+// supabase/migrations/0011_packs.sql). Nobody is held at the cap if it fails.
+async function resetPacks() {
+  try {
+    return await resetPackPeriods();
+  } catch (err) {
+    logError('[cron/purge-trash] pack period reset failed', err);
+    return 0;
+  }
 }
 
 // Analytics: fold yesterday's raw beacons into the per-day rollup the
