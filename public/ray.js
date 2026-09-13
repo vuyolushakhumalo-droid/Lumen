@@ -198,7 +198,7 @@
     if (started) return;
     started = true;
     addMsg('assistant', "Hello — I'm Ray, Lintel's AI advisor. Ask me anything about plans, building, or your account, and I'll bring in a human whenever that's more useful.");
-    addChips(['How do the daily builds work?', 'Which plan should I pick?', 'Can I use my own domain?', 'Talk to a human']);
+    addChips(['How does the build allowance work?', 'Which plan should I pick?', 'Can I use my own domain?', 'Talk to a human']);
   }
 
   async function send() {
