@@ -8,7 +8,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import Stripe from 'stripe';
 import { logError } from '@/lib/monitor';
-import { packForPrice, syncPacksFromSubscription } from '@/lib/packs';
+import { BALANCE_PACKS, packForPrice, syncPacksFromSubscription, creditPackPurchase } from '@/lib/packs';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,8 +85,38 @@ async function upsertSubscription(admin, subscription) {
     meta: { plan, subscription: subscription.id },
   });
 
-  // Add-on items -> packs rows. Throws on failure so Stripe retries.
+  // A Lintel Plus item -> its packs row. Throws on failure so Stripe retries.
   await syncPacksFromSubscription(admin, subscription, userId);
+}
+
+// Clips and languages bought through /api/checkout/pack: credit what was paid
+// for, with the quantity as finally chosen on Stripe's page. Only once the
+// money is in: a delayed method (a bank debit, say) completes checkout unpaid
+// and is credited on checkout.session.async_payment_succeeded instead.
+// Idempotent per session, so a repeated event credits once.
+async function creditPackPurchases(admin, session, lineItems) {
+  if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') return;
+  const lines = lineItems
+    .map((li) => ({ li, pack: packForPrice(li.price?.id) }))
+    .filter(({ pack }) => BALANCE_PACKS.includes(pack));
+  if (!lines.length) return;
+
+  const userId = await userIdForCustomer(admin, session.customer, session.metadata || {});
+  if (!userId) {
+    logError('[webhook] paid pack purchase with no user', session.id, session.customer);
+    return;
+  }
+  for (const { li, pack } of lines) {
+    await creditPackPurchase(admin, {
+      userId,
+      pack,
+      quantity: li.quantity,
+      checkoutSessionId: session.id,
+      paymentIntentId: session.payment_intent || null,
+      amountTotal: li.amount_total ?? null,
+      currency: li.currency || null,
+    });
+  }
 }
 
 // The subscription as it is now, with every item. Stripe doesn't promise to
@@ -145,6 +175,18 @@ export async function POST(request) {
               stripe_payment_id: session.payment_intent,
             });
           }
+
+          // Clips and languages.
+          await creditPackPurchases(admin, session, lineItems.data || []);
+        }
+        break;
+      }
+
+      case 'checkout.session.async_payment_succeeded': {
+        const session = event.data.object;
+        if (session.mode === 'payment') {
+          const lineItems = await stripeClient().checkout.sessions.listLineItems(session.id, { limit: 5 });
+          await creditPackPurchases(admin, session, lineItems.data || []);
         }
         break;
       }

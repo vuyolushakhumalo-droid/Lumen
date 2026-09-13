@@ -238,19 +238,24 @@ create table if not exists enquiries (
 );
 create index if not exists enquiries_created_idx on enquiries(created_at desc);
 
--- ---------- add-on packs (Motion, Languages, Forms Pro, Lintel Plus) ----------
--- Extra items on the customer's plan subscription, mirrored by the Stripe
--- webhook through sync_subscription_packs(): one row per pack an item grants
--- (Lintel Plus grants every pack). Monthly allowance counted from
--- period_start. See supabase/migrations/0011_packs.sql and lib/packs.js.
+-- ---------- add-ons (Motion clips, Languages, Lintel Plus) ----------
+-- Two kinds of row. Bought clips and languages: one balance per user and
+-- pack (purchased, used), no period, never expire; credited by the Stripe
+-- webhook through credit_pack_purchase(). Lintel Plus: one row per
+-- subscription item, mirrored through sync_subscription_packs(), carrying
+-- 6 clips a month counted from period_start. See
+-- supabase/migrations/0011_packs.sql, 0012_one_off_packs.sql and lib/packs.js.
 create table if not exists public.packs (
   id                           uuid primary key default gen_random_uuid(),
   user_id                      uuid not null references public.profiles(id) on delete cascade,
   pack                         text not null
                                check (pack in ('motion', 'languages', 'forms_pro', 'plus')),
+  -- Lintel Plus: clips a month, and how many are used this month.
   allowance                    integer not null default 0 check (allowance >= 0),
   used                         integer not null default 0 check (used >= 0),
-  period_start                 timestamptz not null default now(),
+  -- Balances: how many were bought in total (used counts against it).
+  purchased                    integer not null default 0 check (purchased >= 0),
+  period_start                 timestamptz default now(),
   -- Which subscription the item belongs to, so a sync only ever touches
   -- that subscription's rows (a customer can have old or abandoned ones).
   stripe_subscription_id       text,
@@ -260,10 +265,35 @@ create table if not exists public.packs (
                                check (status in ('trialing', 'active', 'past_due', 'unpaid', 'incomplete',
                                                  'incomplete_expired', 'paused', 'canceled')),
   created_at                   timestamptz not null default now(),
-  unique (stripe_subscription_item_id, pack)
+  unique (stripe_subscription_item_id, pack),
+  -- Plus rows are subscription items with a monthly allowance; every other
+  -- row is a balance: bought, no period, no item.
+  constraint packs_row_shape check (
+    (pack = 'plus' and purchased = 0)
+    or (pack <> 'plus' and allowance = 0 and period_start is null
+        and stripe_subscription_id is null and stripe_subscription_item_id is null)
+  )
 );
 create index if not exists packs_user_pack_idx on public.packs (user_id, pack);
 create index if not exists packs_subscription_idx on public.packs (stripe_subscription_id);
+create unique index if not exists packs_balance_idx on public.packs (user_id, pack) where pack <> 'plus';
+
+-- ---------- add-on purchases (clips and languages) ----------
+-- One row per pack per Checkout Session, so a webhook delivered twice
+-- credits once.
+create table if not exists public.pack_purchases (
+  id                          uuid primary key default gen_random_uuid(),
+  user_id                     uuid not null references public.profiles(id) on delete cascade,
+  pack                        text not null check (pack in ('motion', 'languages')),
+  quantity                    integer not null check (quantity > 0),
+  amount_total                integer,
+  currency                    text,
+  stripe_checkout_session_id  text not null,
+  stripe_payment_intent_id    text,
+  created_at                  timestamptz not null default now(),
+  unique (stripe_checkout_session_id, pack)
+);
+create index if not exists pack_purchases_user_idx on public.pack_purchases (user_id, created_at desc);
 
 -- ============================================================
 -- Row Level Security
@@ -283,6 +313,7 @@ alter table site_events   enable row level security;
 alter table site_daily    enable row level security;
 alter table enquiries     enable row level security;
 alter table packs         enable row level security;
+alter table pack_purchases enable row level security;
 
 drop policy if exists "own profile" on profiles;
 create policy "own profile" on profiles
@@ -312,6 +343,10 @@ create policy "own topups" on topups
 
 drop policy if exists "own packs" on public.packs;
 create policy "own packs" on public.packs
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "own pack purchases" on public.pack_purchases;
+create policy "own pack purchases" on public.pack_purchases
   for select using (auth.uid() = user_id);
 
 drop policy if exists "own sites" on sites;
@@ -478,8 +513,9 @@ $$;
 revoke all on function purge_enquiries(integer) from public, anon, authenticated;
 
 -- ============================================================
--- Add-on packs. Allowances are monthly, counted from period_start; these
--- functions roll a finished month themselves, and reset_pack_periods()
+-- Add-ons. Bought clips and languages are balances that never expire; a
+-- Lintel Plus row carries 6 clips a month, counted from period_start. These
+-- functions roll a finished Plus month themselves, and reset_pack_periods()
 -- (nightly) writes the rolled values down. Service role only.
 -- ============================================================
 
@@ -512,12 +548,10 @@ begin
 end;
 $$;
 
--- New rows. Taking a pack off and adding it again (or swapping Motion for
--- Lintel Plus) mustn't hand out a fresh allowance: a new row carries on the
--- month and usage of the latest row for the same pack while that month is
--- still running. Otherwise the period starts now, moved back to the 28th if
--- it's later in the month, so adding months never lands on a short month's
--- end and drifts (Jan 31 -> Feb 28 -> Mar 28).
+-- New rows. A balance has no period. A Lintel Plus row re-added in the same
+-- month carries on that month's clip usage rather than handing out a fresh
+-- allowance; otherwise its period starts now, moved back to the 28th if it's
+-- later in the month, so adding months never drifts (Jan 31 -> Feb 28 -> Mar 28).
 create or replace function public.packs_before_insert()
 returns trigger
 language plpgsql
@@ -528,9 +562,15 @@ declare
   v_prev record;
   v_day  integer;
 begin
+  -- Bought clips and languages are balances that never expire: no period.
+  if new.pack <> 'plus' then
+    new.period_start := null;
+    return new;
+  end if;
+
   select used, period_start into v_prev
   from packs
-  where user_id = new.user_id and pack = new.pack
+  where user_id = new.user_id and pack = 'plus' and period_start is not null
   order by period_start desc, created_at desc
   limit 1;
 
@@ -604,8 +644,8 @@ begin
 end;
 $$;
 
--- A user's rows in the given statuses, with this period's usage: a row whose
--- month has ended shows as unused in the new month, reset or not.
+-- A user's live Lintel Plus rows (with this month's clip usage: a month that
+-- has ended shows as unused, reset or not) and their bought balances.
 create or replace function public.pack_rows(p_user_id uuid, p_statuses text[])
 returns jsonb
 language sql
@@ -613,27 +653,35 @@ stable
 security definer
 set search_path = public
 as $$
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'pack', p.pack,
-    'status', p.status,
-    'allowance', p.allowance,
-    'used', case when pack_period_start(p.period_start, now()) > p.period_start then 0 else p.used end,
-    'periodStart', pack_period_start(p.period_start, now()),
-    'periodEnd', ((pack_period_start(p.period_start, now()) at time zone 'UTC') + interval '1 month') at time zone 'UTC',
-    'itemId', p.stripe_subscription_item_id,
-    'viaPlus', p.pack <> 'plus' and exists (
-      select 1 from packs q
-      where q.stripe_subscription_item_id = p.stripe_subscription_item_id and q.pack = 'plus'
-    )
-  ) order by p.created_at, p.id), '[]'::jsonb)
-  from packs p
-  where p.user_id = p_user_id and p.status = any (p_statuses);
+  select coalesce(jsonb_agg(s.r order by s.created_at, s.id), '[]'::jsonb)
+  from (
+    select p.created_at, p.id, jsonb_build_object(
+      'pack', p.pack,
+      'status', p.status,
+      'allowance', p.allowance,
+      'used', case when pack_period_start(p.period_start, now()) > p.period_start then 0 else p.used end,
+      'periodStart', pack_period_start(p.period_start, now()),
+      'periodEnd', ((pack_period_start(p.period_start, now()) at time zone 'UTC') + interval '1 month') at time zone 'UTC',
+      'itemId', p.stripe_subscription_item_id
+    ) as r
+    from packs p
+    where p.user_id = p_user_id and p.pack = 'plus' and p.status = any (p_statuses)
+    union all
+    select p.created_at, p.id, jsonb_build_object(
+      'pack', p.pack,
+      'purchased', p.purchased,
+      'used', p.used
+    ) as r
+    from packs p
+    where p.user_id = p_user_id and p.pack <> 'plus'
+  ) s;
 $$;
 
--- Use n of a pack's allowance, atomically. Locks the user's rows for the
--- pack, rolls any whose month has ended, and either takes all n (oldest row
--- first) or takes nothing: it never goes past the cap. Returns
--- { ok: true, remaining } or { ok: false, reason: 'no_pack' | 'allowance_used', remaining }.
+-- Use n clips or languages, atomically. Locks the rows, rolls a finished Plus
+-- month, and either takes all n or nothing. Clips come from this Plus month
+-- first, then from bought ones; languages are unlimited with Plus. Returns
+-- { ok: true, remaining }, { ok: true, unlimited: true }, or
+-- { ok: false, reason: 'no_pack' | 'allowance_used', remaining }.
 create or replace function public.consume_pack(
   p_user_id  uuid,
   p_pack     text,
@@ -645,61 +693,134 @@ security definer
 set search_path = public
 as $$
 declare
-  v_now       timestamptz := now();
-  v_row       record;
-  v_rows      integer := 0;
-  v_remaining integer := 0;
-  v_need      integer;
-  v_take      integer;
+  v_now         timestamptz := now();
+  v_row         record;
+  v_plus_rows   integer := 0;
+  v_plus_left   integer := 0;
+  v_balance_id  uuid;
+  v_bought      integer;
+  v_bought_used integer;
+  v_left        integer;
+  v_need        integer;
+  v_take        integer;
 begin
+  if p_pack is null or p_pack not in ('motion', 'languages') then
+    raise exception 'consume_pack: % has nothing to use up', p_pack;
+  end if;
   if p_n is null or p_n < 1 then
     raise exception 'consume_pack: n must be at least 1, got %', p_n;
   end if;
 
+  -- Live Lintel Plus rows, locked, with a finished month rolled.
   for v_row in
     select id, allowance, used, period_start
     from packs
-    where user_id = p_user_id and pack = p_pack and status = any (p_statuses)
+    where user_id = p_user_id and pack = 'plus' and status = any (p_statuses)
     order by created_at, id
     for update
   loop
-    v_rows := v_rows + 1;
+    v_plus_rows := v_plus_rows + 1;
     if pack_period_start(v_row.period_start, v_now) > v_row.period_start then
       update packs
          set used = 0, period_start = pack_period_start(v_row.period_start, v_now)
        where id = v_row.id;
-      v_remaining := v_remaining + v_row.allowance;
+      v_plus_left := v_plus_left + v_row.allowance;
     else
-      v_remaining := v_remaining + greatest(v_row.allowance - v_row.used, 0);
+      v_plus_left := v_plus_left + greatest(v_row.allowance - v_row.used, 0);
     end if;
   end loop;
 
-  if v_rows = 0 then
+  if p_pack = 'languages' and v_plus_rows > 0 then
+    return jsonb_build_object('ok', true, 'unlimited', true);
+  end if;
+
+  select id, purchased, used into v_balance_id, v_bought, v_bought_used
+  from packs
+  where user_id = p_user_id and pack = p_pack
+  for update;
+
+  v_left := v_plus_left + greatest(coalesce(v_bought, 0) - coalesce(v_bought_used, 0), 0);
+
+  if v_plus_rows = 0 and v_balance_id is null then
     return jsonb_build_object('ok', false, 'reason', 'no_pack', 'remaining', 0);
   end if;
-  if v_remaining < p_n then
-    return jsonb_build_object('ok', false, 'reason', 'allowance_used', 'remaining', v_remaining);
+  if v_left < p_n then
+    return jsonb_build_object('ok', false, 'reason', 'allowance_used', 'remaining', v_left);
   end if;
 
   v_need := p_n;
   for v_row in
     select id, allowance, used
     from packs
-    where user_id = p_user_id and pack = p_pack and status = any (p_statuses) and used < allowance
+    where user_id = p_user_id and pack = 'plus' and status = any (p_statuses) and used < allowance
     order by created_at, id
   loop
+    exit when v_need = 0;
     v_take := least(v_need, v_row.allowance - v_row.used);
     update packs set used = used + v_take where id = v_row.id;
     v_need := v_need - v_take;
-    exit when v_need = 0;
   end loop;
+  if v_need > 0 then
+    update packs set used = used + v_need where id = v_balance_id;
+  end if;
 
-  return jsonb_build_object('ok', true, 'remaining', v_remaining - p_n);
+  return jsonb_build_object('ok', true, 'remaining', v_left - p_n);
 end;
 $$;
 
--- Nightly (purge-trash cron): write down the reset for every live row whose
--- month has ended. Returns how many rows were reset.
+-- Credit a paid purchase of clips or languages to the user's balance. Each
+-- Checkout Session credits each pack once: a repeat returns credited false.
+-- Returns { credited, purchased }.
+create or replace function public.credit_pack_purchase(
+  p_user_id                uuid,
+  p_pack                   text,
+  p_quantity               integer,
+  p_checkout_session_id    text,
+  p_payment_intent_id      text,
+  p_amount_total           integer,
+  p_currency               text
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_purchase  uuid;
+  v_purchased integer;
+begin
+  if p_pack is null or p_pack not in ('motion', 'languages') then
+    raise exception 'credit_pack_purchase: % is not bought by quantity', p_pack;
+  end if;
+  if p_quantity is null or p_quantity < 1 then
+    raise exception 'credit_pack_purchase: quantity must be at least 1, got %', p_quantity;
+  end if;
+  if p_user_id is null or p_checkout_session_id is null then
+    raise exception 'credit_pack_purchase: user and checkout session are required';
+  end if;
+
+  insert into pack_purchases (user_id, pack, quantity, amount_total, currency, stripe_checkout_session_id, stripe_payment_intent_id)
+  values (p_user_id, p_pack, p_quantity, p_amount_total, p_currency, p_checkout_session_id, p_payment_intent_id)
+  on conflict (stripe_checkout_session_id, pack) do nothing
+  returning id into v_purchase;
+
+  if v_purchase is null then
+    select purchased into v_purchased from packs where user_id = p_user_id and pack = p_pack;
+    return jsonb_build_object('credited', false, 'purchased', coalesce(v_purchased, 0));
+  end if;
+
+  insert into packs (user_id, pack, purchased)
+  values (p_user_id, p_pack, p_quantity)
+  on conflict (user_id, pack) where pack <> 'plus' do update
+    set purchased = packs.purchased + excluded.purchased
+  returning purchased into v_purchased;
+
+  return jsonb_build_object('credited', true, 'purchased', v_purchased);
+end;
+$$;
+
+-- Nightly (purge-trash cron): write down the reset for every live Lintel Plus
+-- row whose month has ended. Balances have no month. Returns how many rows
+-- were reset.
 create or replace function public.reset_pack_periods()
 returns integer
 language plpgsql
@@ -711,7 +832,8 @@ declare
 begin
   update packs
      set used = 0, period_start = pack_period_start(period_start, now())
-   where status <> 'canceled'
+   where pack = 'plus'
+     and status <> 'canceled'
      and pack_period_start(period_start, now()) > period_start;
   get diagnostics v_reset = row_count;
   return v_reset;
@@ -723,4 +845,5 @@ revoke all on function public.packs_before_insert() from public, anon, authentic
 revoke all on function public.sync_subscription_packs(uuid, text, text, jsonb) from public, anon, authenticated;
 revoke all on function public.pack_rows(uuid, text[]) from public, anon, authenticated;
 revoke all on function public.consume_pack(uuid, text, integer, text[]) from public, anon, authenticated;
+revoke all on function public.credit_pack_purchase(uuid, text, integer, text, text, integer, text) from public, anon, authenticated;
 revoke all on function public.reset_pack_periods() from public, anon, authenticated;
