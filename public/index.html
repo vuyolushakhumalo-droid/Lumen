@@ -300,7 +300,10 @@ footer{border-top:1px solid var(--line); padding:64px 0 48px; margin-top:120px; 
   .nav-links{display:none}
   .reactor{width:340px; height:340px}
   .r-bloom{width:400px; height:400px}
-  .reactor-stage{height:420px}
+  /* The glow and rings are wider than a phone; clip them at the screen edge so
+     the page can't widen or scroll sideways. Sideways only: the voice hint sits
+     below the orb. */
+  .reactor-stage{height:420px; overflow-x:clip}
   .start-wrap{grid-template-columns:1fr; gap:44px; padding:56px 0 20px}
   .start-copy .lead{max-width:100%}
 }
@@ -487,6 +490,8 @@ html:not(.js) .sc-shot[data-src]{display:none}
 @keyframes mwRise{from{transform:translateY(105%)}to{transform:none}}
 
 /* ---------- Studio ---------- */
+/* Links to #studio land the band's top edge under the sticky header (58px nav + 1px border). */
+#studio{scroll-margin-top:59px}
 .studio{position:relative; z-index:2; margin-top:0; background:#04060A;
   border-top:1px solid var(--line); border-bottom:1px solid var(--line); overflow:hidden}
 .studio-dots{position:absolute; inset:0; pointer-events:none}
