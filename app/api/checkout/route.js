@@ -12,7 +12,6 @@ import {
   requestMeta,
 } from '@/lib/terms';
 import { stripeClient, isMissingResource, withStripeCustomer } from '@/lib/stripe';
-import { packForPrice } from '@/lib/packs';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -73,22 +72,14 @@ export const POST = handler(async (request) => {
       throw new ApiError(400, "You're already on this plan.");
     }
 
-    // Lintel Plus is an extra item on the same subscription: change the
-    // plan's item, never whichever happens to come first.
+    // Change the plan's item, found by its price: a subscription can carry
+    // other items, and the first isn't necessarily the plan.
     const planPrices = Object.values(PRICE_IDS).flatMap((p) => [p.month, p.year]).filter(Boolean);
     const planItem = stripeSub.items.data.find((i) => planPrices.includes(i.price?.id))
-      || stripeSub.items.data.find((i) => !packForPrice(i.price?.id));
+      || stripeSub.items.data[0];
     const itemId = planItem?.id;
     if (!itemId) {
       throw new ApiError(500, 'Could not find your subscription item to update.');
-    }
-    // Stripe bills a subscription's items together, so they must share a
-    // billing period; Lintel Plus is monthly.
-    const addOns = stripeSub.items.data.filter((i) => i !== planItem && packForPrice(i.price?.id));
-    if (addOns.some((i) => i.price?.recurring?.interval !== interval)) {
-      throw new ApiError(400, interval === 'year'
-        ? 'Lintel Plus is billed monthly, so remove it in Billing before switching to annual billing.'
-        : 'Lintel Plus is billed on a different schedule, so remove it in Billing before switching.');
     }
 
     await stripeClient().subscriptions.update(existing.stripe_subscription_id, {

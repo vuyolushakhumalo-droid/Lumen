@@ -85,7 +85,8 @@ async function upsertSubscription(admin, subscription) {
     meta: { plan, subscription: subscription.id },
   });
 
-  // A Lintel Plus item -> its packs row. Throws on failure so Stripe retries.
+  // Lintel Plus isn't sold, so no item grants a pack: this cancels any Plus
+  // row left on the subscription. Throws on failure so Stripe retries.
   await syncPacksFromSubscription(admin, subscription, userId);
 }
 

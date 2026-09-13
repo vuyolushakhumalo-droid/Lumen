@@ -128,7 +128,7 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .tu:hover{border-color:var(--cyan);background:rgba(95,224,255,.05)}
 .tu .n{font-size:20px;font-weight:600;color:var(--ink)}.tu .l{font-size:12px;color:var(--grey-dim);margin-top:2px}.tu .p{font-size:13.5px;color:var(--cyan);margin-top:8px}
 @media(max-width:760px){.grid2{grid-template-columns:1fr}.topups{grid-template-columns:1fr}}
-.addons{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+.addons{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px}
 .addon{border:1px solid var(--line-2);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px;transition:border-color .25s,background .25s}
 .addon.on{border-color:rgba(95,224,255,.35);background:rgba(95,224,255,.04)}
 .addon-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -136,7 +136,6 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .addon-price{font-size:13.5px;color:var(--cyan);white-space:nowrap}
 .mini .addon p{font-size:13.5px;margin-bottom:0}
 .mini .addon .addon-use{color:var(--ink);white-space:pre-line}
-.addon-act{margin-top:auto;padding-top:6px;display:flex;align-items:center;min-height:36px}
 .addon-buy{margin-top:auto;padding-top:6px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
 .qty{display:flex;gap:6px;align-items:center}
 .qty-pick{font-family:var(--font);font-size:13px;min-width:38px;height:34px;padding:0 10px;border-radius:980px;border:1px solid var(--line-2);background:transparent;color:var(--ink);cursor:pointer;transition:border-color .2s,color .2s,background .2s}
@@ -144,7 +143,7 @@ footer{border-top:1px solid var(--line);padding:60px 0 44px;margin-top:110px}
 .qty-pick.on{border-color:var(--cyan);color:var(--cyan);background:rgba(95,224,255,.06)}
 .qty-input{font-family:var(--font);font-size:14px;width:64px;height:34px;border-radius:10px;border:1px solid var(--line-2);background:rgba(255,255,255,.03);color:var(--ink);padding:0 8px;text-align:center}
 .addon .sbtn:disabled{opacity:.5;cursor:default}
-.addon [hidden],#addonsNeedPlan[hidden]{display:none!important}
+.addon [hidden]{display:none!important}
 @media(max-width:760px){.addons{grid-template-columns:1fr}}
 .errbox{display:none;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.3);color:#FF9B9B;font-size:14px;padding:12px 15px;border-radius:12px;margin-bottom:18px;line-height:1.5}
 .errbox.show{display:block}
@@ -334,13 +333,13 @@ select option{background:var(--surface);color:var(--ink-2)}
 
 <div class="mini reveal" id="addons" style="margin-top:22px">
   <h3>Add-ons</h3>
-  <p>Buy clips and languages as you need them, or get some every month with Lintel Plus.</p>
+  <p>Buy clips and languages as you need them.</p>
   <div class="errbox" id="addonsErr"></div>
   <div class="okbox" id="addonsOk"></div>
   <div class="addons" id="addonsList">
     <div class="addon" data-addon="motion">
       <div class="addon-head"><h4>Motion</h4><span class="addon-price" data-price></span></div>
-      <p>Motion clips for your sites. They never expire.</p>
+      <p>Motion clips for your sites.</p>
       <p class="addon-use" data-use hidden></p>
       <div class="addon-buy">
         <div class="qty" role="group" aria-label="How many clips">
@@ -353,7 +352,7 @@ select option{background:var(--surface);color:var(--ink-2)}
     </div>
     <div class="addon" data-addon="languages">
       <div class="addon-head"><h4>Languages</h4><span class="addon-price" data-price></span></div>
-      <p>Add a language to a site. They never expire. Re-translations count as builds.</p>
+      <p>Add a language to a site. Re-translations count as builds.</p>
       <p class="addon-use" data-use hidden></p>
       <div class="addon-buy">
         <div class="qty" role="group" aria-label="How many languages">
@@ -364,15 +363,8 @@ select option{background:var(--surface);color:var(--ink-2)}
         <button class="sbtn" type="button" data-buy disabled>Buy</button>
       </div>
     </div>
-    <div class="addon" data-addon="plus">
-      <div class="addon-head"><h4>Lintel Plus</h4><span class="addon-price" data-price></span></div>
-      <p>6 clips a month and unlimited languages. Each month's clips are used before ones you've bought.</p>
-      <p class="addon-use" data-use hidden></p>
-      <p id="addonsNeedPlan" hidden>Lintel Plus joins a plan. <a href="/#pricing" style="color:var(--cyan);text-decoration:none">Choose a plan</a> first.</p>
-      <div class="addon-act"><button class="sbtn" type="button" data-act="add" disabled>Add</button></div>
-    </div>
   </div>
-  <p class="grey" style="font-size:13px;margin-top:16px;margin-bottom:0">Clips and languages you buy never expire. Removing Lintel Plus stops it straight away, with no refund for the rest of the month.</p>
+  <p class="grey" style="font-size:13px;margin-top:16px;margin-bottom:0">Clips and languages you buy never expire.</p>
 </div>
 
 <div class="mini reveal" id="topup" style="margin-top:22px">
@@ -423,16 +415,6 @@ select option{background:var(--surface);color:var(--ink-2)}
     <div class="confirm-row">
       <button class="sbtn" id="confirmNo" type="button">Cancel</button>
       <button class="sbtn danger" id="confirmYes" type="button">Move to Trash</button>
-    </div>
-  </div>
-</div>
-<div class="confirm" id="packConfirm">
-  <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="packConfirmTitle">
-    <h3 id="packConfirmTitle">Add this add-on?</h3>
-    <p id="packConfirmText"></p>
-    <div class="confirm-row">
-      <button class="sbtn" id="packConfirmNo" type="button">Cancel</button>
-      <button class="sbtn" id="packConfirmYes" type="button">Add</button>
     </div>
   </div>
 </div>
@@ -542,33 +524,19 @@ document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
     initAddons();
   })();
 
-  // Add-ons: clips and languages bought by quantity through Stripe Checkout
-  // (they never expire), and Lintel Plus, an extra item on the plan's
-  // subscription (see /api/packs and /api/checkout/pack).
+  // Add-ons: clips and languages bought by quantity through Stripe Checkout.
+  // They never expire (see /api/packs and /api/checkout/pack).
   function initAddons(){
     var list = document.getElementById('addonsList');
     if(!list) return;
     var errBox = document.getElementById('addonsErr');
     var okBox = document.getElementById('addonsOk');
-    var needPlan = document.getElementById('addonsNeedPlan');
-    var wrap = document.getElementById('packConfirm');
-    var yes = document.getElementById('packConfirmYes');
-    var state = null, pending = null;
+    var state = null;
 
     function money(amount, currency){
       var cur = String(currency || 'gbp').toUpperCase();
       try { return new Intl.NumberFormat('en-GB', { style:'currency', currency:cur, minimumFractionDigits: amount % 100 ? 2 : 0 }).format(amount / 100); }
       catch(e){ return (amount / 100).toFixed(2) + ' ' + cur; }
-    }
-    function priceLabel(p, name){
-      if(!p.onSale || !p.price || p.price.amount == null) return '';
-      var s = money(p.price.amount, p.price.currency);
-      if(name !== 'plus') return s + ' each';
-      return s + (p.price.interval === 'year' ? ' a year' : ' a month');
-    }
-    function shortDate(iso){
-      var d = new Date(iso);
-      return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
     }
     function count(n, unit){ return n + ' ' + unit + (n === 1 ? '' : 's'); }
     function show(box, msg){
@@ -593,36 +561,17 @@ document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
     }
 
     function render(){
-      var packs = state.packs, sub = state.subscription;
       list.querySelectorAll('[data-addon]').forEach(function(card){
-        var name = card.getAttribute('data-addon'), p = packs[name];
+        var name = card.getAttribute('data-addon'), p = state.packs[name];
         if(!p) return;
-        card.querySelector('[data-price]').textContent = priceLabel(p, name);
-        var lines = [];
-        if(name === 'motion'){
-          if(p.purchased) lines.push('Clips: ' + p.used + ' of ' + p.purchased + ' used');
-        } else if(name === 'languages'){
-          if(p.unlimited) lines.push('Unlimited with Lintel Plus');
-          if(p.purchased) lines.push('Languages: ' + p.used + ' of ' + p.purchased + ' used');
-        } else if(p.has){
-          lines.push('Clips this month: ' + p.clips.used + ' of ' + p.clips.allowance + ' used' + (p.periodEnd ? ' · resets ' + shortDate(p.periodEnd) : ''));
-          lines.push('Unlimited languages');
-        }
+        card.querySelector('[data-price]').textContent = p.onSale && p.price && p.price.amount != null
+          ? money(p.price.amount, p.price.currency) + ' each' : '';
+        var line = p.purchased ? (name === 'motion' ? 'Clips: ' : 'Languages: ') + p.used + ' of ' + p.purchased + ' used' : '';
         var use = card.querySelector('[data-use]');
-        use.textContent = lines.join('\n');
-        use.hidden = !lines.length;
-        card.classList.toggle('on', lines.length > 0);
-
-        if(name !== 'plus'){
-          updateBuy(card);
-          return;
-        }
-        var btn = card.querySelector('[data-act]');
-        btn.setAttribute('data-act', p.has ? 'remove' : 'add');
-        btn.textContent = p.has ? 'Remove' : (p.onSale || !sub.active ? 'Add' : 'Not available yet');
-        btn.classList.toggle('danger', !!p.has);
-        btn.disabled = !p.has && (!sub.active || !p.onSale);
-        needPlan.hidden = !!sub.active || !!p.has;
+        use.textContent = line;
+        use.hidden = !line;
+        card.classList.toggle('on', !!line);
+        updateBuy(card);
       });
     }
 
@@ -650,30 +599,6 @@ document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
       }
     }
 
-    function askPlus(action){
-      var p = state.packs.plus, title, text;
-      if(action === 'add'){
-        title = 'Add Lintel Plus' + (p.onSale ? ' for ' + priceLabel(p, 'plus') + '?' : '?');
-        text = state.subscription.status === 'trialing'
-          ? "It's free until your trial ends, then it bills with your plan on the same invoice."
-          : "It bills with your plan on the same invoice. You'll pay for the rest of this billing month on your next invoice, and this month's clips are yours straight away.";
-      } else {
-        title = 'Remove Lintel Plus?';
-        text = "It stops straight away, along with any of this month's clips left. There's no refund for the rest of the month. Clips and languages you've bought stay yours.";
-      }
-      pending = { pack: 'plus', action: action };
-      document.getElementById('packConfirmTitle').textContent = title;
-      document.getElementById('packConfirmText').textContent = text;
-      yes.textContent = action === 'add' ? 'Add Lintel Plus' : 'Remove';
-      yes.classList.toggle('danger', action === 'remove');
-      wrap.classList.add('show');
-    }
-
-    function close(){
-      wrap.classList.remove('show');
-      pending = null;
-    }
-
     list.addEventListener('click', function(e){
       if(!state) return;
       var pick = e.target.closest('.qty-pick');
@@ -684,35 +609,10 @@ document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
         return;
       }
       var b = e.target.closest('[data-buy]');
-      if(b){
-        if(!b.disabled) buy(b.closest('[data-addon]'));
-        return;
-      }
-      var act = e.target.closest('[data-act]');
-      if(act && !act.disabled) askPlus(act.getAttribute('data-act'));
+      if(b && !b.disabled) buy(b.closest('[data-addon]'));
     });
     list.addEventListener('input', function(e){
       if(state && e.target.classList.contains('qty-input')) updateBuy(e.target.closest('[data-addon]'));
-    });
-
-    document.getElementById('packConfirmNo').addEventListener('click', close);
-    wrap.addEventListener('click', function(e){ if(e.target === wrap) close(); });
-
-    yes.addEventListener('click', async function(){
-      if(!pending || yes.disabled) return;
-      var req = pending, label = yes.textContent;
-      yes.disabled = true;
-      yes.textContent = req.action === 'add' ? 'Adding…' : 'Removing…';
-      show(errBox, '');
-      try {
-        state = await Lumen.api('/api/packs', { method:'POST', body: JSON.stringify(req) });
-        render();
-      } catch(e){
-        show(errBox, e.message || "That didn't go through. Please try again.");
-      }
-      close();
-      yes.disabled = false;
-      yes.textContent = label;
     });
 
     // Back from Stripe Checkout: the webhook adds the purchase to the balance,
