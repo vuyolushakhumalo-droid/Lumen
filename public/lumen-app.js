@@ -23,6 +23,10 @@
   // never stop the app loading, so nothing here is awaited.
   let monitoringStarted = false;
   function startErrorMonitoring(dsn) {
+    // A page can opt out entirely: reset.html must load nothing third-party,
+    // so it sets this before including us. Checked here rather than at the
+    // call site so no path can reach the CDN.
+    if (window.__lumenNoMonitoring) return;
     if (!dsn || monitoringStarted) return;
     monitoringStarted = true;
     try {
