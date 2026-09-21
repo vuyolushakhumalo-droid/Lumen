@@ -3,14 +3,25 @@
 <title>Page not found — Lintel</title><meta name="robots" content="noindex">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="/fonts/inter/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+/* Inter 5.3 variable (SIL OFL 1.1, public/fonts/inter/OFL.txt), from @fontsource-variable/inter. */
+@font-face{font-family:'Inter'; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url(/fonts/inter/inter-latin-wght-normal.woff2) format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Inter'; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url(/fonts/inter/inter-latin-ext-wght-normal.woff2) format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+/* Arial resized to Inter's metrics (measured from the two font files), so the
+   swap when Inter arrives doesn't push the hero around. */
+@font-face{font-family:'Inter Fallback'; src:local('Arial'); size-adjust:107.83%;
+  ascent-override:89.84%; descent-override:22.37%; line-gap-override:0%}
+
 /* --grey-dim is #7A8494, not #5D6875: 5.33:1 on --bg (#05070C), where the old
    value measured 3.55:1 — below the 4.5:1 that normal-size text needs. */
 :root{--bg:#05070C;--bg-2:#090C13;--surface:#0C1119;--ink:#F5F6F9;--ink-2:#EAEDF2;--grey:#96A0AD;--grey-dim:#7A8494;
 --line:rgba(255,255,255,0.07);--line-2:rgba(255,255,255,0.12);--cyan:#5FE0FF;--cyan-2:#8DEBFF;--glow:rgba(95,224,255,0.5);
---font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;}
+--font:'Inter','Inter Fallback',-apple-system,BlinkMacSystemFont,sans-serif;}
 *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.6;letter-spacing:-.011em;-webkit-font-smoothing:antialiased;overflow-x:hidden;
 background-image:radial-gradient(1000px 700px at 50% -14%,rgba(95,224,255,0.09),transparent 60%),radial-gradient(800px 600px at 90% 40%,rgba(95,224,255,0.04),transparent 55%);}
