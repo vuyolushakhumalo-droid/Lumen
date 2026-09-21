@@ -8,7 +8,7 @@ Live site: https://www.lintelapp.co.uk (lintel.co.uk is an unrelated company —
 
 # Commands
 - Build: `npm run build` — must pass before any commit
-- Tests: `npm test` — run after every change to lib/ or app/api/
+- Tests: `npm test` — run after every change to lib/, app/api/ or public/*.js
 - Windows / PowerShell environment. Repo lives in OneDrive\Documents\Lumen-backend.
 
 # Database
