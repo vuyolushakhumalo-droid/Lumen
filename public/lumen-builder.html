@@ -11,9 +11,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 
+  /* --grey-dim is #7A8494, not #64717F: the old value measured 4.02:1 on --bg
+     (#06080D) and 3.48:1 on --surface-2, below the 4.5:1 that normal-size text
+     needs. The new value clears it on every surface it sits on — 4.59:1 worst. */
   :root{
     --bg:#06080D; --bg-2:#080B11; --surface:#0D131C; --surface-2:#121B26; --surface-3:#17222F;
-    --ink:#F2F5F9; --grey:#A2AEBC; --grey-dim:#64717F; --line:rgba(255,255,255,0.055); --line-2:rgba(255,255,255,0.10);
+    --ink:#F2F5F9; --grey:#A2AEBC; --grey-dim:#7A8494; --line:rgba(255,255,255,0.055); --line-2:rgba(255,255,255,0.10);
     --cyan:#5FE0FF; --cyan-2:#8DEBFF; --glow:rgba(95,224,255,0.45);
     --font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
   }

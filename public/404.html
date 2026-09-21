@@ -6,7 +6,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#05070C;--bg-2:#090C13;--surface:#0C1119;--ink:#F5F6F9;--ink-2:#EAEDF2;--grey:#96A0AD;--grey-dim:#5D6875;
+/* --grey-dim is #7A8494, not #5D6875: 5.33:1 on --bg (#05070C), where the old
+   value measured 3.55:1 — below the 4.5:1 that normal-size text needs. */
+:root{--bg:#05070C;--bg-2:#090C13;--surface:#0C1119;--ink:#F5F6F9;--ink-2:#EAEDF2;--grey:#96A0AD;--grey-dim:#7A8494;
 --line:rgba(255,255,255,0.07);--line-2:rgba(255,255,255,0.12);--cyan:#5FE0FF;--cyan-2:#8DEBFF;--glow:rgba(95,224,255,0.5);
 --font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;}
 *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
