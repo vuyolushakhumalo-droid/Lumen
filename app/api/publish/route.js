@@ -5,7 +5,7 @@
 // ============================================================
 import { handler, requireUser, ApiError } from '@/lib/auth';
 import { getUsageSnapshot } from '@/lib/usage';
-import { findFreeSlug, validateSlug, makeSlug, publicUrl, findHardBlock, rememberOldSlug } from '@/lib/publish';
+import { findFreeSlug, validateSlug, makeSlug, publicUrl, findHardBlock, hardBlockHost, normalizeEmbeds, rememberOldSlug } from '@/lib/publish';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -53,10 +53,18 @@ export const POST = handler(async (request) => {
     throw new ApiError(400, 'Build something first — there is nothing to publish yet.');
   }
 
-  const hardBlock = findHardBlock(project.current_code);
+  // Normalised before screening: a YouTube embed pasted in the form
+  // YouTube itself hands out is rewritten to the no-cookie host rather
+  // than refused. Content saved since this shipped was already
+  // normalised on the way in; this covers anything saved before it.
+  const hardBlock = findHardBlock(normalizeEmbeds(project.current_code));
   if (hardBlock) {
-    throw new ApiError(400, `Your site contains ${hardBlock.label}, which isn't allowed on Lintel. See our Acceptable Use Policy for detail.`, {
-      reason: 'hard_block', ruleId: hardBlock.id, acceptableUse: '/acceptable-use',
+    // Naming the host is the difference between "something on your site
+    // isn't allowed" and something the customer can actually go and find.
+    const host = hardBlockHost(hardBlock);
+    const named = host ? `${hardBlock.label} (${host})` : hardBlock.label;
+    throw new ApiError(400, `Your site contains ${named}, which isn't allowed on Lintel. See our Acceptable Use Policy for detail.`, {
+      reason: 'hard_block', ruleId: hardBlock.id, host, acceptableUse: '/acceptable-use',
     });
   }
 

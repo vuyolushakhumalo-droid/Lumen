@@ -48,7 +48,8 @@ const { decodeHtmlEntities } = await load('lib/text.js');
 const { chooseModel } = await load('lib/routing.js');
 const { planFor } = await load('lib/plans.js');
 const { packForPrice, PACKS, SELLABLE_PACKS } = await load('lib/packs.js');
-const { makeSlug, findHardBlock, findInlineRequest } = await load('lib/publish.js');
+const { makeSlug, findHardBlock, findInlineRequest, normalizeEmbeds, hardBlockHost } =
+  await load('lib/publish.js');
 const { isMissingResource } = await load('lib/stripe.js');
 
 // ---------- slugs and text ----------
@@ -157,11 +158,96 @@ test('findHardBlock allows only allowlisted embed hosts', () => {
 
 test('findHardBlock takes YouTube only in its no-cookie form', () => {
   // Deliberate: www.youtube.com is absent from the allowlist so an embed
-  // cannot set cookies on a customer's visitors. Changing this is a
-  // privacy decision, not a typo fix.
-  assert.equal(findHardBlock('<iframe src="https://www.youtube-nocookie.com/embed/abc"></iframe>'), null);
-  assert.equal(findHardBlock('<iframe src="https://www.youtube.com/embed/abc"></iframe>').id,
+  // cannot set cookies on a customer's visitors. normalizeEmbeds is what
+  // gets a customer there; the screen itself stays strict.
+  assert.equal(findHardBlock('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>'), null);
+  assert.equal(findHardBlock('<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>').id,
     'external_iframe');
+});
+
+// ---------- YouTube normalisation ----------
+
+const iframe = (src) => `<iframe src="${src}" width="560" height="315" allowfullscreen></iframe>`;
+const srcOf = (html) => html.match(/src="([^"]*)"/)[1];
+const ID = 'dQw4w9WgXcQ';
+
+test('normalizeEmbeds rewrites every YouTube embed form to the no-cookie host', () => {
+  const cases = [
+    // What YouTube's own Share -> Embed hands out.
+    [`https://www.youtube.com/embed/${ID}`, `https://www.youtube-nocookie.com/embed/${ID}`],
+    [`https://youtube.com/embed/${ID}`, `https://www.youtube-nocookie.com/embed/${ID}`],
+    [`http://www.youtube.com/embed/${ID}`, `https://www.youtube-nocookie.com/embed/${ID}`],
+    // A watch page or a short link pasted into an iframe: meant as an
+    // embed, and broken as one until it is converted.
+    [`https://www.youtube.com/watch?v=${ID}`, `https://www.youtube-nocookie.com/embed/${ID}`],
+    [`https://m.youtube.com/watch?v=${ID}`, `https://www.youtube-nocookie.com/embed/${ID}`],
+    [`https://youtu.be/${ID}`, `https://www.youtube-nocookie.com/embed/${ID}`],
+    // Right host, missing www. -- the allowlist would refuse it.
+    [`https://youtube-nocookie.com/embed/${ID}`, `https://www.youtube-nocookie.com/embed/${ID}`],
+  ];
+  for (const [input, expected] of cases) {
+    assert.equal(srcOf(normalizeEmbeds(iframe(input))), expected, `from ${input}`);
+  }
+});
+
+test('normalizeEmbeds keeps query parameters, and the rest of the tag', () => {
+  assert.equal(srcOf(normalizeEmbeds(iframe(`https://www.youtube.com/embed/${ID}?start=30&rel=0`))),
+    `https://www.youtube-nocookie.com/embed/${ID}?start=30&rel=0`);
+  // On a watch URL, v= becomes the path and the other params survive.
+  assert.equal(srcOf(normalizeEmbeds(iframe(`https://www.youtube.com/watch?v=${ID}&t=42`))),
+    `https://www.youtube-nocookie.com/embed/${ID}?t=42`);
+  // &amp; in the attribute stays escaped on the way out.
+  assert.equal(srcOf(normalizeEmbeds(iframe(`https://www.youtube.com/embed/${ID}?start=30&amp;rel=0`))),
+    `https://www.youtube-nocookie.com/embed/${ID}?start=30&amp;rel=0`);
+  // Protocol-relative stays protocol-relative.
+  assert.equal(srcOf(normalizeEmbeds(iframe(`//www.youtube.com/embed/${ID}`))),
+    `//www.youtube-nocookie.com/embed/${ID}`);
+  // Everything around the src is untouched.
+  assert.match(normalizeEmbeds(iframe(`https://youtu.be/${ID}`)),
+    /width="560" height="315" allowfullscreen/);
+});
+
+test('normalizeEmbeds leaves YouTube URLs that are not embeds alone', () => {
+  const untouched = [
+    'https://www.youtube.com/channel/UCabcdefghijklmnop',
+    'https://www.youtube.com/playlist?list=PLabcdefghij',
+    'https://www.youtube.com/results?search_query=cafe',
+    'https://www.youtube.com/',
+    'https://www.youtube.com/@somechannel',
+  ];
+  for (const src of untouched) {
+    assert.equal(srcOf(normalizeEmbeds(iframe(src))), src, `should not rewrite ${src}`);
+  }
+});
+
+test('normalizeEmbeds touches no other host, and no anchor', () => {
+  for (const src of ['https://vimeo.com/video/123456', 'https://evil.example.com/embed/dQw4w9WgXcQ',
+    'https://notyoutube.com/embed/dQw4w9WgXcQ', 'https://www.youtube.com.evil.test/embed/dQw4w9WgXcQ']) {
+    assert.equal(srcOf(normalizeEmbeds(iframe(src))), src, `should not rewrite ${src}`);
+  }
+  // A link to a video is a link, not an embed: rewriting it to /embed/
+  // would send the visitor to a bare player instead of the video page.
+  const anchor = `<a href="https://youtu.be/${ID}">Watch our film</a>`;
+  assert.equal(normalizeEmbeds(anchor), anchor);
+});
+
+test('normalised YouTube output passes the screen; an unknown host still fails', () => {
+  // The whole point: the customer's own snippet publishes after this.
+  const page = `<html><body>${iframe(`https://www.youtube.com/watch?v=${ID}`)}</body></html>`;
+  assert.equal(findHardBlock(page).id, 'external_iframe', 'blocked before normalisation');
+  assert.equal(findHardBlock(normalizeEmbeds(page)), null, 'passes after normalisation');
+
+  // Normalisation must not become a way in for anything else.
+  const bad = `<html><body>${iframe('https://evil.example.com/embed/x')}</body></html>`;
+  assert.equal(findHardBlock(normalizeEmbeds(bad)).id, 'external_iframe');
+});
+
+test('a blocked embed reports the host that was refused', () => {
+  const hit = findHardBlock(iframe('https://evil.example.com/thing'));
+  assert.equal(hardBlockHost(hit), 'evil.example.com');
+  // A rule with no URL behind it has no host to name.
+  assert.equal(hardBlockHost(findHardBlock('<input type="password" name="p">')), null);
+  assert.equal(hardBlockHost(null), null);
 });
 
 test('findHardBlock holds Google to the maps-embed path', () => {

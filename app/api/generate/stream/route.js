@@ -9,7 +9,7 @@
 import { requireUser, ApiError } from '@/lib/auth';
 import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml, rollbackVersion } from '@/lib/usage';
 import { streamSite, DESIGN_DIRECTION_NAMES } from '@/lib/anthropic';
-import { makeSlug, screenLiveSite } from '@/lib/publish';
+import { makeSlug, normalizeEmbeds, screenLiveSite } from '@/lib/publish';
 import { rateLimitDb } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 import { startAttempt, finishAttempt } from '@/lib/attempts';
@@ -211,6 +211,11 @@ export async function POST(request) {
           })} -->`);
           return;
         }
+
+        // Normalised once, here, so every use below -- the version row,
+        // current_code, the screen and the pendingCode handed back --
+        // sees the same no-cookie YouTube URLs.
+        result.html = normalizeEmbeds(result.html);
 
         // Save everything, then count the build.
         try {
