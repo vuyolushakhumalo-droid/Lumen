@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "copy:gsap": "node scripts/copy-gsap.mjs"
+    "copy:gsap": "node scripts/copy-gsap.mjs",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
