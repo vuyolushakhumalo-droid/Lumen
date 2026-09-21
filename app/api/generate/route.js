@@ -8,7 +8,7 @@
 import { handler, requireUser, ApiError } from '@/lib/auth';
 import { assertCanBuild, recordBuild, getUsageSnapshot, logUsageEvent, resolvePreviousHtml, rollbackVersion } from '@/lib/usage';
 import { generateSite, DESIGN_DIRECTION_NAMES } from '@/lib/anthropic';
-import { makeSlug, screenLiveSite } from '@/lib/publish';
+import { makeSlug, normalizeEmbeds, screenLiveSite } from '@/lib/publish';
 import { rateLimitDb } from '@/lib/ratelimit';
 import { chooseModel } from '@/lib/routing';
 import { startAttempt, finishAttempt } from '@/lib/attempts';
@@ -131,7 +131,10 @@ export const POST = handler(async (request) => {
     throw new ApiError(502, 'The build failed — please try again. You have not been charged a build.');
   }
 
-  const code = result.html;
+  // Normalised before it is versioned, saved or served, so a YouTube
+  // embed is stored on the no-cookie host rather than merely passing
+  // the screen. Nothing else in the document is altered.
+  const code = normalizeEmbeds(result.html);
   const title = result.title || 'New site';
   const plan = result.plan || null;
   const previewUrl = `${makeSlug(title)}.lintelsites.com`;
