@@ -22,3 +22,10 @@ public/img/studio/*
 !public/img/studio/*.webp
 !public/img/studio/*.jpg
 !public/img/studio/studio-hero-web.mp4
+
+# Claude Code. The skills in .claude/skills/ are shared and committed; these two
+# are not. Worktrees are throwaway checkouts of this same repo, created per task
+# and deleted after -- committing them would nest the repo inside itself.
+# settings.local.json holds per-machine tool permissions.
+.claude/worktrees/
+.claude/settings.local.json
