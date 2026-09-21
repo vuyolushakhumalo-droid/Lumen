@@ -29,3 +29,9 @@ public/img/studio/*
 # settings.local.json holds per-machine tool permissions.
 .claude/worktrees/
 .claude/settings.local.json
+
+# Audit reports are committed; the evidence behind them is not. A run leaves
+# ~84 MB of Lighthouse JSON, axe output and screenshots under audits/raw/,
+# and git history is permanent. The report cites paths into it -- regenerate
+# with the lintel-audit skill if you need to see the raw numbers again.
+audits/raw/
