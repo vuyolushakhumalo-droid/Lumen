@@ -12,12 +12,13 @@
 // Usage (Node 20.6+, for --env-file):
 //   node --env-file=.env.local scripts/rescan-live-sites.mjs
 //   node --env-file=.env.local scripts/rescan-live-sites.mjs --json
+//   node --env-file=.env.local scripts/rescan-live-sites.mjs --json --host=www.youtube.com
 //   node --env-file=.env.local scripts/rescan-live-sites.mjs --unpublish
 //
 // Needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, the same two the
 // app uses. Run it from the project root so node_modules resolves.
 import { supabaseAdmin } from '../lib/supabase.js';
-import { findHardBlock, offlineSummary } from '../lib/publish.js';
+import { findHardBlock, hardBlockHost, normalizeEmbeds, offlineSummary } from '../lib/publish.js';
 
 const args = new Set(process.argv.slice(2));
 const APPLY = args.has('--unpublish');
@@ -26,6 +27,11 @@ const APPLY = args.has('--unpublish');
 // --unpublish.
 const EXPERIMENTAL = args.has('--experimental');
 const AS_JSON = args.has('--json');
+// --host=example.com narrows the report to findings whose matched URL is on
+// that host (or a subdomain of it), for counting one provider across the
+// estate. Reporting only -- see the refusal below.
+const HOST_ARG = process.argv.slice(2).find((a) => a.startsWith('--host='));
+const HOST = HOST_ARG ? HOST_ARG.slice('--host='.length).trim().toLowerCase() : null;
 const PAGE = 200;
 
 if (args.has('--help') || args.has('-h')) {
@@ -34,11 +40,22 @@ Scan every live site for hard-block content.
 
   (no flags)    dry run -- report only, change nothing
   --json        machine-readable output
+  --host=HOST   report only findings whose matched URL is on HOST
+                (or a subdomain of it); cannot be combined with --unpublish
   --experimental also apply rules not yet live on the publish path
   --unpublish   ALSO take the failing sites offline (writes to the database)
   --help        this message
 `.trim());
   process.exit(0);
+}
+
+// A filter that narrowed a destructive write would be a footgun: the same
+// flag that answers "how many use this provider?" would also mean "take
+// exactly those offline". Counting and unpublishing stay separate.
+if (HOST && APPLY) {
+  console.error('Refusing to --unpublish with --host set.');
+  console.error('--host narrows the report only. Drop it to apply to every finding.');
+  process.exit(1);
 }
 
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -90,7 +107,10 @@ async function main() {
       continue;
     }
 
-    const hit = findHardBlock(project.current_code, { experimental: EXPERIMENTAL });
+    // Normalised first, so this judges a site exactly as publish does.
+    // Without it a YouTube embed that publishes fine today would be
+    // reported here as failing -- and --unpublish would take it down.
+    const hit = findHardBlock(normalizeEmbeds(project.current_code), { experimental: EXPERIMENTAL });
     if (!hit) continue;
 
     findings.push({
@@ -104,22 +124,35 @@ async function main() {
       // Rules with their own matcher report what they matched -- for the
       // inline-request rule that is the URL, which is the whole story.
       detail: hit.detail || null,
+      host: hardBlockHost(hit),
       summary: offlineSummary(hit.id),
     });
   }
 
+  // --host narrows what is REPORTED, never what is written. The refusal at
+  // the top of the file keeps it away from --unpublish, which always acts
+  // on the full findings list.
+  const onHost = (f) => !HOST || (!!f.host && (f.host === HOST || f.host.endsWith('.' + HOST)));
+  const reported = findings.filter(onHost);
+
   if (AS_JSON) {
-    console.log(JSON.stringify({ scanned, noCode, findings, applied: APPLY }, null, 2));
+    console.log(JSON.stringify({
+      scanned, noCode, hostFilter: HOST, matched: reported.length,
+      findings: reported, applied: APPLY,
+    }, null, 2));
   } else {
     console.log(`Scanned ${scanned} live site${scanned === 1 ? '' : 's'}.`);
     if (noCode) console.log(`${noCode} of them are live with no built code.`);
+    if (HOST) console.log(`Filtered to ${HOST} (${findings.length} finding(s) in total).`);
     console.log('');
 
-    if (findings.length === 0) {
-      console.log('No hard blocks found. Every live site would pass the screen today.');
+    if (reported.length === 0) {
+      console.log(HOST
+        ? `No live site has a hard block on ${HOST}.`
+        : 'No hard blocks found. Every live site would pass the screen today.');
     } else {
-      console.log(`${findings.length} site${findings.length === 1 ? '' : 's'} would fail the screen:\n`);
-      for (const f of findings) {
+      console.log(`${reported.length} site${reported.length === 1 ? '' : 's'} would fail the screen:\n`);
+      for (const f of reported) {
         console.log(`  ${f.name}`);
         console.log(`    owner    ${f.email}`);
         console.log(`    address  ${f.address}`);
@@ -132,7 +165,7 @@ async function main() {
   }
 
   if (!APPLY) {
-    if (findings.length) {
+    if (reported.length) {
       console.log('Dry run -- nothing was changed.');
       console.log('Re-run with --unpublish to take these offline.');
     }
